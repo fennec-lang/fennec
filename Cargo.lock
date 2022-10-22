@@ -128,10 +128,15 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "env_logger",
+ "fennec-parser",
  "log",
  "rustyline",
  "xflags",
 ]
+
+[[package]]
+name = "fennec-parser"
+version = "0.1.0"
 
 [[package]]
 name = "hermit-abi"

@@ -21,10 +21,12 @@ env_logger = "0.9"
 log = "0.4"
 rustyline = { version = "10.0", default-features = false }
 xflags = "0.3.1"
+fennec-parser = { path = "crates/fennec-parser" }
 
 [build-dependencies]
 anyhow = "1.0"
 
 [workspace]
 members = [
+    "crates/fennec-parser",
 ]
