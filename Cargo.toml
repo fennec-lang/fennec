@@ -1,7 +1,11 @@
 [package]
 name = "fennec"
+description = "fennec is an experimental programming language and environment"
 version = "0.1.0"
 authors = ["Gregory Petrosyan <gregory.petrosyan@gmail.com>"]
+homepage = "https://github.com/fennec-lang/fennec"
+repository = "https://github.com/fennec-lang/fennec"
+readme = false
 license = "MPL-2.0"
 edition = "2021"
 
