@@ -21,7 +21,6 @@ fn main() -> anyhow::Result<()> {
     println!("cargo:rustc-env=BUILD_DATE={}", date);
     println!("cargo:rustc-env=BUILD_GIT_DESCRIBE={}", git_describe);
     println!("cargo:rustc-env=BUILD_RUSTC_VERSION={}", rustc_version);
-    println!("cargo:rerun-if-changed=.git/HEAD");
 
     Ok(())
 }
