@@ -1,0 +1,7 @@
+/.idea/
+/.vscode/
+
+.fc-history.txt
+*.swp
+
+/target/

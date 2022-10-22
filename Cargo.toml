@@ -1,0 +1,21 @@
+[package]
+name = "fennec"
+version = "0.1.0"
+authors = ["Gregory Petrosyan <gregory.petrosyan@gmail.com>"]
+license = "MPL-2.0"
+edition = "2021"
+
+[[bin]]
+path = "crates/fc/main.rs"
+name = "fc"
+
+[dependencies]
+ansi_term = "0.12"
+anyhow = "1.0"
+env_logger = "0.9"
+log = "0.4"
+rustyline = { version = "10.0", default-features = false }
+
+[workspace]
+members = [
+]
