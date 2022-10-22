@@ -1,7 +1,7 @@
 /.idea/
 /.vscode/
 
-.fc-history.txt
+.fennec-history.txt
 *.swp
 
 /target/

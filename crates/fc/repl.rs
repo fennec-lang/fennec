@@ -18,7 +18,7 @@ use rustyline::validate::Validator;
 use rustyline::{Config, Editor, Helper};
 
 static PROMPT: &str = ">> ";
-static HISTORY_FILENAME: &str = ".fc-history.txt";
+static HISTORY_FILENAME: &str = ".fennec-history.txt";
 
 pub struct Env {
     rl: Editor<EnvHelper>,
