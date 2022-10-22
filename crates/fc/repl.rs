@@ -53,14 +53,12 @@ impl Env {
     }
 
     pub fn readline(&mut self) -> anyhow::Result<String> {
-        let res = self.rl.readline(PROMPT);
-        match res {
-            Ok(line) => {
-                self.rl.add_history_entry(line.as_str());
-                Ok(line)
-            }
-            Err(err) => Err(err.into()),
-        }
+        let line = self.rl.readline(PROMPT)?;
+        Ok(line)
+    }
+
+    pub fn remember(&mut self, line: String) {
+        self.rl.add_history_entry(line);
     }
 }
 

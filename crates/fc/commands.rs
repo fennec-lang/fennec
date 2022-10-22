@@ -77,10 +77,12 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                 match parse {
                     Ok(LineParse::Whitespace) => {}
                     Ok(LineParse::NotCommand) => {
-                        println!("ok {}", line)
+                        println!("ok {}", line);
+                        env.remember(line);
                     }
                     Ok(LineParse::Command(flags)) => {
                         let act = run(flags, false)?;
+                        env.remember(line);
                         match act {
                             Action::Continue => {}
                             Action::Exit => break,
