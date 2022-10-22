@@ -25,7 +25,7 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn new() -> Result<Self, anyhow::Error> {
+    pub fn new() -> anyhow::Result<Self> {
         let cfg = Config::default();
         let mut rl = Editor::<EnvHelper>::with_config(cfg).context("Failed to init terminal")?;
         rl.set_helper(Some(EnvHelper {}));
@@ -45,14 +45,14 @@ impl Env {
         Ok(Self { rl })
     }
 
-    pub fn close(&mut self) -> Result<(), anyhow::Error> {
+    pub fn close(&mut self) -> anyhow::Result<()> {
         self.rl
             .save_history(HISTORY_FILENAME)
             .context("Failed to save history")?;
         Ok(())
     }
 
-    pub fn readline(&mut self) -> Result<String, anyhow::Error> {
+    pub fn readline(&mut self) -> anyhow::Result<String> {
         let res = self.rl.readline(PROMPT);
         match res {
             Ok(line) => {

@@ -4,28 +4,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::result::Result;
-
+mod commands;
+mod flags;
 mod repl;
 
-fn main() -> Result<(), anyhow::Error> {
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mut env = repl::Env::new()?;
-
-    loop {
-        match env.readline() {
-            Ok(line) => {
-                println!("ok {}", line)
-            }
-            Err(err) => {
-                if repl::eof(&err) {
-                    break;
-                }
-                println!("error {}", err)
-            }
-        }
-    }
-
-    env.close()
+    let flags = flags::Fennec::from_env_or_exit();
+    let _ = commands::run(flags, true)?;
+    Ok(())
 }
