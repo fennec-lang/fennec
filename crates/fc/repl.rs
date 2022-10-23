@@ -38,7 +38,7 @@ impl Env {
                 true
             };
             if should_warn {
-                warn!("Failed to load history: {}", err)
+                warn!("Failed to load history: {}", err);
             }
         }
 
@@ -65,7 +65,7 @@ impl Env {
 pub fn eof(err: &anyhow::Error) -> bool {
     matches!(
         err.downcast_ref::<ReadlineError>(),
-        Some(ReadlineError::Eof) | Some(ReadlineError::Interrupted)
+        Some(ReadlineError::Eof | ReadlineError::Interrupted)
     )
 }
 

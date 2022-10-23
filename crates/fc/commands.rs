@@ -15,7 +15,7 @@ pub enum Action {
     Exit,
 }
 
-pub fn run(flags: flags::Fennec, toplevel: bool) -> anyhow::Result<Action> {
+pub fn run(flags: &flags::Fennec, toplevel: bool) -> anyhow::Result<Action> {
     match flags.subcommand {
         Repl(_) => {
             if toplevel {
@@ -58,7 +58,7 @@ fn parse_repl_cmd(line: &str) -> anyhow::Result<LineParse> {
         args.insert(0, s.split_at(CMD_PREFIX.len()).1);
         let os_args = args
             .iter()
-            .map(|s| s.to_string().into())
+            .map(|s| (*s).to_string().into())
             .collect::<Vec<OsString>>();
         let flags = flags::Fennec::from_vec(os_args)?;
         Ok(LineParse::Command(flags))
@@ -81,7 +81,7 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                         env.remember(line);
                     }
                     Ok(LineParse::Command(flags)) => {
-                        let act = run(flags, false)?;
+                        let act = run(&flags, false)?;
                         env.remember(line);
                         match act {
                             Action::Continue => {}
@@ -97,7 +97,7 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                 if repl::eof(&err) {
                     break;
                 }
-                println!("error {}", err)
+                println!("error {}", err);
             }
         }
     }
