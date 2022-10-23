@@ -1,20 +1,17 @@
-[package]
-name = "fennec"
-description = "Fennec is an experimental programming language and environment"
+[workspace]
+members = [
+    "crates/fennec-parser",
+]
+
+[workspace.package]
 version = "0.1.1"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
 homepage = "https://github.com/fennec-lang/fennec"
 repository = "https://github.com/fennec-lang/fennec"
-readme = "README.md"
 license = "MPL-2.0"
 edition = "2021"
-build = "crates/fc/build.rs"
 
-[[bin]]
-path = "crates/fc/main.rs"
-name = "fc"
-
-[dependencies]
+[workspace.dependencies]
 ansi_term = "0.12"
 anyhow = "1.0"
 env_logger = "0.9"
@@ -23,10 +20,30 @@ rustyline = { version = "10.0", default-features = false }
 xflags = "0.3.1"
 fennec-parser = { path = "crates/fennec-parser" }
 
-[build-dependencies]
-anyhow = "1.0"
+[package]
+name = "fennec"
+description = "Fennec is an experimental programming language and environment"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+readme = "README.md"
+build = "crates/fc/build.rs"
 
-[workspace]
-members = [
-    "crates/fennec-parser",
-]
+[[bin]]
+path = "crates/fc/main.rs"
+name = "fc"
+
+[dependencies]
+ansi_term.workspace = true
+anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true
+rustyline.workspace = true
+xflags.workspace = true
+fennec-parser.workspace = true
+
+[build-dependencies]
+anyhow.workspace = true

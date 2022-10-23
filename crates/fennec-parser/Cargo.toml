@@ -1,6 +1,11 @@
 [package]
 name = "fennec-parser"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+readme = false
 
 [dependencies]
