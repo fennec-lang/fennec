@@ -7,12 +7,42 @@
 #[macro_use]
 extern crate lalrpop_util;
 
-lalrpop_mod!(pub example);
+mod ast;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Error {
+    InputTooBig,
+}
+
+lalrpop_mod!(pub fennec);
 
 #[test]
 fn lalrpop_example() {
-    assert!(example::TermParser::new().parse("22").is_ok());
-    assert!(example::TermParser::new().parse("(22)").is_ok());
-    assert!(example::TermParser::new().parse("((((22))))").is_ok());
-    assert!(example::TermParser::new().parse("((22)").is_err());
+    use lalrpop_util::ParseError;
+
+    let mut errors = Vec::new();
+
+    let expr = fennec::ExprsParser::new().parse(&mut errors, "2147483648");
+    assert!(expr.is_err());
+    assert_eq!(
+        expr.unwrap_err(),
+        ParseError::User {
+            error: Error::InputTooBig
+        }
+    );
+
+    let expr = fennec::ExprsParser::new()
+        .parse(&mut errors, "22 * + 3")
+        .unwrap();
+    assert_eq!(&format!("{:?}", expr), "[((22 * error) + 3)]");
+
+    let expr = fennec::ExprsParser::new()
+        .parse(&mut errors, "22 * 44 + 66, *3")
+        .unwrap();
+    assert_eq!(&format!("{:?}", expr), "[((22 * 44) + 66), (error * 3)]");
+
+    let expr = fennec::ExprsParser::new().parse(&mut errors, "*").unwrap();
+    assert_eq!(&format!("{:?}", expr), "[(error * error)]");
+
+    assert_eq!(errors.len(), 4);
 }
