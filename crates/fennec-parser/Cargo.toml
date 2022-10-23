@@ -8,4 +8,9 @@ license.workspace = true
 edition.workspace = true
 readme = false
 
+[build-dependencies]
+lalrpop.workspace = true
+
 [dependencies]
+lalrpop-util.workspace = true
+regex.workspace = true

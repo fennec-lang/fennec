@@ -15,9 +15,13 @@ edition = "2021"
 ansi_term = "0.12"
 anyhow = "1.0"
 env_logger = "0.9"
+lalrpop = { version = "0.19.8", default-features = false, features = ["lexer"]}
+lalrpop-util = { version = "0.19.8", default-features = false, features = ["std", "lexer"]}
 log = "0.4"
+regex = "1"
 rustyline = { version = "10.0", default-features = false }
 xflags = "0.3.1"
+
 fennec-parser = { path = "crates/fennec-parser" }
 
 [package]
