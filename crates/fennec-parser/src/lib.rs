@@ -14,7 +14,10 @@ pub enum Error {
     InputTooBig,
 }
 
-lalrpop_mod!(pub fennec);
+lalrpop_mod!(
+    #[allow(dead_code, clippy::all)]
+    fennec
+);
 
 #[test]
 fn lalrpop_example() {
