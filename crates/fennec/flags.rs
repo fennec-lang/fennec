@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 xflags::xflags! {
-    src "crates/fc/flags.rs"
+    src "crates/fennec/flags.rs"
 
     cmd fennec {
         optional -v, --verbose

@@ -34,10 +34,10 @@ repository.workspace = true
 license.workspace = true
 edition.workspace = true
 readme = "README.md"
-build = "crates/fc/build.rs"
+build = "crates/fennec/build.rs"
 
 [[bin]]
-path = "crates/fc/main.rs"
+path = "crates/fennec/main.rs"
 name = "fc"
 
 [dependencies]
