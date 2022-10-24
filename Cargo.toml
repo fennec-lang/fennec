@@ -3,6 +3,12 @@ members = [
     "crates/fennec-parser",
 ]
 
+[profile.dev]
+debug = 0
+
+[profile.release]
+debug = 0
+
 [workspace.package]
 version = "0.1.1"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
