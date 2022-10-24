@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/fennec-parser",
+    "xtask",
 ]
 
 [profile.dev]
