@@ -214,7 +214,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-parser"
-version = "0.1.1"
+version = "0.0.0"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
