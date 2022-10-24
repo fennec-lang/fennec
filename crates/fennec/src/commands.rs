@@ -25,7 +25,7 @@ pub fn run(flags: &flags::Fennec, toplevel: bool) -> anyhow::Result<Action> {
         }
         Version(_) => {
             println!(
-                "fennec {}, built by {} at {}",
+                "Fennec {}, built by {} at {}",
                 env!("BUILD_GIT_DESCRIBE"),
                 env!("BUILD_RUSTC_VERSION"),
                 env!("BUILD_DATE"),
