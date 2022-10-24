@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/fennec",
     "crates/fennec-parser",
     "xtask",
 ]
@@ -31,30 +32,3 @@ xflags = "0.3.1"
 
 fennec-parser = { path = "crates/fennec-parser" }
 
-[package]
-name = "fennec"
-description = "Fennec is an experimental programming language and environment"
-version.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
-edition.workspace = true
-readme = "README.md"
-build = "crates/fennec/build.rs"
-
-[[bin]]
-path = "crates/fennec/main.rs"
-name = "fc"
-
-[dependencies]
-ansi_term.workspace = true
-anyhow.workspace = true
-env_logger.workspace = true
-log.workspace = true
-rustyline.workspace = true
-xflags.workspace = true
-fennec-parser.workspace = true
-
-[build-dependencies]
-anyhow.workspace = true
