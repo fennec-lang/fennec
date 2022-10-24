@@ -1,2 +1,3 @@
 [alias]
+lint = "clippy -- -Wclippy::pedantic"
 xtask = "run --package xtask --bin xtask --"

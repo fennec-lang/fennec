@@ -22,7 +22,7 @@ pub enum Opcode {
 
 impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Expr::*;
+        use self::Expr::{Error, Number, Op};
         match *self {
             Number(n) => write!(fmt, "{:?}", n),
             Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
@@ -33,7 +33,7 @@ impl Debug for Expr {
 
 impl Debug for Opcode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Opcode::*;
+        use self::Opcode::{Add, Div, Mul, Sub};
         match *self {
             Mul => write!(fmt, "*"),
             Div => write!(fmt, "/"),

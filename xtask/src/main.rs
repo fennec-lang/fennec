@@ -8,12 +8,11 @@
 
 mod flags;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     let flags = flags::Xtask::from_env_or_exit();
     match flags.subcommand {
         flags::XtaskCmd::HelloWorld(_) => {
             println!("Hello, World!");
-            Ok(())
         }
     }
 }
