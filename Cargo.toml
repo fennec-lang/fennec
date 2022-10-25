@@ -11,6 +11,10 @@ debug = 0
 [profile.release]
 debug = 0
 
+[profile.release-lto]
+inherits = "release"
+lto = "thin"
+
 [workspace.package]
 version = "0.1.1"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
