@@ -5,7 +5,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #![forbid(unsafe_code)]
-#![warn(clippy::all, clippy::pedantic)]
 
 mod commands;
 mod flags;
