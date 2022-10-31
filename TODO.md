@@ -15,6 +15,7 @@
 
 ## Language
 
+- start with data description language
 - tower-of-languages (from most restrictive to less)
 - unsafe blocks, otherwise safe? overflows, bounds checks, data race (?), non-null, 
 - wasm first class target
