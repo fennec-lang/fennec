@@ -22,6 +22,13 @@
   - if wasm is a first class target, why don't we run in a browser from the start?
     - vscode is already available in the browser
 - FFI via WASM embeddings
+- no edit-compile-run cycle:
+  - everything happens automatically in <100ms on every save
+  - find new traces, minify existing, re-write the text traces in test files
+    all the time, in the background
+- owner annotation? or standard "owner" type that is pool of size 1
+  - then we don't need owner annotations as references are non-owning
+  - standard pool as well
 
 ## Sandbox
 
