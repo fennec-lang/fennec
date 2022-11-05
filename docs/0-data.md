@@ -70,3 +70,12 @@
 let version = "1.23"
 let what = (version, version)
 
+- tower
+  - literal values (built-in, need no interpretation)
+  - organizing literal values into structs/enums (need struct/enum definitions)
+    - no contructors, only direct-initialization
+      - but why? if we need to build real data structures that other functions can operate on?
+  - pointers
+  - all of the above: immutable, static lifetime duration
+  - how to introduce temporary scope for temporaries?
+  - let x = {let tmp1 = ...; let tmp2 = ...; tmp1 + tmp2}
