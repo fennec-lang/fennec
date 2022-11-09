@@ -18,3 +18,7 @@
 // you can broaden the regions: from part to whole
 // you can OR regions: here OR there
 // you can AND regions
+
+// MVS: whole-part fundamental (always), + yield to access subpart
+// semantic uniformity required for generic programming
+// references as not first-class (limiting and sad)
