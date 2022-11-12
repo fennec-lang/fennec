@@ -15,6 +15,10 @@
 
 ## Language
 
+- goals:
+  - small
+  - fast
+  - immediate feedback
 - start with data description language
 - tower-of-languages (from most restrictive to less)
 - unsafe blocks, otherwise safe? overflows, bounds checks, data race (?), non-null, 
