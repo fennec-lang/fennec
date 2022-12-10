@@ -33,6 +33,7 @@
 - owner annotation? or standard "owner" type that is pool of size 1
   - then we don't need owner annotations as references are non-owning
   - standard pool as well
+- integrated built-in zero cost zero learning curve rich extensible visualization is a must-have
 
 ## Sandbox
 
