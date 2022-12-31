@@ -36,3 +36,7 @@
 - programming = algorithms & data structures, aren't we limiting data structures?
   - queues
   - implicit (intrusive?) data structures
+
+- built-in ecs-like thing:
+  - want direct support for states, relationships, some encapsulation
+  - transitive, reflexive, acyclic relationship properties
