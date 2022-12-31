@@ -16,7 +16,7 @@ pub enum Error {
 }
 
 lalrpop_mod!(
-    #[allow(dead_code, clippy::all, clippy::pedantic)]
+    #[allow(dead_code, clippy::all, clippy::pedantic, clippy::unwrap_used)]
     fennec
 );
 

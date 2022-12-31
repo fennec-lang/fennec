@@ -77,7 +77,7 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                 match parse {
                     Ok(LineParse::Whitespace) => {}
                     Ok(LineParse::NotCommand) => {
-                        println!("ok {}", line);
+                        println!("ok {line}");
                         env.remember(line);
                     }
                     Ok(LineParse::Command(flags)) => {
@@ -89,7 +89,7 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                         }
                     }
                     Err(err) => {
-                        println!("error parsing command: {}", err);
+                        println!("error parsing command: {err}");
                     }
                 }
             }
@@ -97,7 +97,7 @@ fn run_repl(_verbose: bool) -> anyhow::Result<()> {
                 if repl::eof(&err) {
                     break;
                 }
-                println!("error {}", err);
+                println!("error {err}");
             }
         }
     }

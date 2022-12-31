@@ -24,8 +24,8 @@ impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expr::{Error, Number, Op};
         match *self {
-            Number(n) => write!(fmt, "{:?}", n),
-            Op(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
+            Number(n) => write!(fmt, "{n:?}"),
+            Op(ref l, op, ref r) => write!(fmt, "({l:?} {op:?} {r:?})"),
             Error => write!(fmt, "error"),
         }
     }
