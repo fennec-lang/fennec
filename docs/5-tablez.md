@@ -24,6 +24,7 @@
   - whole-picture visibility
   - transactions?
   - primary key = pointer?
+    - no, an index (like ecs, datadraw)
 
 - all state is external to functions
   - how do functions find things they were working on?
@@ -40,3 +41,5 @@
 - built-in ecs-like thing:
   - want direct support for states, relationships, some encapsulation
   - transitive, reflexive, acyclic relationship properties
+- datadraw is the way, same idea really
+  - polars/pandas, arrow, flatbuffers too?
