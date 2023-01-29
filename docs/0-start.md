@@ -44,6 +44,11 @@
 - actors == classes? should they exist separately?
 - generic (or abstract) code should be discouraged precisely because "Postel's law" leads to bad and fragile systems
   - being strict about what you accept forces uniformity in callers, and in overall system design
+- rename shallow copy to `alias`?
+- errors (sean parent talk)
+  - function domain = set of values satisfying preconditions
+  - errors are about postconditions (which can not be satisfied when preconditions hold)
+  - errors are recoverable (oom, i/o, cancallation)
 
 ## core
 
