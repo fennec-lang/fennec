@@ -24,9 +24,13 @@
   - explicit choice of what action out of all possible actions to take
 - start with core fennec for language, and have minimum things built-in (rely on prelude instead)
 - make sure all operators on all types follow the same rules (regularity, generic programming)
+- full proper compile-time execution?
+- want to have Go-like client-side abstraction, which should not require upfront design
 
 ## misc. questions
 
+- can we disallow lifetime parameters on types/traits entirely?
+  - maybe the loss will not be that great; need to consider this seriously
 - built-in flexible arrays and DSTs? with linked size field nearby
   - probably little need, since we can define a vector (or even `smallvec`!)
 - have a default global allocator or not? `any` etc. require it, kind of
