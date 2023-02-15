@@ -42,7 +42,8 @@
   - can we encode this with e.g. an auto-generated enum list, describing subparts?
     - some "subparts" can be virtual, think slices etc.
     - kind of like Boost.Describe does
-- sealed (user should not implement) vs open (user should implement) trairs
+    - this is what Jai does; we want to do the same
+- sealed (user should not implement) vs open (user should implement) traits
 - magical things that should not be overridable; things that establish or maintain invariants:
   - constructors
   - destructors
