@@ -49,6 +49,8 @@
   - references to views of values @ locations
     - locations = witnesses of existence and of that we uphold borrow rules
       - do they play well with use cases like "parametrize by arena lifetime" in rust?
+        - `@own` does not let us specify that 1) we own a value 2) that is bound to some context
+          - simply `own T` instead?
     - can be complex: `@(a | b, c)`
     - can refer to subparts only
       - using location syntax!
