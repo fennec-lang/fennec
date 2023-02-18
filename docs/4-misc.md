@@ -14,9 +14,9 @@
 - core
   - values (= places in memory)
     - values have type (= layout)
-    - values have subparts (whole/part relationship); we can refer to subparts
-      - `.subpart`
-    - values have alternatives (enums); can refer to an alternative?
+    - values have subparts (whole/part relationship); we can refer to subparts (= fields)
+      - `.field`
+    - values have alternatives (enums); can refer to an alternative (= variant)?
       - `~variant`
       - unclear what is the meaning
         - for borrowing, borrow of one variant borrows any variants
@@ -25,6 +25,15 @@
     - need to unify enums and structs to allow to model OO-like or FP-like (like rust virtual struct idea)
       - need a smooth way up from a "just enum" to "enum with data"
       - also a smooth way up from "just a struct" to "actually there are variants that share some common fields"
+      - need an explicit way to require "unsized" (class-like) enums?
+        - hey, they are true unsized only if we allow to extend openly; otherwise they are just variable-sized
+        - shouldn't the client choose between a layout for "base" enum?
+          - EASY! full-inline-layout is just an in-place box (which requires biggest-size)
+          - and out-of-place box does not require the biggest size
+            - `boxed[T]` uses only as much as required for each variant
+              - same with `shared` and `weak`
+            - `inplace[T]` uses the biggest size for all variants (because no indirection)
+            - this is one more place where we can be better than rust because our `box` is more magical?
       - traits should be the same, but with vtables and open extensibility by default
         - non-object-safe traits should not be the default
   - location
@@ -42,3 +51,9 @@
       - owning (refers to self-place with the same name)
       - mutably borrowed (from some place we need to name)
       - immutably borrowed (from some place we need to name)
+
+- types
+  - primitive (atomic) types
+  - types can be grouped (as fields) into structs (always inline)
+  - types can be alternated (as variants) into enums (always outline? not ergonomic for plain enums)
+    - common parts are shared/reused and reside in "parent" (enum itself)
