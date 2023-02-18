@@ -18,6 +18,10 @@
       - `.field`
     - values have alternatives (enums); can refer to an alternative (= variant)?
       - `~variant`
+        - this is just a typecast, isn't it?
+          - well, if we check the place where we witness the location, then this is a type assertion witness!
+        - or use `.variant` and reserve `~` for negation later?
+          - this is consistent with swift-like enum variants
       - unclear what is the meaning
         - for borrowing, borrow of one variant borrows any variants
         - for views, is this a conditional view?
@@ -25,6 +29,8 @@
     - need to unify enums and structs to allow to model OO-like or FP-like (like rust virtual struct idea)
       - need a smooth way up from a "just enum" to "enum with data"
       - also a smooth way up from "just a struct" to "actually there are variants that share some common fields"
+        - also want a smooth way to transition from concrete type to an interface/trait
+          - traits can have virtual fields?
       - need an explicit way to require "unsized" (class-like) enums?
         - hey, they are true unsized only if we allow to extend openly; otherwise they are just variable-sized
         - shouldn't the client choose between a layout for "base" enum?
@@ -47,6 +53,8 @@
     - can refer to subparts only
       - using location syntax!
         - but, this is "relative" (to self) location, @ part needs to specify rooted (absolute) locations
+        - for subparts, we usually want `.A, .B, .C` == `A and B and C`
+        - for reference locations, we usually want `a.A | b.B` == `a.A or b.B`
     - can be
       - owning (refers to self-place with the same name)
       - mutably borrowed (from some place we need to name)
@@ -57,3 +65,10 @@
   - types can be grouped (as fields) into structs (always inline)
   - types can be alternated (as variants) into enums (always outline? not ergonomic for plain enums)
     - common parts are shared/reused and reside in "parent" (enum itself)
+      - need a way to refer to the common bits separately from
+    - variants are always a distinct types, which can be separately used
+  - open vs exhaustive enums
+    - can force to pattern-match on unknown cases always
+
+- boxes and indirection
+  - is `box[T]` a real type, or is this just an annotation on `T` reference in struct that we would like it to be stored indirectly?
