@@ -1,0 +1,44 @@
+# misc
+
+- iteration via generators
+
+- references & values
+  - ownership/values: regular, `boxed` (?), `shared`, `weak` (`unowned`?)
+  - only references:
+    - default mode means different things
+      - owning reference `T @own` default for structs
+      - mutable reference; need explicit target for structs
+      - immutable reference `T` default for params; need explicit target for structs
+  - `mutable`
+
+- core
+  - values (= places in memory)
+    - values have type (= layout)
+    - values have subparts (whole/part relationship); we can refer to subparts
+      - `.subpart`
+    - values have alternatives (enums); can refer to an alternative?
+      - `~variant`
+      - unclear what is the meaning
+        - for borrowing, borrow of one variant borrows any variants
+        - for views, is this a conditional view?
+        - in general, this is an obligation on that some variable is in some specific state; do we want that?
+    - need to unify enums and structs to allow to model OO-like or FP-like (like rust virtual struct idea)
+      - need a smooth way up from a "just enum" to "enum with data"
+      - also a smooth way up from "just a struct" to "actually there are variants that share some common fields"
+      - traits should be the same, but with vtables and open extensibility by default
+        - non-object-safe traits should not be the default
+  - location
+    - location = `@(a.foo | b.bar)`
+    - location = some fuzzy combination of possible places
+    - locations can be unioned or intersected, giving locations
+  - references to views of values @ locations
+    - locations = witnesses of existence and of that we uphold borrow rules
+      - do they play well with use cases like "parametrize by arena lifetime" in rust?
+    - can be complex: `@(a | b, c)`
+    - can refer to subparts only
+      - using location syntax!
+        - but, this is "relative" (to self) location, @ part needs to specify rooted (absolute) locations
+    - can be
+      - owning (refers to self-place with the same name)
+      - mutably borrowed (from some place we need to name)
+      - immutably borrowed (from some place we need to name)
