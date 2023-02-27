@@ -42,3 +42,21 @@
   - want only single way to write polymorphic code
     - Trait == set of types
   - `any Trait` + `some Trait`?
+
+- TODO:
+  - need to create a basic library that defines several important data structures and algorithms
+    - min/max
+    - filter/map
+    - rng
+    - hashing
+    - option
+    - vector
+      - iterator?
+    - list
+      - iterator?
+    - treemap/hashmap
+      - iterator?
+    - basic STL-like algorithms:
+      - find
+      - partition
+      - sort
