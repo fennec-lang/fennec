@@ -42,6 +42,16 @@
   - want only single way to write polymorphic code
     - Trait == set of types
   - `any Trait` + `some Trait`?
+  - **vtable is fundamental**
+    - start with vtable (dict-passing style); consider stenciling an optimization
+      - only perform stenciling after we have ran non-stencil code for a bit
+      - smooth progression: syntax checks, type checks, test runs with non-stencil code, test runs of real code
+      - but guarantee that we perform full stenciling and only use dict passing where we have to
+  - generic function exists as an entity, it is not some "template" that produces functions
+    - that means that we of course can have traits with generic functions
+  - non-`[]` syntax with "auto" types is the main syntax; `[]` is core-level thing to which we desugar to
+    - right as we have smooth upgrades from enum to enum w/data and from struct to set of structs with common fields
+    - we have a smooth upgrade path from function on concrete types to function on abstract types
 
 - TODO:
   - need to create a basic library that defines several important data structures and algorithms
