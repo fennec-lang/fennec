@@ -1,5 +1,6 @@
 # fennec
 
+- uncluttered, nimble feel
 - simple C/Go/Rust inspired core
 - no GC, no runtime (or lightweight one)
 - aim for Go-like speed, maybe a bit faster

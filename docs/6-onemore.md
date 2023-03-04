@@ -53,6 +53,30 @@
     - right as we have smooth upgrades from enum to enum w/data and from struct to set of structs with common fields
     - we have a smooth upgrade path from function on concrete types to function on abstract types
 
+- data-only subset
+  - want guaranteed purity
+  - want to use for config files like go.mod
+  - want to use to include input in the tests source code!
+  - want similarity to JSON?
+
+- packages/modules/visibility
+  - mostly copy Go
+    - module as a unit of distribution (dependencies, string-based imports, internal stuff)
+    - package as a unit of maintenance (a bunch of files with no encapsulation)
+  - visibility: name-based or not?
+    - let's just copy Go
+
+- error handling
+  - errors are values is a good idea
+  - want automatic structural augmentation with "logical call stack"
+  - don't want rich error types
+  - don't want allocations (boxing) for errors?
+    - LEAF idea is interesting but requires handling to be synchronous (we know exactly the handling context)
+    - maybe use a simple temporary allocator to store the error info?
+      - some small memory area will usually be enough as we don't have a lot of inflight errors
+      - start allocating in regular heap once small area is full (should be rare)
+  - assertions/panics exist but are not reflected in signatures
+
 - TODO:
   - need to create a basic library that defines several important data structures and algorithms
     - min/max
