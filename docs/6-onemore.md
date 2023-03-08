@@ -23,6 +23,7 @@
   - `shared T`, `weak T`, `boxed T`, `mutable T`
   - `&T(view) @location`, `[]T(view) @location`
   - `uniq &T`, `uniq []T`
+  - unify tuples and structs?
 
 - data structures
   - unified `type` thing that allows both for struct and enum behavior (see 5-build.md)
@@ -33,6 +34,8 @@
         second &int @x.p
       }```
   - extends naturally to self-referential structs
+  - hm, how do we define an empty enum?
+    - we don't, and have a special built-in type instead?
 
 - generics
   - can always use: move/swap, borrow
@@ -58,6 +61,7 @@
   - want to use for config files like go.mod
   - want to use to include input in the tests source code!
   - want similarity to JSON?
+  - can also use this for attribute syntax?
 
 - packages/modules/visibility
   - mostly copy Go
@@ -65,6 +69,25 @@
     - package as a unit of maintenance (a bunch of files with no encapsulation)
   - visibility: name-based or not?
     - let's just copy Go
+      - one problem: public/private status of conformances (and other unnamed things)
+        - rust: The visibility of a trait implementation is the intersection of the visibility of the trait and the visibility of the type it's implemented on
+
+- newtypes/coercions
+  - want to prevent (Map Int T) -> (Map Age T) (this will break the invariant)
+    - haskell uses type roles for this (nominal/phantom/representational). key is nominal
+      - but what about hashmap, should it be nominal as well?
+        - hash relates to eq; if eq is different than semantics are different; so nominal too
+          - so we can just require bounding in type definition; if the parameter is bound -- it is nominal
+      - parameters of type classes are nominal by default, to prevent wrong impl from being called
+        - well if everything is a type class in fennec, how do we get representational things anywhere?
+          - maybe have some built-in traits magical?
+  - we may want newtypes for alternative impls
+    - in python, we would not be writing this shit?
+      - no, we would, in OOP fashion
+  - but newtypes is type-heavy programming; can we avoid it?
+  - general rule when can coerce:
+    - if we could write the less efficient code by hand with the same semantics -- we can coerce!
+  - safety invariant: we can coerce when the type is in the "free" position
 
 - error handling
   - errors are values is a good idea
@@ -75,6 +98,7 @@
     - maybe use a simple temporary allocator to store the error info?
       - some small memory area will usually be enough as we don't have a lot of inflight errors
       - start allocating in regular heap once small area is full (should be rare)
+      - a damn good idea
   - assertions/panics exist but are not reflected in signatures
 
 - TODO:

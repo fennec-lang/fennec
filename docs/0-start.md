@@ -1,6 +1,7 @@
 # fennec
 
 - uncluttered, nimble feel
+- just one environment for programming, both exploration and real
 - simple C/Go/Rust inspired core
 - no GC, no runtime (or lightweight one)
 - aim for Go-like speed, maybe a bit faster
