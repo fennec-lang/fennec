@@ -21,9 +21,26 @@
     - require explicit `foo(own T)` in signatures
     - maaybe do `foo(T)` == `foo(&T)`?
   - `shared T`, `weak T`, `boxed T`, `mutable T`
+    - shared ownership
+    - mutable things:
+      - what does `m.borrow()` return? it has to have a dtor, but we want it to return a normal reference!
+        - `borrow() -> (guard, &T <must be tied to guard>)`
+          - `@location` is not enough :-(
+      - if it is a builtin type, we can just give a borrow a magical semantic that creates a witness object tied to it
+        - it can have exactly the same "begin/end" points (NLL and all that) that regular borrows have
+          - may be too high overhead
   - `&T(view) @location`, `[]T(view) @location`
+    - shared reference
   - `uniq &T`, `uniq []T`
   - unify tuples and structs?
+  - we want raw pointers
+    - they should be mutable, too? then we have `*mut T` vs `*uniq T` for no reason
+      - also, we have an overlap with `mutable T`
+      - implementing `mutable`, can we just have a "shadow" for all values, where we can at runtime track borrow state?
+        - this way `mutable T` has the same layout as `T`, and we can drop it altogether, and make this just a runtime check?
+          - that sometimes can be elided when we can prove things statically
+      - `shadow state` is a very powerful idea for adding all kind of non-intrusive checks
+    - separate "uniq reference" thing, so that we can express `uniq const` (why?) and `uniq mut`?
 
 - data structures
   - unified `type` thing that allows both for struct and enum behavior (see 5-build.md)
@@ -101,20 +118,3 @@
       - a damn good idea
   - assertions/panics exist but are not reflected in signatures
 
-- TODO:
-  - need to create a basic library that defines several important data structures and algorithms
-    - min/max
-    - filter/map
-    - rng
-    - hashing
-    - option
-    - vector
-      - iterator?
-    - list
-      - iterator?
-    - treemap/hashmap
-      - iterator?
-    - basic STL-like algorithms:
-      - find
-      - partition
-      - sort
