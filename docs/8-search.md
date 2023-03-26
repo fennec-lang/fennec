@@ -141,10 +141,16 @@ type pair_of_refs {
 case first: &int
 csae second: &float
 }
-
-
 ```
 
+some lists, maybe?
+don't they require dynamic checking?
 
+```
+type node {
+  value int
+  prev ?&node
+  next ?&node
+}
 
-
+```

@@ -7,6 +7,8 @@
 - aim for Go-like speed, maybe a bit faster
 - always live, always runnable, even with syntax or type errors
 - complete and total determinism of execution
+- just one mode of execution, even in production. always record/replay enabled (don't need magical environment to run)
+  - no debug/release optimizations
 - always fuzzing (white-box) in the background, update fuzzing corpus (in the source code form) automatically
 - no complex proof-like safety systems, all-in on fuzzing to found any problems
 - built-in sanitizers (ASAN etc.); fat (unspecified size) pointers/references to assist in checking
