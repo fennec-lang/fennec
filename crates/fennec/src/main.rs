@@ -14,6 +14,6 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let flags = flags::Fennec::from_env_or_exit();
-    let _ = commands::run(&flags, true)?;
+    _ = commands::run(&flags, true)?;
     Ok(())
 }

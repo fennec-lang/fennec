@@ -85,7 +85,7 @@ impl Highlighter for EnvHelper {
         prompt: &'p str,
         default: bool,
     ) -> Cow<'b, str> {
-        let _ = default;
+        _ = default;
         Owned(Style::new().bold().paint(prompt).to_string())
     }
 }
