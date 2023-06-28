@@ -10,6 +10,7 @@
     - an abstract example of how the package code can be used
     - abstract constants for everything; explicit arbitrary choice
 - how do we get there
+  - *compositional* fuzzing, we don't waste effort on fuzzing uninteresting predicates
   - package-aware fuzzing, only fuzz a package at a time
     - only care about coverage of the current package
     - design for guiding people towards approach like https://matklad.github.io/2021/05/31/how-to-test.html
@@ -20,3 +21,30 @@
     - constants in code and in test scenarios
     - choice of actions in test scenarios
   - statement to signal progress to a fuzzer to help guide the search
+  - magical var-size primitives to make enumeration possible
+  - aspect-like properties
+    - fully automatic running of random programs; no code necessary to drive
+    - properties that bind to runs that satisfy certain conditions and assert certain things
+      - sometimes we can cheat an use property condition as a generation instruction
+      - this unifies simple properties for functions and complex properties for stateful
+        interactions (that can be interleaved with other stateful interactions)
+
+ why language
+  - control the whole experience
+    - force construction of testable/enumerable fully deterministic programs
+      - program = regular code + property code
+    - interactive live feel
+
+
+# mvp
+
+- build a prototype rapidly
+- don't polish things, be ready to throw things out
+
+
+# auto-check
+
+- no crashes
+- no leaks
+- no hangs
+- your-property-here
