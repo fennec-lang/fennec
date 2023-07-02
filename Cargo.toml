@@ -26,7 +26,7 @@ edition = "2021"
 [workspace.dependencies]
 ansi_term = "0.12"
 anyhow = "1.0"
-env_logger = "0.9"
+env_logger = "0.10"
 lalrpop = { version = "0.19.8", default-features = false, features = ["lexer"]}
 lalrpop-util = { version = "0.19.8", default-features = false, features = ["std", "lexer"]}
 log = "0.4"
