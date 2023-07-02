@@ -1,24 +1,32 @@
 {
   "name": "fennec",
   "displayName": "Fennec",
-  "description": "Fennec programming language support",
-  "version": "0.0.1",
+  "description": "Fennec programming language support for Visual Studio Code",
+  "version": "0.0.2",
+  "preview": true,
+  "keywords": [
+    "fennec"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "license": "MPL-2.0",
+  "publisher": "fennec-lang",
+  "homepage": "https://fennec-lang.org",
+  "repository": {
+    "url": "https://github.com/fennec-lang/fennec.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/fennec-lang/fennec/issues"
+  },
+  "qna": "https://github.com/fennec-lang/fennec/discussions/categories/q-a",
   "engines": {
     "vscode": "^1.79.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "enableTelemetry": false,
   "activationEvents": [],
   "main": "./dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "fennec.helloWorld",
-        "title": "Hello World"
-      }
-    ]
-  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "webpack",
@@ -45,5 +53,13 @@
     "webpack": "^5.85.0",
     "webpack-cli": "^5.1.1",
     "@vscode/test-electron": "^2.3.2"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "fennec.helloWorld",
+        "title": "Hello World"
+      }
+    ]
   }
 }

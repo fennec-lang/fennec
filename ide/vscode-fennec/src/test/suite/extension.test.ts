@@ -1,11 +1,14 @@
-import * as assert from 'assert';
+// Copyright 2023 Gregory Petrosyan <pgregory@pgregory.net>
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
+import * as assert from 'assert';
 import * as vscode from 'vscode';
 // import * as myExtension from '../../extension';
 
-suite('Extension Test Suite', () => {
+suite('Fennec Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
 
 	test('Sample test', () => {
