@@ -1,9 +1,5 @@
 [workspace]
-members = [
-    "crates/fennec",
-    "crates/fennec-parser",
-    "xtask",
-]
+members = ["crates/*", "xtask"]
 resolver = "2"
 
 [profile.dev]
