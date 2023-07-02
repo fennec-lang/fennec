@@ -9,3 +9,6 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 xflags.workspace = true
+
+[package.metadata.release]
+release = false
