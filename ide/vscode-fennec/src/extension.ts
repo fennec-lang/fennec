@@ -7,13 +7,14 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Congratulations, your extension "fennec" is now active!');
+    console.log('Congratulations, your extension "fennec" is now active!');
 
-	let disposable = vscode.commands.registerCommand('fennec.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World from Fennec!');
-	});
+    let disposable = vscode.commands.registerCommand('fennec.helloWorld', () => {
+        vscode.window.showInformationMessage('Hello World from Fennec!');
+    });
 
-	context.subscriptions.push(disposable);
+    context.subscriptions.push(disposable);
 }
 
-export function deactivate() {}
+export function deactivate() {
+}

@@ -1,74 +1,79 @@
 {
-  "name": "fennec",
-  "displayName": "Fennec",
-  "description": "Fennec programming language support for Visual Studio Code",
-  "version": "0.0.4",
-  "preview": true,
-  "keywords": [
-    "fennec"
-  ],
-  "categories": [
-    "Programming Languages"
-  ],
-  "license": "MPL-2.0",
-  "publisher": "fennec-lang",
-  "homepage": "https://fennec-lang.org",
-  "repository": {
-    "url": "https://github.com/fennec-lang/fennec.git",
-    "type": "git"
-  },
-  "bugs": {
-    "url": "https://github.com/fennec-lang/fennec/issues"
-  },
-  "qna": "https://github.com/fennec-lang/fennec/discussions/categories/q-a",
-  "engines": {
-    "vscode": "^1.79.0"
-  },
-  "enableTelemetry": false,
-  "activationEvents": [],
-  "main": "./dist/extension.js",
-  "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.79.0",
-    "@types/glob": "^8.1.0",
-    "@types/mocha": "^10.0.1",
-    "@types/node": "20.2.5",
-    "@typescript-eslint/eslint-plugin": "^5.59.8",
-    "@typescript-eslint/parser": "^5.59.8",
-    "eslint": "^8.41.0",
-    "glob": "^8.1.0",
-    "mocha": "^10.2.0",
-    "typescript": "^5.1.3",
-    "ts-loader": "^9.4.3",
-    "webpack": "^5.85.0",
-    "webpack-cli": "^5.1.1",
-    "@vscode/test-electron": "^2.3.2"
-  },
-  "contributes": {
-    "commands": [
-      {
-        "command": "fennec.helloWorld",
-        "title": "Hello World"
-      }
+    "name": "fennec",
+    "displayName": "Fennec",
+    "description": "Fennec programming language support for Visual Studio Code",
+    "version": "0.0.4",
+    "preview": true,
+    "keywords": [
+        "fennec"
     ],
-    "languages": [
-      {
-        "id": "fennec",
-        "aliases": ["Fennec", "fennec"],
-        "extensions": [".fn"],
-        "filenames": [],
-        "configuration": "./language-configuration.json"
-      }
-    ]
-  }
+    "categories": [
+        "Programming Languages"
+    ],
+    "license": "MPL-2.0",
+    "publisher": "fennec-lang",
+    "homepage": "https://fennec-lang.org",
+    "repository": {
+        "url": "https://github.com/fennec-lang/fennec.git",
+        "type": "git"
+    },
+    "bugs": {
+        "url": "https://github.com/fennec-lang/fennec/issues"
+    },
+    "qna": "https://github.com/fennec-lang/fennec/discussions/categories/q-a",
+    "engines": {
+        "vscode": "^1.79.0"
+    },
+    "enableTelemetry": false,
+    "activationEvents": [],
+    "main": "./dist/extension.js",
+    "scripts": {
+        "vscode:prepublish": "npm run package",
+        "compile": "webpack",
+        "watch": "webpack --watch",
+        "package": "webpack --mode production --devtool hidden-source-map",
+        "compile-tests": "tsc -p . --outDir out",
+        "watch-tests": "tsc -p . -w --outDir out",
+        "pretest": "npm run compile-tests && npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.79.0",
+        "@types/glob": "^8.1.0",
+        "@types/mocha": "^10.0.1",
+        "@types/node": "20.2.5",
+        "@typescript-eslint/eslint-plugin": "^5.59.8",
+        "@typescript-eslint/parser": "^5.59.8",
+        "eslint": "^8.41.0",
+        "glob": "^8.1.0",
+        "mocha": "^10.2.0",
+        "typescript": "^5.1.3",
+        "ts-loader": "^9.4.3",
+        "webpack": "^5.85.0",
+        "webpack-cli": "^5.1.1",
+        "@vscode/test-electron": "^2.3.2"
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "fennec.helloWorld",
+                "title": "Hello World"
+            }
+        ],
+        "languages": [
+            {
+                "id": "fennec",
+                "aliases": [
+                    "Fennec",
+                    "fennec"
+                ],
+                "extensions": [
+                    ".fn"
+                ],
+                "filenames": [],
+                "configuration": "./language-configuration.json"
+            }
+        ]
+    }
 }
