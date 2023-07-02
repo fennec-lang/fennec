@@ -1,5 +1,17 @@
 # TODO
 
+- rewrite the TODO :-)
+  - language icon (vscode + project)
+- rewrite the rust parts around language server
+  - use xshell for shelling out?
+  - find what is the main mode of the executable (if any)
+  - make released versions of fennec print out released version
+- rewrite the vision/goals document, let `docs/` be real docs
+- vscode
+  - remove hello command
+  - decide what declarative features we have to provide
+  - setup testing?
+
 - strong testing infrastructure to build upon
 - replace example parser tests with something meaningful
 - hook parser to REPL
@@ -21,7 +33,7 @@
   - immediate feedback
 - start with data description language
 - tower-of-languages (from most restrictive to less)
-- unsafe blocks, otherwise safe? overflows, bounds checks, data race (?), non-null, 
+- unsafe blocks, otherwise safe? overflows, bounds checks, data race (?), non-null,
 - wasm first class target
   - if wasm is a first class target, why don't we run in a browser from the start?
     - vscode is already available in the browser
