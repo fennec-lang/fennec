@@ -6,7 +6,7 @@
 
 use std::process::Command;
 
-const RELEASE_VERSION: &str = "0.1.2";
+const RELEASE_VERSION: &str = "0.1.3";
 
 fn main() -> anyhow::Result<()> {
     let date = Command::new("date").args(["--rfc-email"]).output()?;

@@ -13,7 +13,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 description = "Fennec is an experimental programming language and environment"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
 homepage = "https://github.com/fennec-lang/fennec"
@@ -32,7 +32,7 @@ regex = "1"
 rustyline = { version = "10.0", default-features = false }
 xflags = "0.3.1"
 
-fennec-parser = { path = "crates/fennec-parser", version = "0.1.2" }
+fennec-parser = { path = "crates/fennec-parser", version = "0.1.3" }
 
 [workspace.metadata.release]
 allow-branch = ["master"]
