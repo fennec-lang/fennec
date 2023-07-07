@@ -51,7 +51,6 @@
 
 - logo (project + vscode language icon)
 - use xshell for shelling out?
-- make released versions of fennec print out released version
 
 ### VSCode
 

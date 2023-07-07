@@ -21,3 +21,8 @@ fennec-parser.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
+
+[package.metadata.release]
+pre-release-replacements = [
+    { file = "build.rs", search = "const RELEASE_VERSION: &str = \".*\"", replace = "const RELEASE_VERSION: &str = \"{{version}}\"" },
+]

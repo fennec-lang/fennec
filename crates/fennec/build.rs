@@ -6,6 +6,8 @@
 
 use std::process::Command;
 
+const RELEASE_VERSION: &str = "0.1.2";
+
 fn main() -> anyhow::Result<()> {
     let date = Command::new("date").args(["--rfc-email"]).output()?;
     let date = String::from_utf8(date.stdout)?;
@@ -14,6 +16,11 @@ fn main() -> anyhow::Result<()> {
         .args(["describe", "--tags", "--dirty"])
         .output()?;
     let git_describe = String::from_utf8(git_describe.stdout)?;
+    let git_describe = if git_describe.is_empty() {
+        format!("v{RELEASE_VERSION}")
+    } else {
+        git_describe
+    };
 
     let git_branch = Command::new("git")
         .args(["branch", "--show-current"])
