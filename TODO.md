@@ -50,7 +50,6 @@
 ### Misc.
 
 - logo (project + vscode language icon)
-- use xshell for shelling out?
 
 ### VSCode
 
