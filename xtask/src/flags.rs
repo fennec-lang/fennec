@@ -8,7 +8,7 @@ xflags::xflags! {
     src "src/flags.rs"
 
     cmd xtask {
-        default cmd hello-world {}
+        cmd hello-world {}
     }
 }
 
