@@ -8,8 +8,14 @@
 
 mod flags;
 
+use env_logger::Env;
+
 fn main() {
     let flags = flags::Xtask::from_env_or_exit();
+
+    let default_level = if flags.verbose { "debug" } else { "info" };
+    env_logger::Builder::from_env(Env::default().default_filter_or(default_level)).init();
+
     match flags.subcommand {
         flags::XtaskCmd::HelloWorld(_) => {
             println!("Hello, World!");

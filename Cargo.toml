@@ -26,7 +26,7 @@ anyhow = "1.0"
 env_logger = "0.10"
 lalrpop = { version = "0.20", default-features = false, features = ["lexer", "unicode"] }
 lalrpop-util = { version = "0.20", default-features = false, features = ["lexer", "unicode"] }
-log = "0.4"
+log = { version = "0.4", features = ["kv_unstable"] }
 regex = "1"
 time = { version = "0.3.22", default-features = false, features = ["local-offset", "formatting", "parsing"] }
 xflags = "0.3.1"

@@ -8,6 +8,8 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true
 xflags.workspace = true
 
 [package.metadata.release]

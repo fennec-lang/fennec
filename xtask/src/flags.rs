@@ -8,6 +8,7 @@ xflags::xflags! {
     src "src/flags.rs"
 
     cmd xtask {
+        optional -v, --verbose
         cmd hello-world {}
     }
 }
@@ -17,6 +18,7 @@ xflags::xflags! {
 // Run `env UPDATE_XFLAGS=1 cargo build` to regenerate.
 #[derive(Debug)]
 pub struct Xtask {
+    pub verbose: bool,
     pub subcommand: XtaskCmd,
 }
 
