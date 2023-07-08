@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup update stable && rustup default stable
+      - run: rustup component add rustfmt
+      - run: cargo fmt --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup update stable && rustup default stable
+      - run: rustup component add clippy
+      - run: cargo lint
+
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup update stable && rustup default stable
+      - run: cargo update -p fennec --locked
+
+  test:
+    name: test ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - name: ubuntu-stable
+            os: 'ubuntu-latest'
+            rust: stable
+          - name: ubuntu-beta
+            os: 'ubuntu-latest'
+            rust: beta
+          - name: ubuntu-nightly
+            os: 'ubuntu-latest'
+            rust: nightly
+          - name: windows-stable-msvc
+            os: 'windows-latest'
+            rust: stable-msvc
+          - name: macos-stable
+            os: 'macOS-latest'
+            rust: stable
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v3
+      - run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
+      - run: cargo test

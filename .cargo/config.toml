@@ -1,5 +1,5 @@
 [alias]
-lint = "clippy -- -Wclippy::all -Wclippy::pedantic -Wclippy::unwrap_used"
+lint = "clippy -- -Wclippy::all -Wclippy::pedantic -Wclippy::unwrap_used -D warnings"
 xtask = "run --package xtask --bin xtask --"
 tq = "test -- --quiet"
 qt = "tq"

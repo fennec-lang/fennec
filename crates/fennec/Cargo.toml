@@ -21,6 +21,7 @@ fennec-parser.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
+time.workspace = true
 xshell.workspace = true
 
 [package.metadata.release]
