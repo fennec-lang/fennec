@@ -11,6 +11,27 @@
 - instant feedback
 - fast interpreter for development, compile to WASM or C with no dependencies for production
 
+## Ideas
+
+- liberal use of assertions
+- uncovered code as a warning
+- explicit arbitrary choice
+  - constants in code and in test scenarios
+  - choice of actions in test scenarios
+- statement to signal progress to a fuzzer to help guide the search
+- ability to guide a fuzzer through a condition by providing an example
+- magical var-size primitives to make enumeration possible
+- aspect-like properties
+  - fully automatic running of random programs; no code necessary to drive
+  - properties that bind to runs that satisfy certain conditions and assert certain things
+    - sometimes we can cheat an use property condition as a generation instruction
+    - this unifies simple properties for functions and complex properties for stateful
+      interactions (that can be interleaved with other stateful interactions)
+- always test automatically
+  - no crashes
+  - no leaks
+  - no hangs
+
 ## Roadmap
 
 ### Foundations
