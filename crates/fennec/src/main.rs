@@ -6,14 +6,23 @@
 
 #![forbid(unsafe_code)]
 
-mod commands;
 mod flags;
-mod repl;
 
-fn main() -> anyhow::Result<()> {
+use crate::flags::FennecCmd::Version;
+
+fn main() {
     env_logger::init();
 
     let flags = flags::Fennec::from_env_or_exit();
-    _ = commands::run(&flags, true)?;
-    Ok(())
+
+    match flags.subcommand {
+        Version(_) => {
+            println!(
+                "Fennec {}, built by {} at {}",
+                env!("BUILD_GIT_DESCRIBE"),
+                env!("BUILD_RUSTC_VERSION"),
+                env!("BUILD_DATE"),
+            );
+        }
+    }
 }

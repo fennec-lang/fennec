@@ -11,11 +11,9 @@ readme = "../../README.md"
 default-run = "fennec"
 
 [dependencies]
-ansi_term.workspace = true
 anyhow.workspace = true
 env_logger.workspace = true
 log.workspace = true
-rustyline.workspace = true
 xflags.workspace = true
 fennec-parser.workspace = true
 

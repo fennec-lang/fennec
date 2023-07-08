@@ -9,9 +9,7 @@ xflags::xflags! {
 
     cmd fennec {
         optional -v, --verbose
-        default cmd repl {}
         cmd version {}
-        cmd quit {}
     }
 }
 
@@ -26,19 +24,11 @@ pub struct Fennec {
 
 #[derive(Debug)]
 pub enum FennecCmd {
-    Repl(Repl),
     Version(Version),
-    Quit(Quit),
 }
 
 #[derive(Debug)]
-pub struct Repl;
-
-#[derive(Debug)]
 pub struct Version;
-
-#[derive(Debug)]
-pub struct Quit;
 
 impl Fennec {
     #[allow(dead_code)]

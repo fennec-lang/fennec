@@ -103,7 +103,6 @@ unlicensed = "deny"
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
 allow = [
     "Apache-2.0",
-    "BSL-1.0",
     "CC0-1.0",
     "MIT",
     "MPL-2.0",
