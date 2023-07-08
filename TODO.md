@@ -55,6 +55,7 @@
 - ability to compose separately fuzzed components
 - testing:
   - general way to specify properties, superset of testing and REPL
+    - execute -> click to freeze the results to get a test -> generalize to property-based test
   - text encoding of corpus to be able to re-run it without a DB
   - omniscient debugging with an editor as the only (and main) UI
     - smart output
@@ -70,7 +71,7 @@
 
 ### Misc.
 
-- logo (project + vscode language icon)
+- logo (project + github social previews + opengraph + vscode language icon + vscode extension icon)
 
 ### VSCode
 
