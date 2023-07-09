@@ -8,8 +8,9 @@
         "sourceMap": true,
         "rootDir": "src",
         "strict": true,
-        "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
         "noUnusedParameters": true
     }
 }
