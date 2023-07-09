@@ -28,7 +28,7 @@ lalrpop = { version = "0.20", default-features = false, features = ["lexer", "un
 lalrpop-util = { version = "0.20", default-features = false, features = ["lexer", "unicode"] }
 log = { version = "0.4", features = ["kv_unstable"] }
 regex = "1"
-time = { version = "0.3.22", default-features = false, features = ["local-offset", "formatting", "parsing"] }
+time = { version = "0.3.23", default-features = false, features = ["local-offset", "formatting", "parsing"] }
 xflags = "0.3.1"
 xshell = "0.2.3"
 
