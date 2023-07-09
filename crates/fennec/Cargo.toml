@@ -14,7 +14,9 @@ default-run = "fennec"
 anyhow.workspace = true
 env_logger.workspace = true
 log.workspace = true
+regex.workspace = true
 xflags.workspace = true
+
 fennec-parser.workspace = true
 
 [build-dependencies]
