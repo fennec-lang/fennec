@@ -1,0 +1,32 @@
+// https://go.microsoft.com/fwlink/?linkid=830387
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
+            ],
+            "preLaunchTask": "${defaultBuildTask}"
+        },
+        {
+            "name": "Extension Tests",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec",
+                "--extensionTestsPath=${workspaceFolder}/ide/vscode-fennec/out/test/suite/index"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/ide/vscode-fennec/out/**/*.js",
+                "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
+            ],
+            "preLaunchTask": "tasks: watch-tests"
+        }
+    ]
+}
