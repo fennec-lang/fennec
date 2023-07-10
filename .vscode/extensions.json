@@ -1,10 +1,11 @@
 // http://go.microsoft.com/fwlink/?LinkId=827846
 {
     "recommendations": [
+        "amodio.tsl-problem-matcher",
+        "davidanson.vscode-markdownlint",
+        "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig",
         "rust-lang.rust-analyzer",
-        "tamasfe.even-better-toml",
-        "dbaeumer.vscode-eslint",
-        "amodio.tsl-problem-matcher"
+        "tamasfe.even-better-toml"
     ]
 }
