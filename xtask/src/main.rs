@@ -27,7 +27,11 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         XtaskCmd::ReleaseCrate(ReleaseCrate { version, execute }) => {
-            let exec = if execute { Some("--execute") } else { None };
+            let exec = if execute {
+                ["--execute", "--no-confirm"].as_slice()
+            } else {
+                [].as_slice()
+            };
             cmd!(sh, "cargo release {version} {exec...}").run()?;
             Ok(())
         }
