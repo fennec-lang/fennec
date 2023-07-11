@@ -9,16 +9,35 @@
 mod flags;
 
 use env_logger::Env;
+use flags::{ReleaseCrate, ReleaseExt, XtaskCmd};
+use log::info;
+use xshell::{cmd, Shell};
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let flags = flags::Xtask::from_env_or_exit();
 
     let default_level = if flags.verbose { "debug" } else { "info" };
     env_logger::Builder::from_env(Env::default().default_filter_or(default_level)).init();
 
+    let sh = Shell::new()?;
     match flags.subcommand {
-        flags::XtaskCmd::HelloWorld(_) => {
-            println!("Hello, World!");
+        XtaskCmd::CheckDeps(_) => {
+            cmd!(sh, "cargo deny check").run()?;
+            Ok(())
+        }
+        XtaskCmd::ReleaseCrate(ReleaseCrate { version, execute }) => {
+            let exec = if execute { Some("--execute") } else { None };
+            cmd!(sh, "cargo release {version} {exec...}").run()?;
+            Ok(())
+        }
+        XtaskCmd::ReleaseExt(ReleaseExt { execute }) => {
+            sh.change_dir("ide/vscode-fennec");
+            if execute {
+                cmd!(sh, "vsce publish").run()?;
+            } else {
+                info!(r#"pass --execute to run "vsce publish" for real"#);
+            }
+            Ok(())
         }
     }
 }

@@ -5,11 +5,28 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 xflags::xflags! {
-    src "src/flags.rs"
+    src "./src/flags.rs"
 
     cmd xtask {
+        /// Verbose output
         optional -v, --verbose
-        cmd hello-world {}
+
+        /// Check dependencies of licenses
+        cmd check-deps {}
+
+        /// Publish a new release on GitHub and crates.io
+        cmd release-crate {
+            /// Version to publish, in semver format
+            required version: String
+            /// Actually perform a release. Dry-run mode is the default
+            optional --execute
+        }
+
+        /// Publish a new release on Visual Studio Marketplace
+        cmd release-ext {
+            /// Actually perform a release. Dry-run mode is the default
+            optional --execute
+        }
     }
 }
 
@@ -24,11 +41,25 @@ pub struct Xtask {
 
 #[derive(Debug)]
 pub enum XtaskCmd {
-    HelloWorld(HelloWorld),
+    CheckDeps(CheckDeps),
+    ReleaseCrate(ReleaseCrate),
+    ReleaseExt(ReleaseExt),
 }
 
 #[derive(Debug)]
-pub struct HelloWorld;
+pub struct CheckDeps;
+
+#[derive(Debug)]
+pub struct ReleaseCrate {
+    pub version: String,
+
+    pub execute: bool,
+}
+
+#[derive(Debug)]
+pub struct ReleaseExt {
+    pub execute: bool,
+}
 
 impl Xtask {
     #[allow(dead_code)]

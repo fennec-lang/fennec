@@ -764,4 +764,5 @@ dependencies = [
  "env_logger",
  "log",
  "xflags",
+ "xshell",
 ]
