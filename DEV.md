@@ -3,6 +3,8 @@
 ## Requirements
 
 - rust
+- node
+- cc
 
 ## Optional tools
 
