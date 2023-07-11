@@ -35,7 +35,7 @@ xshell = "0.2.3"
 fennec-parser = { path = "crates/fennec-parser", version = "0.1.4" }
 
 [workspace.metadata.release]
-allow-branch = ["master"]
+allow-branch = ["master", "dev"]
 shared-version = true
 tag-name = "v{{version}}"
 tag-message = "fennec v{{version}}"
