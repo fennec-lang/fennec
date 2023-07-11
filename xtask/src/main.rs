@@ -23,6 +23,7 @@ fn main() -> anyhow::Result<()> {
     match flags.subcommand {
         XtaskCmd::CheckDeps(_) => {
             cmd!(sh, "cargo deny check").run()?;
+            cmd!(sh, "cargo +nightly udeps --all-targets").run()?;
             Ok(())
         }
         XtaskCmd::ReleaseCrate(ReleaseCrate { version, execute }) => {

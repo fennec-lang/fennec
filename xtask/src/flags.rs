@@ -11,7 +11,7 @@ xflags::xflags! {
         /// Verbose output
         optional -v, --verbose
 
-        /// Check dependencies of licenses
+        /// Check dependencies: unused crates and license compatibility
         cmd check-deps {}
 
         /// Publish a new release on GitHub and crates.io
