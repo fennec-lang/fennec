@@ -12,3 +12,5 @@
 - [cargo-release](https://github.com/crate-ci/cargo-release)
 - [cargo-udeps](https://github.com/est31/cargo-udeps)
 - [vsce](https://github.com/microsoft/vscode-vsce)
+
+Run `cargo x --help` for a list of available helper commands.
