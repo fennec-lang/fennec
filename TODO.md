@@ -32,6 +32,10 @@
   - no leaks
   - no hangs
 
+## Metaprogramming
+
+- since we can run arbitrary code at compile time, this is easy
+
 ## Roadmap
 
 ### Foundations
