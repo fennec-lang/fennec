@@ -6,6 +6,7 @@
         "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig",
         "rust-lang.rust-analyzer",
+        "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml"
     ]
 }

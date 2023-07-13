@@ -44,5 +44,9 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        XtaskCmd::Spellcheck(_) => {
+            cmd!(sh, "cspell .").run()?;
+            Ok(())
+        }
     }
 }

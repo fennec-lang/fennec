@@ -11,6 +11,7 @@
 - [cargo-deny](https://github.com/EmbarkStudios/cargo-deny)
 - [cargo-release](https://github.com/crate-ci/cargo-release)
 - [cargo-udeps](https://github.com/est31/cargo-udeps)
+- [cspell](https://github.com/streetsidesoftware/cspell)
 - [vsce](https://github.com/microsoft/vscode-vsce)
 
 Run `cargo x --help` for a list of available helper commands.

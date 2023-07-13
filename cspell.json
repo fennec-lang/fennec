@@ -1,0 +1,44 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "useGitignore": true,
+    "enableGlobDot": true,
+    "enableFiletypes": [
+        "toml"
+    ],
+    "ignorePaths": [
+        ".git/",
+        ".vscode/extensions.json"
+    ],
+    "words": [
+        "clippy",
+        "dotgraphs",
+        "fuzzer",
+        "lalrpop",
+        "metaprogramming",
+        "msvc",
+        "nosources",
+        "opengraph",
+        "pemfile",
+        "petrosyan",
+        "quickstart",
+        "reqwest",
+        "roadmap",
+        "rustc",
+        "RUSTFLAGS",
+        "rustfmt",
+        "rustls",
+        "RUSTSEC",
+        "rustup",
+        "udeps",
+        "usize",
+        "vscodeignore",
+        "vsix",
+        "Wclippy",
+        "webpki",
+        "xflags",
+        "xshell",
+        "xtask",
+        "yarnrc"
+    ]
+}

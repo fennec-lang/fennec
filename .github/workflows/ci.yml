@@ -35,6 +35,12 @@ jobs:
       - run: rustup update stable && rustup default stable
       - run: cargo update -p fennec --locked
 
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: streetsidesoftware/cspell-action@v2
+
   test:
     name: test ${{ matrix.name }}
     runs-on: ${{ matrix.os }}

@@ -27,6 +27,9 @@ xflags::xflags! {
             /// Actually perform a release. Dry-run mode is the default
             optional --execute
         }
+
+        /// Check spelling
+        cmd spellcheck {}
     }
 }
 
@@ -44,6 +47,7 @@ pub enum XtaskCmd {
     CheckDeps(CheckDeps),
     ReleaseCrate(ReleaseCrate),
     ReleaseExt(ReleaseExt),
+    Spellcheck(Spellcheck),
 }
 
 #[derive(Debug)]
@@ -60,6 +64,9 @@ pub struct ReleaseCrate {
 pub struct ReleaseExt {
     pub execute: bool,
 }
+
+#[derive(Debug)]
+pub struct Spellcheck;
 
 impl Xtask {
     #[allow(dead_code)]

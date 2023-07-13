@@ -73,7 +73,7 @@
   - simplex-like / hurst-exponent-like modeling of correlated rare events
   - simulated annealing to guide search
 
-### Misc.
+### Miscellaneous
 
 - logo (project + github social previews + opengraph + vscode language icon + vscode extension icon)
 
