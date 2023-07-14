@@ -11,6 +11,15 @@ xflags::xflags! {
         /// Verbose output
         optional -v, --verbose
 
+        /// Run CI-like checks
+        cmd ci {
+            /// Run all CI-like checks
+            optional --all
+        }
+
+        /// Check spelling
+        cmd spellcheck {}
+
         /// Check dependencies: unused crates and license compatibility
         cmd check-deps {}
 
@@ -27,9 +36,6 @@ xflags::xflags! {
             /// Actually perform a release. Dry-run mode is the default
             optional --execute
         }
-
-        /// Check spelling
-        cmd spellcheck {}
     }
 }
 
@@ -44,11 +50,20 @@ pub struct Xtask {
 
 #[derive(Debug)]
 pub enum XtaskCmd {
+    Ci(Ci),
+    Spellcheck(Spellcheck),
     CheckDeps(CheckDeps),
     ReleaseCrate(ReleaseCrate),
     ReleaseExt(ReleaseExt),
-    Spellcheck(Spellcheck),
 }
+
+#[derive(Debug)]
+pub struct Ci {
+    pub all: bool,
+}
+
+#[derive(Debug)]
+pub struct Spellcheck;
 
 #[derive(Debug)]
 pub struct CheckDeps;
@@ -64,9 +79,6 @@ pub struct ReleaseCrate {
 pub struct ReleaseExt {
     pub execute: bool,
 }
-
-#[derive(Debug)]
-pub struct Spellcheck;
 
 impl Xtask {
     #[allow(dead_code)]

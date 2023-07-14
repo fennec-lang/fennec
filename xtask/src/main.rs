@@ -9,7 +9,7 @@
 mod flags;
 
 use env_logger::Env;
-use flags::{ReleaseCrate, ReleaseExt, XtaskCmd};
+use flags::{Ci, ReleaseCrate, ReleaseExt, XtaskCmd};
 use log::info;
 use xshell::{cmd, Shell};
 
@@ -21,11 +21,19 @@ fn main() -> anyhow::Result<()> {
 
     let sh = Shell::new()?;
     match flags.subcommand {
-        XtaskCmd::CheckDeps(_) => {
-            cmd!(sh, "cargo deny check").run()?;
-            cmd!(sh, "cargo +nightly udeps --all-targets").run()?;
+        XtaskCmd::Ci(Ci { all }) => {
+            cmd!(sh, "cargo fmt --check").run()?;
+            cmd!(sh, "cargo lint").run()?;
+            cmd!(sh, "cargo test -- --quiet").run()?;
+            if all {
+                cmd!(sh, "cargo update -p fennec --locked").run()?;
+                run_spellcheck(&sh)?;
+                run_check_deps(&sh)?;
+            }
             Ok(())
         }
+        XtaskCmd::Spellcheck(_) => run_spellcheck(&sh),
+        XtaskCmd::CheckDeps(_) => run_check_deps(&sh),
         XtaskCmd::ReleaseCrate(ReleaseCrate { version, execute }) => {
             let exec = if execute {
                 ["--execute", "--no-confirm"].as_slice()
@@ -44,9 +52,16 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        XtaskCmd::Spellcheck(_) => {
-            cmd!(sh, "cspell .").run()?;
-            Ok(())
-        }
     }
+}
+
+fn run_spellcheck(sh: &Shell) -> anyhow::Result<()> {
+    cmd!(sh, "cspell .").run()?;
+    Ok(())
+}
+
+fn run_check_deps(sh: &Shell) -> anyhow::Result<()> {
+    cmd!(sh, "cargo deny check").run()?;
+    cmd!(sh, "cargo +nightly udeps --all-targets").run()?;
+    Ok(())
 }
