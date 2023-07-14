@@ -6,20 +6,35 @@
 
 #![forbid(unsafe_code)]
 
-mod flags;
-
-use crate::flags::FennecCmd::Version;
+use clap::{Parser, Subcommand};
 use env_logger::Env;
 use regex::Regex;
 
-fn main() -> anyhow::Result<()> {
-    let flags = flags::Fennec::from_env_or_exit();
+#[derive(Parser)]
+#[command(author, about, long_about=None, disable_version_flag(true))]
+struct Cli {
+    /// Verbose output
+    #[arg(short, long, global = true)]
+    verbose: bool,
 
-    let default_level = if flags.verbose { "debug" } else { "info" };
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Print version
+    Version,
+}
+
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    let default_level = if cli.verbose { "debug" } else { "info" };
     env_logger::Builder::from_env(Env::default().default_filter_or(default_level)).init();
 
-    match flags.subcommand {
-        Version(_) => print_version(flags.verbose),
+    match cli.command {
+        Commands::Version => print_version(cli.verbose),
     }
 }
 
@@ -43,4 +58,10 @@ fn print_version(verbose: bool) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    Cli::command().debug_assert()
 }

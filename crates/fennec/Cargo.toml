@@ -12,10 +12,10 @@ default-run = "fennec"
 
 [dependencies]
 anyhow.workspace = true
+clap.workspace = true
 env_logger.workspace = true
 log.workspace = true
 regex.workspace = true
-xflags.workspace = true
 
 fennec-parser.workspace = true
 
