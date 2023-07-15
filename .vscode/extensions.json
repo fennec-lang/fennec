@@ -5,6 +5,7 @@
         "davidanson.vscode-markdownlint",
         "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig",
+        "guyutongxue.lalrpop-syntax-highlight",
         "rust-lang.rust-analyzer",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml"
