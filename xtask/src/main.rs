@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
     match flags.subcommand {
         XtaskCmd::Ci(Ci { all }) => {
             cmd!(sh, "cargo fmt --check").run()?;
-            cmd!(sh, "cargo lint").run()?;
+            run_lint(&sh)?;
             cmd!(sh, "cargo test -- --quiet").run()?;
             if all {
                 cmd!(sh, "cargo update -p fennec --locked").run()?;
@@ -32,6 +32,7 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        XtaskCmd::Lint(_) => run_lint(&sh),
         XtaskCmd::Spellcheck(_) => run_spellcheck(&sh),
         XtaskCmd::CheckDeps(_) => run_check_deps(&sh),
         XtaskCmd::ReleaseCrate(ReleaseCrate { version, execute }) => {
@@ -53,6 +54,15 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+fn run_lint(sh: &Shell) -> anyhow::Result<()> {
+    cmd!(
+        sh,
+        "cargo clippy -- -Wclippy::all -Wclippy::pedantic -Wclippy::unwrap_used -D warnings"
+    )
+    .run()?;
+    Ok(())
 }
 
 fn run_spellcheck(sh: &Shell) -> anyhow::Result<()> {

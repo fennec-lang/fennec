@@ -17,6 +17,9 @@ xflags::xflags! {
             optional --all
         }
 
+        /// Run Clippy
+        cmd lint {}
+
         /// Check spelling
         cmd spellcheck {}
 
@@ -51,6 +54,7 @@ pub struct Xtask {
 #[derive(Debug)]
 pub enum XtaskCmd {
     Ci(Ci),
+    Lint(Lint),
     Spellcheck(Spellcheck),
     CheckDeps(CheckDeps),
     ReleaseCrate(ReleaseCrate),
@@ -61,6 +65,9 @@ pub enum XtaskCmd {
 pub struct Ci {
     pub all: bool,
 }
+
+#[derive(Debug)]
+pub struct Lint;
 
 #[derive(Debug)]
 pub struct Spellcheck;
