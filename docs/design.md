@@ -2,19 +2,20 @@
 
 ## Vision
 
-"An interactive programming language for building reliable and efficient software".
+"A simple interactive programming language for building reliable and efficient software".
 
 ### Goals
 
-1. interactivity: instant feedback on any code change
-2. safety: fully safe with either static or dynamic enforcement
-3. efficiency: control over data layout and absence of wasteful computation
-4. simplicity, in both language and programs that it guides you to write
+1. simplicity, in both language and programs that it guides you to write
+2. interactivity: instant feedback on any code change
+3. safety: fully safe with either static or dynamic enforcement
+4. efficiency: control over data layout and absence of wasteful computation
 
 ### Non-goals
 
 - expressivity, in both syntax and semantics
 - maximal performance or zero-overhead
+- maximal compatibility with existing ecosystems
 
 ### Directions
 
@@ -27,6 +28,10 @@
 - aggressively cut anything non-essential to vision
 
 ## Decisions
+
+### General
+
+- no compiler switches, no warnings and no options
 
 ### Versioning
 
@@ -64,6 +69,8 @@ module = "example.org/hello"
 - interior iteration by non-escaping coroutines
   - much simpler and direct expression
   - no complex lifetimes to manage, direct transfer of control
+- references:
+  - [Go coroutines](https://research.swtch.com/coro)
 
 ### Concurrency
 
@@ -85,6 +92,9 @@ module = "example.org/hello"
 ### Value semantics
 
 - explicit copy and move
+- all objects trivially moveable
+  - how do we forbid interior references?
+  - interior pointer already impossible because pointers only point to heap
 - RAII with deterministic destruction as an important design tool
   - actual memory management can be either GC or refcounting
 
@@ -94,12 +104,20 @@ module = "example.org/hello"
 
 ## Research areas
 
+### Syntax
+
+- design with extensibility and forward compatibility in mind
+  - reserve syntax for raw identifiers
+- Go-like uncluttered feel
+  - copy Go semicolon [rules](https://go.dev/ref/spec#Semicolons)?
+
 ### References and pointers
 
 - owned values + A^M references as a default
 - for aliasing, use pointers or indices
   - pointer + dereference = index + subscript
   - prefer indices as more local
+  - can we unify indices and pointers? people should write code 1 time
 - pointers
   - pointer requires value to be mutex-wrapped to dereference
     - if you only want to compare and not dereference, mutex can be optional?
@@ -121,6 +139,47 @@ module = "example.org/hello"
       implicits or dictionary-passing
 - mutexes
   - should be able to make them non-atomic for single-threaded components
+
+### Strings / byte slices / vectors
+
+- want:
+  - UTF-8 by convention
+  - one main type for mutable/immutable, string/byteslice
+    - maybe a separate mutable type like `StringBuilder` as well
+  - should this be the same type as `vec[u8]`?
+  - no more than 16 bytes
+    - `vec[vec[vec[T]]]`
+  - SSO
+  - extremely rare atomic ops and no refcount ops in the common cases (traversal, getter, pass as argument)
+    - defer touching the refcount while we hold the anchoring reference
+    - biased reference counting for multi-threaded components
+    - can limit reference counts by 32 bits and trap on overflow
+      - your program is likely wrong if you have more than 4 billion references to something
+  - store compile-time-constant strings efficiently
+- consider
+  - should slice be the same type or not?
+  - make them the only DST, thus builtin
+  - cooperate with allocator on growth strategy (like `fbvector`)
+  - limit the maximum size (of any collection) to 2^32?
+    - what about `mmap`?
+    - what the signature of `func hash(string)` be?
+- progression
+  - `thin_vec` (1 word) -> boxed slice (2 words) -> vec (3 words)
+- references:
+  - [Rust bytes](https://docs.rs/bytes/latest/bytes/)
+  - [Rust bstr](https://blog.burntsushi.net/bstr/)
+  - [Rust ecow](https://github.com/typst/ecow)
+    - 16 bytes, cheap clone
+  - [Rust imstr](https://github.com/xfbs/imstr)
+    - cheap clone, cheap slice
+  - [Rust tendril](https://github.com/servo/tendril)
+    - slices to same type, 2^32 bytes maximum
+  - [Dotnet design overview](https://github.com/dotnet/designs/blob/main/accepted/2021/utf8/validation.md)
+
+### Maps / sets
+
+- references:
+  - [Rust indexmap](https://github.com/bluss/indexmap)
 
 ## Random ideas
 
@@ -172,6 +231,18 @@ module = "example.org/hello"
   - built-in shells should be components
   - later, allow people to compose components themselves
 
+### Optimizations
+
+- can use special reference count that means "static" and avoid any ops
+- can use biased reference counting
+- can use small object headers that will transform to big ones (side tables) lazily
+- can omit all atomic ops in a component if we know it is single-threaded
+- guarantee that you can always read a full word if the address is aligned for faster copying?
+
+### Tooling
+
+- built-in documentation generator (can embed runnable code so that people can play with it)
+
 ## Architecture
 
 TODO
@@ -193,6 +264,7 @@ TODO
 ### Challenges
 
 - iterator `merge`/`zip`
+  - just make it a builtin?
 - generic `min`
 - tree + tree algorithms and traversals
 - slice (a container with required context?)
