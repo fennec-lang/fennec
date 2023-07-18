@@ -50,6 +50,8 @@
         "RUSTSEC",
         "rustup",
         "slotmap",
+        "stackful",
+        "stackless",
         "struct",
         "structs",
         "udeps",

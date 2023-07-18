@@ -35,6 +35,7 @@
 
 ### Versioning
 
+- start with `FENNEC_PATH` mode
 - copy Go + simplify where possible
   - avoid central registry
   - don't spend too much time on a solved problem
@@ -64,22 +65,24 @@ module = "example.org/hello"
   - nudges people towards standardizing all unsafe idioms in one place
   - guarantees total safety of every package and by induction every program
 
-### Iteration
+### Iteration & concurrency
 
 - interior iteration by non-escaping coroutines
   - much simpler and direct expression
   - no complex lifetimes to manage, direct transfer of control
-- references:
-  - [Go coroutines](https://research.swtch.com/coro)
-
-### Concurrency
-
-- express concurrency directly as control flow, not data
-  - ["Storing Data in Control Flow"](https://research.swtch.com/pcdata)
 - no `async`/`await`
-  - horrible complexity for minimal gain
+  - horrible complexity (function coloring) for minimal gain
 - structured concurrency only for simplicity and composability
   - same way as we prefer tree-like data, we prefer tree-like control flow
+  - how do we prevent active coroutines from escaping, unmovable or second-class types?
+- consider:
+  - `function*` in JS
+- references:
+  - [Storing Data in Control Flow](https://research.swtch.com/pcdata)
+  - [Go coroutines](https://research.swtch.com/coro)
+  - [Stackful vs stackless coroutines](https://blog.varunramesh.net/posts/stackless-vs-stackful-coroutines/)
+  - [We never need stackful coroutines](http://hacksoflife.blogspot.com/2021/06/we-never-needed-stackfull-coroutines.html)
+  - [Same fridge problem](https://www.crystalclearsoftware.com/soc/coroutine/coroutine/stackful.html)
 
 ### Error handling
 
@@ -96,7 +99,6 @@ module = "example.org/hello"
   - how do we forbid interior references?
   - interior pointer already impossible because pointers only point to heap
 - RAII with deterministic destruction as an important design tool
-  - actual memory management can be either GC or refcounting
 
 ### Macros
 
@@ -149,6 +151,7 @@ module = "example.org/hello"
   - should this be the same type as `vec[u8]`?
   - no more than 16 bytes
     - `vec[vec[vec[T]]]`
+    - `vec[string]` is common, but storing most stings inline is nice, too
   - SSO
   - extremely rare atomic ops and no refcount ops in the common cases (traversal, getter, pass as argument)
     - defer touching the refcount while we hold the anchoring reference
@@ -156,6 +159,9 @@ module = "example.org/hello"
     - can limit reference counts by 32 bits and trap on overflow
       - your program is likely wrong if you have more than 4 billion references to something
   - store compile-time-constant strings efficiently
+  - can we fit strings into 16 bytes by requiring them to be immutable?
+    - `vec[u8]` will be 24 and will be mutable?
+    - will they return different kinds of slices?
 - consider
   - should slice be the same type or not?
   - make them the only DST, thus builtin
@@ -265,6 +271,7 @@ TODO
 
 - iterator `merge`/`zip`
   - just make it a builtin?
+- lexer/parser on top of generators
 - generic `min`
 - tree + tree algorithms and traversals
 - slice (a container with required context?)
