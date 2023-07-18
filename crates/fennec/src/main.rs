@@ -6,11 +6,11 @@
 
 #![forbid(unsafe_code)]
 
-use clap::{Parser, Subcommand};
-use env_logger::Env;
+mod new;
+
 use regex::Regex;
 
-#[derive(Parser)]
+#[derive(clap::Parser)]
 #[command(author, about, long_about=None, disable_version_flag(true))]
 struct Cli {
     /// Verbose output
@@ -21,20 +21,25 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(clap::Subcommand)]
 enum Commands {
     /// Print version
     Version,
+
+    /// Create new module
+    New(new::Args),
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let cli = <Cli as clap::Parser>::parse();
 
     let default_level = if cli.verbose { "debug" } else { "info" };
-    env_logger::Builder::from_env(Env::default().default_filter_or(default_level)).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
+        .init();
 
     match cli.command {
         Commands::Version => print_version(cli.verbose),
+        Commands::New(args) => new::cmd(&args, cli.verbose),
     }
 }
 
