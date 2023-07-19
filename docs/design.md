@@ -1,4 +1,4 @@
-# Design
+# Fennec design notes
 
 ## Vision
 
@@ -75,8 +75,10 @@ module = "example.org/hello"
 - structured concurrency only for simplicity and composability
   - same way as we prefer tree-like data, we prefer tree-like control flow
   - how do we prevent active coroutines from escaping, unmovable or second-class types?
+    - immovable might be a good idea, allowing self-referential types later
 - consider:
   - `function*` in JS
+  - only single-thread concurrency, with opt-in parallelism being limited to real threads?
 - references:
   - [Storing Data in Control Flow](https://research.swtch.com/pcdata)
   - [Go coroutines](https://research.swtch.com/coro)
@@ -112,10 +114,16 @@ module = "example.org/hello"
   - reserve syntax for raw identifiers
 - Go-like uncluttered feel
   - copy Go semicolon [rules](https://go.dev/ref/spec#Semicolons)?
+- ideas
+  - `{ .field: init }` / `{ .field = init }` initialization
+  - `[]` for generics
+  - swift-style `.Variant` matching
+  - `.field0` for tuple access? do we need tuples at all?
 
 ### References and pointers
 
 - owned values + A^M references as a default
+  - consider having `&` + `&uniq` as more descriptive names
 - for aliasing, use pointers or indices
   - pointer + dereference = index + subscript
   - prefer indices as more local

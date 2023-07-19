@@ -43,6 +43,7 @@ time = { version = "0.3.23", default-features = false, features = [
 xflags = "0.3.1"
 xshell = "0.2.3"
 
+fennec-core = { path = "crates/fennec-core", version = "0.1.4" }
 fennec-parser = { path = "crates/fennec-parser", version = "0.1.4" }
 
 [workspace.metadata.release]

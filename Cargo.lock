@@ -264,6 +264,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fennec-core"
+version = "0.1.4"
+
+[[package]]
 name = "fennec-parser"
 version = "0.1.4"
 dependencies = [

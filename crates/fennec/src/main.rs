@@ -7,8 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod new;
-
-use regex::Regex;
+mod version;
 
 #[derive(clap::Parser)]
 #[command(author, about, long_about=None, disable_version_flag(true))]
@@ -38,31 +37,9 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     match cli.command {
-        Commands::Version => print_version(cli.verbose),
+        Commands::Version => version::cmd(cli.verbose),
         Commands::New(args) => new::cmd(&args, cli.verbose),
     }
-}
-
-fn print_version(verbose: bool) -> anyhow::Result<()> {
-    let desc = env!("BUILD_GIT_DESCRIBE");
-    let version_re = Regex::new(r"^v\d+\.\d+\.\d+")?;
-    let version = if version_re.is_match(desc) {
-        desc.split_at(1).1
-    } else {
-        desc
-    };
-
-    if verbose {
-        println!(
-            "fennec {version}, built by {} at {}",
-            env!("BUILD_RUSTC_VERSION"),
-            env!("BUILD_DATE"),
-        );
-    } else {
-        println!("fennec {version}");
-    }
-
-    Ok(())
 }
 
 #[test]

@@ -15,5 +15,5 @@ pub struct Args {
 }
 
 pub fn cmd(_args: &Args, _verbose: bool) -> anyhow::Result<()> {
-    panic!("TODO");
+    todo!()
 }
