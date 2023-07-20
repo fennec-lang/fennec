@@ -22,11 +22,11 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Commands {
-    /// Print version
-    Version,
-
     /// Create new module
     New(new::Args),
+
+    /// Print version
+    Version,
 }
 
 fn main() -> anyhow::Result<()> {
