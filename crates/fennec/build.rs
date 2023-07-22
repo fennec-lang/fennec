@@ -8,7 +8,7 @@ use time::format_description::well_known::Rfc2822;
 use time::OffsetDateTime;
 use xshell::{cmd, Shell};
 
-const RELEASE_VERSION: &str = "0.1.4";
+const RELEASE_VERSION: &str = "0.1.5";
 
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new()?;

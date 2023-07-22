@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "fennec"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "clap",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "anyhow",
  "ecow",
@@ -282,7 +282,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-parser"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
