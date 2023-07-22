@@ -1,0 +1,331 @@
+// Copyright 2023 Gregory Petrosyan <pgregory@pgregory.net>
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+use anyhow::anyhow;
+use ecow::EcoString;
+use once_cell::sync::Lazy;
+use regex::Regex;
+use std::fmt;
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub struct Path {
+    path: EcoString,
+    package: EcoString,
+    has_domain: bool,
+}
+
+static PACKAGE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z][a-z0-9_]*$").expect(BAD_RE));
+static PATH_ELEM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._\-~]+$").expect(BAD_RE));
+static PATH_ELEM_DENY_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"~[0-9]+$").expect(BAD_RE));
+static DOMAIN_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9.-]+$").expect(BAD_RE));
+static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect(BAD_RE));
+const BAD_RE: &str = "invalid regex literal";
+
+impl Path {
+    // Go module path syntax, from
+    // https://github.com/golang/mod/blob/master/module/module.go:
+    //
+    // A valid import path consists of one or more valid path elements
+    // separated by slashes (U+002F). (It must not begin with nor end in a slash.)
+    //
+    // A valid path element is a non-empty string made up of
+    // ASCII letters, ASCII digits, and limited ASCII punctuation: - . _ and ~.
+    // It must not end with a dot (U+002E), nor contain two dots in a row.
+    //
+    // The element prefix up to the first dot must not be a reserved file name
+    // on Windows, regardless of case (CON, com1, NuL, and so on). The element
+    // must not have a suffix of a tilde followed by one or more ASCII digits
+    // (to exclude paths elements that look like Windows short-names).
+    //
+    // A valid module path is a valid import path, with three additional constraints.
+    //
+    // First, the leading path element (up to the first slash, if any),
+    // by convention a domain name, must contain only lower-case ASCII letters,
+    // ASCII digits, dots (U+002E), and dashes (U+002D);
+    // it must contain at least one dot and cannot start with a dash.
+    //
+    // Second, for a final path element of the form /vN, where N looks numeric
+    // (ASCII digits and dots) must not begin with a leading zero, must not be /v1,
+    // and must not contain any dots.
+    //
+    // Third, no path element may begin with a dot.
+
+    pub fn parse(path: &str) -> Result<Path, anyhow::Error> {
+        Self::do_parse(path, false)
+    }
+
+    pub fn parse_external_dep(path: &str) -> Result<Path, anyhow::Error> {
+        Self::do_parse(path, true)
+    }
+
+    fn do_parse(path: &str, expect_domain: bool) -> Result<Path, anyhow::Error> {
+        let mut last: Option<&str> = None;
+        let mut before_last: Option<&str> = None;
+        let mut has_domain = false;
+        for elem in path.split('/') {
+            Self::check_path_element(elem)?;
+            if last.is_none() {
+                let d = Self::check_domain(elem);
+                has_domain = d.is_ok();
+                if expect_domain {
+                    d?;
+                }
+            } else {
+                before_last = last;
+            }
+            last = Some(elem);
+        }
+
+        let last = last.ok_or(anyhow!(
+            "import path must consist of at least one valid path element"
+        ))?;
+
+        let has_version = Self::check_version_suffix(last)?;
+        let package = if has_version {
+            before_last.ok_or(anyhow!("import path must contain a non-version element"))?
+        } else {
+            last
+        };
+
+        // On top of Go rules, we additionally require that last
+        // non-version path element is a valid identifier (package name).
+        Self::check_package(package)?;
+
+        Ok(Path {
+            path: path.into(),
+            package: package.into(),
+            has_domain,
+        })
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.path
+    }
+
+    #[must_use]
+    pub fn package(&self) -> &str {
+        &self.package
+    }
+
+    #[must_use]
+    pub fn has_domain(&self) -> bool {
+        self.has_domain
+    }
+
+    fn check_path_element(elem: &str) -> Result<(), anyhow::Error> {
+        if elem.is_empty() {
+            return Err(anyhow!("import path element must be non-empty"));
+        }
+
+        if elem.starts_with('.') || elem.ends_with('.') {
+            return Err(anyhow!(
+                "import path element must not start nor end with a dot"
+            ));
+        }
+
+        if elem.contains("..") {
+            return Err(anyhow!(
+                "import path element must not contain two dots in a row"
+            ));
+        }
+
+        if !PATH_ELEM_RE.is_match(elem) {
+            let re = PATH_ELEM_RE.as_str();
+            return Err(anyhow!("import path element must match {re}"));
+        }
+
+        if PATH_ELEM_DENY_RE.is_match(elem) {
+            let re = PATH_ELEM_DENY_RE.as_str();
+            return Err(anyhow!("import path element must not match {re}"));
+        }
+
+        let prefix = match elem.split_once('.') {
+            Some(s) => s.0,
+            None => elem,
+        };
+
+        for reserved in RESERVED_WINDOWS_NAMES {
+            if prefix.eq_ignore_ascii_case(reserved) {
+                return Err(anyhow!(
+                    "import path element must not have {reserved} prefix"
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_domain(elem: &str) -> Result<(), anyhow::Error> {
+        if !DOMAIN_RE.is_match(elem) {
+            let re = DOMAIN_RE.as_str();
+            return Err(anyhow!("import path domain must match {re}"));
+        }
+
+        if elem.starts_with('-') {
+            return Err(anyhow!("import path domain must not start with a dash"));
+        }
+
+        if !elem.contains('.') {
+            return Err(anyhow!("import path domain must contain a dot"));
+        }
+
+        Ok(())
+    }
+
+    fn check_version_suffix(elem: &str) -> Result<bool, anyhow::Error> {
+        if !VERSION_RE.is_match(elem) {
+            return Ok(false);
+        }
+
+        if elem == "v1" {
+            return Err(anyhow!("import path version suffix must not be v1"));
+        }
+
+        if elem.starts_with("v0") {
+            return Err(anyhow!("import path version suffix must not start with v0"));
+        }
+
+        if elem.contains('.') {
+            return Err(anyhow!("import path version suffix must not contain dots"));
+        }
+
+        Ok(true)
+    }
+
+    fn check_package(elem: &str) -> Result<(), anyhow::Error> {
+        if !PACKAGE_RE.is_match(elem) {
+            let re = PACKAGE_RE.as_str();
+            return Err(anyhow!("import path package name must match {re}"));
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+
+// https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+const RESERVED_WINDOWS_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", //
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", //
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    #[test]
+    fn parse_path() -> Result<(), anyhow::Error> {
+        let expected: HashMap<&str, Path> = HashMap::from([
+            (
+                "fmt",
+                Path {
+                    path: "fmt".into(),
+                    package: "fmt".into(),
+                    has_domain: false,
+                },
+            ),
+            (
+                "math/bits",
+                Path {
+                    path: "math/bits".into(),
+                    package: "bits".into(),
+                    has_domain: false,
+                },
+            ),
+            (
+                "math/bits/v2",
+                Path {
+                    path: "math/bits/v2".into(),
+                    package: "bits".into(),
+                    has_domain: false,
+                },
+            ),
+            (
+                "example/hello",
+                Path {
+                    path: "example/hello".into(),
+                    package: "hello".into(),
+                    has_domain: false,
+                },
+            ),
+            (
+                "example.org/hello",
+                Path {
+                    path: "example.org/hello".into(),
+                    package: "hello".into(),
+                    has_domain: true,
+                },
+            ),
+            (
+                "github.com/fennec-lang/fennec",
+                Path {
+                    path: "github.com/fennec-lang/fennec".into(),
+                    package: "fennec".into(),
+                    has_domain: true,
+                },
+            ),
+            (
+                "github.com/fennec-lang/fennec/v2/test",
+                Path {
+                    path: "github.com/fennec-lang/fennec/v2/test".into(),
+                    package: "test".into(),
+                    has_domain: true,
+                },
+            ),
+        ]);
+
+        for p in expected {
+            let r = Path::parse(p.0)?;
+            assert_eq!(r, p.1);
+        }
+
+        let errors = [
+            "",
+            "/test",
+            "test/",
+            "/test/",
+            "test.mod",
+            "v2",
+            "test/v1",
+            "con",
+            "test/com1",
+        ];
+
+        for e in errors {
+            let r = Path::parse(e);
+            assert!(r.is_err());
+        }
+
+        let dep_errors = [
+            "test",
+            "test/hello",
+            "example..org/test",
+            "example.org//test",
+            "example.org/CON.2/test",
+            "example.org/hello~0/test",
+            "example.org/hello/test~",
+            "example.org/test/v1",
+            "example.org/test/v0.1",
+            "example.org/test/v2.5",
+        ];
+
+        for e in dep_errors {
+            let r = Path::parse_external_dep(e);
+            assert!(r.is_err());
+        }
+
+        Ok(())
+    }
+}

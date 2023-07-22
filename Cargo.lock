@@ -201,6 +201,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecow"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5c5051925c54d9a42c8652313b5358a7432eed209466b443ed5220431243a14"
+
+[[package]]
 name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -256,6 +262,7 @@ dependencies = [
  "anyhow",
  "clap",
  "env_logger",
+ "fennec-core",
  "fennec-parser",
  "log",
  "regex",
@@ -266,6 +273,12 @@ dependencies = [
 [[package]]
 name = "fennec-core"
 version = "0.1.4"
+dependencies = [
+ "anyhow",
+ "ecow",
+ "once_cell",
+ "regex",
+]
 
 [[package]]
 name = "fennec-parser"

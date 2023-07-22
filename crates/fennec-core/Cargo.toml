@@ -8,3 +8,14 @@ repository.workspace = true
 license.workspace = true
 edition.workspace = true
 readme = false
+
+[dependencies]
+anyhow.workspace = true
+ecow.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+
+[package.metadata.release]
+pre-release-replacements = [
+    { file = "src/lib.rs", search = 'pub const RELEASE_VERSION: &str = ".*"', replace = 'pub const RELEASE_VERSION: &str = "{{version}}"' },
+]

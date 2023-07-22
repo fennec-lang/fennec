@@ -1,2 +1,2 @@
 fennec = "0.1"
-module = "example.org/hello"
+module = "examples/hello"

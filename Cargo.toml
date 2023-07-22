@@ -24,6 +24,7 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1.0"
 clap = { version = "4.3", features = ["derive"] }
+ecow = "0.1.1"
 env_logger = "0.10"
 lalrpop = { version = "0.20", default-features = false, features = [
     "lexer",
@@ -34,6 +35,7 @@ lalrpop-util = { version = "0.20", default-features = false, features = [
     "unicode",
 ] }
 log = { version = "0.4", features = ["kv_unstable"] }
+once_cell = "1.18"
 regex = "1"
 time = { version = "0.3.23", default-features = false, features = [
     "local-offset",

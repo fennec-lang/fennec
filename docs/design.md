@@ -32,10 +32,12 @@
 ### General
 
 - no compiler switches, no warnings and no options
+  - must explicitly bind or ignore results
+  - must use local variables
 
 ### Versioning
 
-- start with `FENNEC_PATH` mode
+- start with `FENNEC_PATH` mode (in `vendor` directory)
 - copy Go + simplify where possible
   - avoid central registry
   - don't spend too much time on a solved problem
@@ -195,6 +197,13 @@ module = "example.org/hello"
 - references:
   - [Rust indexmap](https://github.com/bluss/indexmap)
 
+### Structs
+
+- it should be possible to have public fields that are mutable only by methods
+  - constructor + methods enforce all required invariants
+  - convenient access to non-mutating interface is preserved
+  - `pub` (default, can't mutate directly) vs `pub mut`
+
 ## Random ideas
 
 ### Testing
@@ -252,6 +261,16 @@ module = "example.org/hello"
 - can use small object headers that will transform to big ones (side tables) lazily
 - can omit all atomic ops in a component if we know it is single-threaded
 - guarantee that you can always read a full word if the address is aligned for faster copying?
+
+### Ergonomics
+
+- combinator chains should be avoided in favor of native control flow
+- `string`, `option`, `result`, `error` ergonomics are fundamental
+  - `option -> result + unwrap` pattern (`Option::ok_or/ok_or_else` in rust)
+- it should be obvious what code to write (like in go)
+  - decision paralysis of searching for the fanciest way to express something is bad (rust)
+- shadowing for typestate-like things is convenient
+- Go-like `Public` vs `private` is very convenient for reading the code
 
 ### Tooling
 

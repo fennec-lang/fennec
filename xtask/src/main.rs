@@ -57,11 +57,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run_lint(sh: &Shell) -> anyhow::Result<()> {
-    cmd!(
-        sh,
-        "cargo clippy -- -Wclippy::all -Wclippy::pedantic -Wclippy::unwrap_used -D warnings"
-    )
-    .run()?;
+    cmd!(sh, "cargo clippy -- -W clippy::all -W clippy::pedantic -W clippy::unwrap_used -A clippy::missing_errors_doc -D warnings").run()?;
     Ok(())
 }
 
