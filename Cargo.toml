@@ -47,6 +47,7 @@ xshell = "0.2.3"
 
 fennec-core = { path = "crates/fennec-core", version = "0.1.5" }
 fennec-parser = { path = "crates/fennec-parser", version = "0.1.5" }
+fennec-server = { path = "crates/fennec-server", version = "0.1.5" }
 
 [workspace.metadata.release]
 allow-branch = ["master", "dev"]
