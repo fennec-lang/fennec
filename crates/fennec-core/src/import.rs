@@ -25,33 +25,32 @@ static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect(B
 const BAD_RE: &str = "invalid regex literal";
 
 impl Path {
-    // Go module path syntax, from
-    // https://github.com/golang/mod/blob/master/module/module.go:
+    // From https://go.dev/ref/mod#go-mod-file-ident:
     //
-    // A valid import path consists of one or more valid path elements
-    // separated by slashes (U+002F). (It must not begin with nor end in a slash.)
+    // A module path must satisfy the following requirements:
     //
-    // A valid path element is a non-empty string made up of
-    // ASCII letters, ASCII digits, and limited ASCII punctuation: - . _ and ~.
-    // It must not end with a dot (U+002E), nor contain two dots in a row.
+    // - The path must consist of one or more path elements separated by slashes
+    //   (/, U+002F). It must not begin or end with a slash.
+    // - Each path element is a non-empty string made of up ASCII letters, ASCII
+    //   digits, and limited ASCII punctuation (-, ., _, and ~).
+    // - A path element may not begin or end with a dot (., U+002E).
+    // - The element prefix up to the first dot must not be a reserved file name
+    //   on Windows, regardless of case (CON, com1, NuL, and so on).
+    // - The element prefix up to the first dot must not end with a tilde
+    //   followed by one or more digits (like EXAMPLE~1.COM).
     //
-    // The element prefix up to the first dot must not be a reserved file name
-    // on Windows, regardless of case (CON, com1, NuL, and so on). The element
-    // must not have a suffix of a tilde followed by one or more ASCII digits
-    // (to exclude paths elements that look like Windows short-names).
+    // If the module path appears in a require directive and is not replaced, or
+    // if the module paths appears on the right side of a replace directive, the
+    // go command may need to download modules with that path, and some
+    // additional requirements must be satisfied.
     //
-    // A valid module path is a valid import path, with three additional constraints.
-    //
-    // First, the leading path element (up to the first slash, if any),
-    // by convention a domain name, must contain only lower-case ASCII letters,
-    // ASCII digits, dots (U+002E), and dashes (U+002D);
-    // it must contain at least one dot and cannot start with a dash.
-    //
-    // Second, for a final path element of the form /vN, where N looks numeric
-    // (ASCII digits and dots) must not begin with a leading zero, must not be /v1,
-    // and must not contain any dots.
-    //
-    // Third, no path element may begin with a dot.
+    // - The leading path element (up to the first slash, if any), by convention
+    //   a domain name, must contain only lower-case ASCII letters, ASCII digits,
+    //   dots (., U+002E), and dashes (-, U+002D); it must contain at least one
+    //   dot and cannot start with a dash.
+    // - For a final path element of the form /vN where N looks numeric (ASCII
+    //   digits and dots), N must not begin with a leading zero, must not be /v1,
+    //   and must not contain any dots.
 
     pub fn parse(path: &str) -> Result<Path, anyhow::Error> {
         Self::do_parse(path, false)
@@ -83,15 +82,16 @@ impl Path {
             "import path must consist of at least one valid path element"
         ))?;
 
+        // For consistency, we require version suffix to always be valid.
         let has_version = Self::check_version_suffix(last)?;
+
+        // On top of Go rules, we additionally require that last
+        // non-version path element is a valid identifier (package name).
         let package = if has_version {
             before_last.ok_or(anyhow!("import path must contain a non-version element"))?
         } else {
             last
         };
-
-        // On top of Go rules, we additionally require that last
-        // non-version path element is a valid identifier (package name).
         Self::check_package(package)?;
 
         Ok(Path {
