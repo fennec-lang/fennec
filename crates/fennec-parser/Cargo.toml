@@ -10,8 +10,8 @@ edition.workspace = true
 readme = false
 
 [build-dependencies]
-lalrpop.workspace = true
+lalrpop = { workspace = true, features = ["lexer", "unicode"] }
 
 [dependencies]
-lalrpop-util.workspace = true
+lalrpop-util = { workspace = true, features = ["lexer", "unicode"] }
 regex.workspace = true
