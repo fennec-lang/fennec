@@ -264,6 +264,7 @@ dependencies = [
  "env_logger",
  "fennec-core",
  "fennec-parser",
+ "fennec-server",
  "log",
  "regex",
  "time",

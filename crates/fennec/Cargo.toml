@@ -19,6 +19,7 @@ regex.workspace = true
 
 fennec-core.workspace = true
 fennec-parser.workspace = true
+fennec-server.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

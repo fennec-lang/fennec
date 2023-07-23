@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 mod new;
+mod server;
 mod version;
 
 #[derive(clap::Parser)]
@@ -25,6 +26,9 @@ enum Commands {
     /// Create new module
     New(new::Args),
 
+    /// Launch language server
+    Server(server::Args),
+
     /// Print version
     Version,
 }
@@ -37,8 +41,9 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     match cli.command {
-        Commands::Version => version::cmd(cli.verbose),
         Commands::New(args) => new::cmd(&args, cli.verbose),
+        Commands::Server(args) => server::cmd(&args, cli.verbose),
+        Commands::Version => version::cmd(cli.verbose),
     }
 }
 
