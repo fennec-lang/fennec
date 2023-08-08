@@ -8,5 +8,5 @@
 
 pub mod types;
 
-pub const RELEASE_VERSION: &str = "0.1.5";
+pub const RELEASE_VERSION: &str = "0.1.6";
 pub const MODULE_ROOT_FILENAME: &str = "fennec.toml";
