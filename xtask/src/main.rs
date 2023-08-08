@@ -10,7 +10,6 @@ mod flags;
 
 use env_logger::Env;
 use flags::{Ci, ReleaseCrate, ReleaseExt, XtaskCmd};
-use log::info;
 use xshell::{cmd, Shell};
 
 fn main() -> anyhow::Result<()> {
@@ -49,7 +48,7 @@ fn main() -> anyhow::Result<()> {
             if execute {
                 cmd!(sh, "vsce publish").run()?;
             } else {
-                info!(r#"pass --execute to run "vsce publish" for real"#);
+                log::info!(r#"pass --execute to run "vsce publish" for real"#);
             }
             Ok(())
         }
