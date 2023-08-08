@@ -31,9 +31,9 @@ lalrpop-util = { version = "0.20", default-features = false }
 log = { version = "0.4", features = ["std"] }
 once_cell = "1.18"
 regex = "1"
-time = { version = "0.3.23", default-features = false }
+time = { version = "0.3.25", default-features = false }
 xflags = "0.3.1"
-xshell = "0.2.3"
+xshell = "0.2.5"
 
 fennec-core = { path = "crates/fennec-core", version = "0.1.5" }
 fennec-parser = { path = "crates/fennec-parser", version = "0.1.5" }
