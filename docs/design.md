@@ -226,11 +226,24 @@ module = "example.org/hello"
   - smart focus
   - text-driven target choice?
   - hyperlinks to jump back / forward
+    - log entries as a timeline?
 - only re-run corpus / re-run + explore a bit / re-run + explore more / full fuzzing modes
 - green checkmark meaning current corpus is passing
+- tests (usually property-based) as interface members
+- inline values UI
+  - loops: remember first + last
+- external tests go to the `/test/` subdirectory (because we can't place them in the same as in Go)
+- test auto-run
+  - for every function check that if preconditions hold, postconditions hold as well
+  - for simple tests, this is enough
+  - for more complex scenarios, you can write a special function just for the test scenario
+    - imperative rapid-like `repeat` etc.
+  - should we do the same for all constructor + method combinations?
+    - probably yes, otherwise there is no incentive to write methods compared to functions
 
 ### Fuzzing
 
+- automatic structural fuzzing of everything is our only and main trick
 - text encoding of corpus to be able to re-run it without a DB
 - uncovered code as a warning
 - explicit arbitrary choice
@@ -243,6 +256,7 @@ module = "example.org/hello"
 - sage-like "stray off the usual path" exploration model
 - simplex-like / hurst-exponent-like modeling of correlated rare events
 - simulated annealing to guide search
+- shells should guarantee that we can always use structural fuzzing
 
 ### Metaprogramming
 
