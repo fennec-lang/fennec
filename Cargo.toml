@@ -14,9 +14,9 @@ lto = "thin"
 
 [workspace.package]
 version = "0.1.5"
-description = "Fennec is an experimental programming language and environment"
+description = "Fennec Programming Language"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
-homepage = "https://github.com/fennec-lang/fennec"
+homepage = "https://fennec-lang.org"
 repository = "https://github.com/fennec-lang/fennec"
 license = "MPL-2.0"
 edition = "2021"
