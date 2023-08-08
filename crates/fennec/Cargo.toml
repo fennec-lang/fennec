@@ -17,9 +17,10 @@ env_logger.workspace = true
 log.workspace = true
 regex.workspace = true
 
+fennec-common.workspace = true
 fennec-core.workspace = true
-fennec-parser.workspace = true
 fennec-server.workspace = true
+fennec-vfs.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

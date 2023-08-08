@@ -5,7 +5,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::Context;
-use fennec_core::{import, MODULE_ROOT_FILENAME, RELEASE_VERSION};
+use fennec_common::{MODULE_ROOT_FILENAME, RELEASE_VERSION};
+use fennec_core::import;
 use std::{fs, io::Write, path::Path};
 
 #[derive(clap::Args)]

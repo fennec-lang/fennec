@@ -1,5 +1,5 @@
 [package]
-name = "fennec-server"
+name = "fennec-common"
 version.workspace = true
 description.workspace = true
 authors.workspace = true
@@ -10,9 +10,8 @@ edition.workspace = true
 readme = false
 
 [dependencies]
-anyhow.workspace = true
-log.workspace = true
-lsp-server.workspace = true
-lsp-types.workspace = true
-serde.workspace = true
-serde_json.workspace = true
+
+[package.metadata.release]
+pre-release-replacements = [
+    { file = "src/lib.rs", search = 'pub const RELEASE_VERSION: &str = ".*"', replace = 'pub const RELEASE_VERSION: &str = "{{version}}"' },
+]

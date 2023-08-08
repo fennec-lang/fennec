@@ -1,5 +1,5 @@
 [package]
-name = "fennec-server"
+name = "fennec-vfs"
 version.workspace = true
 description.workspace = true
 authors.workspace = true
@@ -10,9 +10,3 @@ edition.workspace = true
 readme = false
 
 [dependencies]
-anyhow.workspace = true
-log.workspace = true
-lsp-server.workspace = true
-lsp-types.workspace = true
-serde.workspace = true
-serde_json.workspace = true
