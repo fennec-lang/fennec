@@ -8,7 +8,7 @@
 
 1. simplicity, in both language and programs that it guides you to write
 2. interactivity: instant feedback on any code change
-3. safety: fully safe with either static or dynamic enforcement
+3. reliability, through static checks and automatic testing
 4. efficiency: control over data layout and absence of wasteful computation
 
 ### Non-goals
