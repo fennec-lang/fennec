@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::Context;
-use fennec_common::{MODULE_ROOT_FILENAME, RELEASE_VERSION};
+use fennec_common::{MODULE_ROOT_FILENAME, PROJECT_NAME, RELEASE_VERSION};
 use fennec_core::import;
 use std::{fs, io::Write, path::Path};
 
@@ -40,8 +40,11 @@ pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
         .rsplit_once('.')
         .map(|s| s.0)
         .expect("invalid fennec release version");
-    write!(&mut file, "fennec = \"{v}\"\nmodule = \"{mod_path}\"\n")
-        .with_context(|| format!(r#"failed to write module declaration to "{disp}""#))?;
+    write!(
+        &mut file,
+        "{PROJECT_NAME} = \"{v}\"\nmodule = \"{mod_path}\"\n"
+    )
+    .with_context(|| format!(r#"failed to write module declaration to "{disp}""#))?;
 
     Ok(())
 }

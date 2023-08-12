@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use fennec_common::PROJECT_NAME;
 use regex::Regex;
 
 pub fn cmd(verbose: bool) -> anyhow::Result<()> {
@@ -17,12 +18,12 @@ pub fn cmd(verbose: bool) -> anyhow::Result<()> {
 
     if verbose {
         println!(
-            "fennec {version}, built by {} at {}",
+            "{PROJECT_NAME} {version}, built by {} at {}",
             env!("BUILD_RUSTC_VERSION"),
             env!("BUILD_DATE"),
         );
     } else {
-        println!("fennec {version}");
+        println!("{PROJECT_NAME} {version}");
     }
 
     Ok(())

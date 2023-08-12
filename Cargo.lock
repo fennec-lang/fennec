@@ -329,6 +329,7 @@ name = "fennec-server"
 version = "0.1.6"
 dependencies = [
  "anyhow",
+ "fennec-common",
  "log",
  "lsp-server",
  "lsp-types",
