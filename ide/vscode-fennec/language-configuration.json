@@ -9,13 +9,20 @@
         ["[", "]"],
         ["(", ")"]
     ],
+    "colorizedBracketPairs": [
+        ["{", "}"],
+        ["[", "]"],
+        ["(", ")"]
+    ],
     "autoClosingPairs": [
         ["{", "}"],
         ["[", "]"],
         ["(", ")"],
         { "open": "\"", "close": "\"", "notIn": ["string"] },
-        { "open": "'", "close": "'", "notIn": ["string", "comment"] }
+        { "open": "'", "close": "'", "notIn": ["string", "comment"] },
+        { "open": "/*", "close": " */" }
     ],
+    "autoCloseBefore": ";:.,=}])> \n\t",
     "surroundingPairs": [
         ["{", "}"],
         ["[", "]"],
