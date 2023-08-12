@@ -1,4 +1,8 @@
 {
     "typescript.tsc.autoDetect": "off",
-    "cSpell.autoFormatConfigFile": true
+    "cSpell.autoFormatConfigFile": true,
+    "markdownlint.config": {
+        "default": true,
+        "MD040": false
+    }
 }

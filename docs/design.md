@@ -203,6 +203,33 @@ module = "example.org/hello"
   - constructor + methods enforce all required invariants
   - convenient access to non-mutating interface is preserved
   - `pub` (default, can't mutate directly) vs `pub mut`
+- no tuples; make structs convenient for all use cases
+  - unnamed fields
+  - anonymous struct with named or unnamed field (func return type)
+  - immediately initialized anonymous struct
+- have only single data type, which can express both sum and product types
+
+  ```
+  type Point {
+          x int
+          y int
+          z type {
+                  // ...
+          }
+  }
+
+  type Result {
+  case Ok:
+  case Err:
+  }
+
+  type ErrorCode {
+  case EAccess = 5:                   // const tag
+          message = "access denied"   // const field
+  case EReadOnly = 6:
+          message = "read-only file"
+  }
+  ```
 
 ## Random ideas
 
