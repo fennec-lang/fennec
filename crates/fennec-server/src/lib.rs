@@ -9,7 +9,7 @@
 use anyhow::Context;
 use fennec_common::{
     types::{Root, RootPath},
-    PROJECT_NAME, RELEASE_VERSION,
+    PROJECT_NAME,
 };
 use lsp_server::{Connection, IoThreads, Message};
 use lsp_types::{
@@ -28,7 +28,7 @@ pub struct Server {
 
 impl Server {
     #[allow(deprecated)]
-    pub fn new_stdio() -> Result<Server, anyhow::Error> {
+    pub fn new_stdio(version: &str) -> Result<Server, anyhow::Error> {
         let (conn, io_threads) = Connection::stdio();
 
         let (id, init_params) = conn
@@ -82,7 +82,7 @@ impl Server {
             },
             server_info: Some(ServerInfo {
                 name: PROJECT_NAME.to_owned(),
-                version: Some(RELEASE_VERSION.to_owned()),
+                version: Some(version.to_owned()),
             }),
         };
         let init_result =

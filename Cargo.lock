@@ -295,6 +295,7 @@ dependencies = [
  "fennec-server",
  "fennec-vfs",
  "log",
+ "once_cell",
  "regex",
  "time",
  "xshell",

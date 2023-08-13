@@ -43,7 +43,10 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::New(args) => new::cmd(&args, cli.verbose),
         Commands::Server(args) => server::cmd(&args, cli.verbose),
-        Commands::Version => version::cmd(cli.verbose),
+        Commands::Version => {
+            version::cmd(cli.verbose);
+            Ok(())
+        }
     }
 }
 
