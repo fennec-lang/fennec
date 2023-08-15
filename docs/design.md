@@ -124,6 +124,10 @@ module = "example.org/hello"
 - UFCS?
   - "packages can't add public functions" problem
   - research extension methods as well
+  - probably no need to bother when we have traits
+    - but rust-like "invisible" use (we don't know its effects) is a bit too much magic
+  - while traits help with chaining, shadowing lets write convenient (and debuggable) pipelines
+    - re-bind the same name at each line, e.g. `it`
 - reserve `_0`, `_1`, `_2` etc.?
 
 ### References and pointers

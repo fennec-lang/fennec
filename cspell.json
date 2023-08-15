@@ -19,6 +19,7 @@
         "byteslice",
         "clippy",
         "composability",
+        "debuggable",
         "disp",
         "dotgraphs",
         "ecow",
