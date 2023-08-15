@@ -36,13 +36,9 @@ pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
         .open(&path)
         .with_context(|| format!(r#"failed to create "{disp}""#))?;
 
-    let v = RELEASE_VERSION
-        .rsplit_once('.')
-        .map(|s| s.0)
-        .expect("invalid fennec release version");
     write!(
         &mut file,
-        "{PROJECT_NAME} = \"{v}\"\nmodule = \"{mod_path}\"\n"
+        "{PROJECT_NAME} = \"{RELEASE_VERSION}\"\nmodule = \"{mod_path}\"\n"
     )
     .with_context(|| format!(r#"failed to write module declaration to "{disp}""#))?;
 
