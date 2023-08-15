@@ -25,7 +25,15 @@
         "vscode": "^1.79.0"
     },
     "enableTelemetry": false,
-    "activationEvents": [],
+    "capabilities": {
+        "virtualWorkspaces": false,
+        "untrustedWorkspaces": {
+            "supported": "limited"
+        }
+    },
+    "activationEvents": [
+        "workspaceContains:**/fennec.toml"
+    ],
     "main": "./dist/extension.js",
     "scripts": {
         "vscode:prepublish": "npm run package",
@@ -55,18 +63,11 @@
         "webpack-cli": "^5.1.1"
     },
     "contributes": {
-        "commands": [
-            {
-                "command": "fennec.helloWorld",
-                "title": "Hello World"
-            }
-        ],
         "languages": [
             {
                 "id": "fennec",
                 "aliases": [
-                    "Fennec",
-                    "fn"
+                    "Fennec"
                 ],
                 "extensions": [
                     ".fn"

@@ -358,6 +358,4 @@ TODO
 
 ### VSCode
 
-- remove hello command
 - setup testing with CI
-- decide what declarative features we have to provide
