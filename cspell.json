@@ -61,6 +61,7 @@
         "structs",
         "typestate",
         "udeps",
+        "UFCS",
         "unmarshal",
         "usize",
         "vscodeignore",

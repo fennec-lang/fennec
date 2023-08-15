@@ -121,6 +121,10 @@ module = "example.org/hello"
   - `[]` for generics
   - swift-style `.Variant` matching
   - `.field0` for tuple access? do we need tuples at all?
+- UFCS?
+  - "packages can't add public functions" problem
+  - research extension methods as well
+- reserve `_0`, `_1`, `_2` etc.?
 
 ### References and pointers
 
