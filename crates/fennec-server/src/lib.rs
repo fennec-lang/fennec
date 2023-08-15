@@ -11,14 +11,10 @@ use fennec_common::{
     types::{Root, RootPath},
     PROJECT_NAME,
 };
-use lsp_server::{Connection, IoThreads, Message};
-use lsp_types::{
-    InitializeParams, InitializeResult, PositionEncodingKind, ServerCapabilities, ServerInfo, Url,
-};
 
 pub struct Server {
-    conn: Connection,
-    io_threads: IoThreads,
+    conn: lsp_server::Connection,
+    io_threads: lsp_server::IoThreads,
 
     // TODO: use
     pub folders: Vec<Root>,
@@ -29,18 +25,18 @@ pub struct Server {
 impl Server {
     #[allow(deprecated)]
     pub fn new_stdio(version: &str) -> Result<Server, anyhow::Error> {
-        let (conn, io_threads) = Connection::stdio();
+        let (conn, io_threads) = lsp_server::Connection::stdio();
 
         let (id, init_params) = conn
             .initialize_start()
             .context("failed to wait for InitializeParams")?;
-        let init_params: InitializeParams =
+        let init_params: lsp_types::InitializeParams =
             serde_json::from_value(init_params).context("failed to unmarshal InitializeParams")?;
 
         let mut utf8_pos = false;
         if let Some(general_caps) = init_params.capabilities.general {
             if let Some(encodings) = general_caps.position_encodings {
-                utf8_pos = encodings.contains(&PositionEncodingKind::UTF8);
+                utf8_pos = encodings.contains(&lsp_types::PositionEncodingKind::UTF8);
             }
         }
 
@@ -71,16 +67,16 @@ impl Server {
                 .collect();
         }
 
-        let init_result = InitializeResult {
-            capabilities: ServerCapabilities {
+        let init_result = lsp_types::InitializeResult {
+            capabilities: lsp_types::ServerCapabilities {
                 position_encoding: if utf8_pos {
-                    Some(PositionEncodingKind::UTF8)
+                    Some(lsp_types::PositionEncodingKind::UTF8)
                 } else {
                     None
                 },
                 ..Default::default()
             },
-            server_info: Some(ServerInfo {
+            server_info: Some(lsp_types::ServerInfo {
                 name: PROJECT_NAME.to_owned(),
                 version: Some(version.to_owned()),
             }),
@@ -110,16 +106,16 @@ impl Server {
         for msg in &self.conn.receiver {
             log::debug!("got msg: {msg:?}");
             match msg {
-                Message::Request(req) => {
+                lsp_server::Message::Request(req) => {
                     log::debug!("got request: {req:?}");
                     if self.conn.handle_shutdown(&req)? {
                         return Ok(());
                     }
                 }
-                Message::Response(resp) => {
+                lsp_server::Message::Response(resp) => {
                     log::debug!("got response: {resp:?}");
                 }
-                Message::Notification(not) => {
+                lsp_server::Message::Notification(not) => {
                     log::debug!("got notification: {not:?}");
                 }
             }
@@ -136,6 +132,6 @@ fn path_to_root_path(_path: &str) -> RootPath {
     todo!()
 }
 
-fn uri_to_root_path(_uri: &Url) -> RootPath {
+fn uri_to_root_path(_uri: &lsp_types::Url) -> RootPath {
     todo!()
 }
