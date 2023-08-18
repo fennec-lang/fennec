@@ -3,6 +3,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec",
+                "${workspaceFolder}/examples/hello"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
+            ],
+            "preLaunchTask": "${defaultBuildTask}"
+        },
+        {
             "name": "Run Extension (disabled extensions)",
             "type": "extensionHost",
             "request": "launch",
