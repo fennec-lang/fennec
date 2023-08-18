@@ -359,7 +359,3 @@ TODO
 
 - logo (project + github social previews + opengraph + vscode language icon + vscode extension icon)
 - look over old docs for interesting ideas for this document
-
-### VSCode
-
-- setup testing with CI
