@@ -5,16 +5,24 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 import * as vscode from 'vscode';
+import { StatusBar } from './statusbar';
 
-export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "fennec" is now active!');
+class Extension {
+    private readonly bar: StatusBar;
 
-    let disposable = vscode.commands.registerCommand('fennec.helloWorld', () => {
-        vscode.window.showInformationMessage('Hello World from Fennec!');
-    });
+    constructor(readonly ctx: vscode.ExtensionContext) {
+        this.bar = new StatusBar(ctx);
+    }
 
-    context.subscriptions.push(disposable);
+    dispose() {
+        this.bar.dispose();
+    }
 }
 
-export function deactivate() {
+export async function activate(ctx: vscode.ExtensionContext) {
+    const ext = new Extension(ctx);
+    ctx.subscriptions.push(ext);
+}
+
+export async function deactivate() {
 }

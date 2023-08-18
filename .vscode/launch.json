@@ -3,11 +3,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run Extension",
+            "name": "Run Extension (disabled extensions)",
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec"
+                "--disable-extensions",
+                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec",
+                "${workspaceFolder}/examples/hello"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
+            ],
+            "preLaunchTask": "${defaultBuildTask}"
+        },
+        {
+            "name": "Run Extension (temp. profile)",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--profile-temp",
+                "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec",
+                "${workspaceFolder}/examples/hello"
             ],
             "outFiles": [
                 "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
@@ -19,6 +35,7 @@
             "type": "extensionHost",
             "request": "launch",
             "args": [
+                "--profile-temp",
                 "--extensionDevelopmentPath=${workspaceFolder}/ide/vscode-fennec",
                 "--extensionTestsPath=${workspaceFolder}/ide/vscode-fennec/out/test/suite/index"
             ],
