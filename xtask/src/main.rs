@@ -29,6 +29,12 @@ fn main() -> anyhow::Result<()> {
                 run_spellcheck(&sh)?;
                 run_check_deps(&sh)?;
             }
+            sh.change_dir("ide/vscode-fennec");
+            cmd!(sh, "npm run compile-tests").run()?;
+            cmd!(sh, "npm run lint").run()?;
+            if all {
+                cmd!(sh, "npm run test").run()?;
+            }
             Ok(())
         }
         XtaskCmd::Lint(_) => run_lint(&sh),
