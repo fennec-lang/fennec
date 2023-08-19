@@ -324,6 +324,10 @@ module = "example.org/hello"
 - shadowing for typestate-like things is convenient
 - Go-like `Public` vs `private` is very convenient for reading the code
 
+### UI
+
+- show the text of error in the status bar
+
 ### Tooling
 
 - built-in documentation generator (can embed runnable code so that people can play with it)
