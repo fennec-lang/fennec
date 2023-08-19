@@ -129,6 +129,9 @@ module = "example.org/hello"
   - while traits help with chaining, shadowing lets write convenient (and debuggable) pipelines
     - re-bind the same name at each line, e.g. `it`
 - reserve `_0`, `_1`, `_2` etc.?
+- `and`, `or`, `not`?
+  - `and`, `or` to avoid confusion with `&` and `|`, but type checker should help with that
+  - `not` to make reading code easier (ensuring `!` is used where it should can be hard)
 
 ### References and pointers
 
