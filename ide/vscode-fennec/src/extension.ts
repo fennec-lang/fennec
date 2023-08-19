@@ -26,7 +26,11 @@ class Extension {
     }
 
     async init() {
-        await this.client.start();
+        await this.client.start().then(() => {
+            this.bar.updateStatus('ok');
+        }).catch(() => {
+            this.bar.updateStatus('broken');
+        });
     }
 
     async dispose() {

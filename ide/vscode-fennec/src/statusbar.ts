@@ -6,7 +6,7 @@
 
 import * as vscode from 'vscode';
 
-type Status = 'broken' | 'progress' | 'error' | 'ok' | 'done';
+export type Status = 'broken' | 'progress' | 'error' | 'ok' | 'done';
 
 type StatusTheme = {
     // https://code.visualstudio.com/api/references/icons-in-labels
@@ -65,7 +65,7 @@ export class StatusBar {
         this.bar.show();
     }
 
-    private updateStatus(s: Status) {
+    updateStatus(s: Status) {
         this.status = s;
         const t = expandStatus(this.status);
         this.bar.text = `Fennec ${this.version}\u2000${t.icon}`;
