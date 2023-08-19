@@ -5,13 +5,20 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::version::vcs_version;
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use fennec_server::Server;
 
 #[derive(clap::Args)]
-pub struct Args {}
+pub struct Args {
+    /// Use stdio LSP connection
+    #[arg(long)]
+    stdio: bool,
+}
 
-pub fn cmd(_args: &Args, _verbose: bool) -> anyhow::Result<()> {
+pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
+    if !args.stdio {
+        return Err(anyhow!("--stdio is the only supported LSP mode"));
+    }
     let version = vcs_version();
     let mut srv = Server::new_stdio(version).context("failed to initialize LSP server")?;
     srv.serve().context("failed to serve LSP")?;

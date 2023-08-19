@@ -52,6 +52,7 @@ function fennecPath(): string {
 function createClient(serverPath: string, ch: vscode.OutputChannel): lc.LanguageClient {
     const run: lc.Executable = {
         command: serverPath,
+        args: ['server'],
         transport: lc.TransportKind.stdio,
     };
     const serverOpts: lc.ServerOptions = {

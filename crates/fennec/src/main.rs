@@ -23,13 +23,13 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Commands {
-    /// Create new module
+    /// Create new Fennec module
     New(new::Args),
 
-    /// Launch language server
+    /// Launch Fennec language server
     Server(server::Args),
 
-    /// Print version
+    /// Print Fennec version
     Version,
 }
 
