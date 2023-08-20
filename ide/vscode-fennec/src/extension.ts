@@ -13,20 +13,16 @@ import { StatusBar } from './statusbar';
 let _ext: Extension | undefined = undefined;
 
 class Extension {
-    private readonly chan: vscode.OutputChannel;
     private readonly clientChan: vscode.OutputChannel;
-    private readonly clientTraceChan: vscode.OutputChannel;
     private readonly bar: StatusBar;
     private readonly path: string;
     private readonly client: lc.LanguageClient;
 
     constructor(readonly ctx: vscode.ExtensionContext) {
-        this.chan = vscode.window.createOutputChannel("Fennec");
         this.clientChan = vscode.window.createOutputChannel("Fennec Language Server");
-        this.clientTraceChan = vscode.window.createOutputChannel("Fennec Language Server Trace");
         this.bar = new StatusBar(ctx);
         this.path = fennecPath();
-        this.client = createClient(this.path, this.clientChan, this.clientTraceChan);
+        this.client = createClient(this.path, this.clientChan);
     }
 
     async init() {
@@ -40,9 +36,7 @@ class Extension {
     async dispose() {
         await this.client.dispose();
         this.bar.dispose();
-        this.clientTraceChan.dispose();
         this.clientChan.dispose();
-        this.chan.dispose();
     }
 }
 
@@ -63,7 +57,7 @@ function fennecPath(): string {
     return path.join(os.homedir(), '.fennec', 'bin', 'fennec');
 }
 
-function createClient(serverPath: string, chan: vscode.OutputChannel, traceChan: vscode.OutputChannel): lc.LanguageClient {
+function createClient(serverPath: string, chan: vscode.OutputChannel): lc.LanguageClient {
     const serverOpts: lc.ServerOptions = {
         run: {
             command: serverPath,
@@ -80,7 +74,6 @@ function createClient(serverPath: string, chan: vscode.OutputChannel, traceChan:
     const clientOpts: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "fennec" }],
         outputChannel: chan,
-        traceOutputChannel: traceChan,
     };
 
     const client = new lc.LanguageClient(
