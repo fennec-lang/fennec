@@ -9,8 +9,9 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{
     types::{Root, RootPath},
-    PROJECT_NAME,
+    MODULE_ROOT_FILENAME, PROJECT_NAME,
 };
+use lsp_types::{notification::Notification, request::Request};
 
 const FILE_SCHEME: &str = "file";
 
@@ -31,8 +32,8 @@ impl Server {
         let (id, init_params) = conn
             .initialize_start()
             .context("failed to wait for InitializeParams")?;
-        let init_params: lsp_types::InitializeParams =
-            serde_json::from_value(init_params).context("failed to unmarshal InitializeParams")?;
+        let init_params: lsp_types::InitializeParams = serde_json::from_value(init_params)
+            .context("failed to deserialize InitializeParams")?;
         if log::log_enabled!(log::Level::Debug) {
             let init_pretty =
                 serde_json::to_string_pretty(&init_params).unwrap_or_else(|e| e.to_string());
@@ -62,12 +63,15 @@ impl Server {
             }),
         };
         let init_result =
-            serde_json::to_value(init_result).context("failed to marshal InitializeResult")?;
+            serde_json::to_value(init_result).context("failed to serialize InitializeResult")?;
 
         conn.initialize_finish(id, init_result)
             .context("failed to send InitializeResult")?;
 
-        // TODO: register watcher for `fennec.toml` files in all workspaces `client/registerCapability`
+        register_module_root_watchers(&conn).context(format!(
+            "failed to register {MODULE_ROOT_FILENAME} watchers"
+        ))?;
+        // TODO: we need to find initial set of roots by hand
 
         Ok(Server {
             conn,
@@ -148,4 +152,38 @@ fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<Root> {
         }
     }
     vec![]
+}
+
+fn register_module_root_watchers(conn: &lsp_server::Connection) -> Result<(), anyhow::Error> {
+    let opts = lsp_types::DidChangeWatchedFilesRegistrationOptions {
+        watchers: vec![lsp_types::FileSystemWatcher {
+            glob_pattern: lsp_types::GlobPattern::String(
+                format!("**/{MODULE_ROOT_FILENAME}").to_owned(),
+            ),
+            kind: None, // create + change + delete
+        }],
+    };
+    let opts = serde_json::to_value(opts)
+        .context("failed to serialize DidChangeWatchedFilesRegistrationOptions")?;
+
+    let params = lsp_types::RegistrationParams {
+        registrations: vec![lsp_types::Registration {
+            id: MODULE_ROOT_FILENAME.to_owned(),
+            method: lsp_types::notification::DidChangeWatchedFiles::METHOD.to_owned(),
+            register_options: Some(opts),
+        }],
+    };
+    let params = serde_json::to_value(params).context("failed to serialize RegistrationParams")?;
+
+    let req = lsp_server::Request {
+        id: lsp_server::RequestId::from(0),
+        method: lsp_types::request::RegisterCapability::METHOD.to_owned(),
+        params,
+    };
+    conn.sender
+        .send(lsp_server::Message::Request(req))
+        .context("failed to send client/registerCapability request")?;
+
+    // TODO: should we wait for response or no?
+    Ok(())
 }
