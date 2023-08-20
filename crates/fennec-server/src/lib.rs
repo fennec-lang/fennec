@@ -7,10 +7,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context};
-use fennec_common::{
-    types::{Root, RootPath},
-    MODULE_ROOT_FILENAME, PROJECT_NAME,
-};
+use fennec_common::{types::RootPath, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
 
 const FILE_SCHEME: &str = "file";
@@ -20,7 +17,7 @@ pub struct Server {
     io_threads: lsp_server::IoThreads,
 
     // TODO: use
-    pub folders: Vec<Root>,
+    pub folders: Vec<RootPath>,
     pub utf8_pos: bool,
     pub parent_process_id: Option<u32>, // TODO: exit when parent is dead
 }
@@ -128,30 +125,22 @@ fn cap_utf8_positions(init_params: &lsp_types::InitializeParams) -> bool {
     false
 }
 
-fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<Root> {
+fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<RootPath> {
     if let Some(ref wf) = init_params.workspace_folders {
         return wf
             .iter()
             .filter(|f| f.uri.scheme() == FILE_SCHEME)
-            .map(|f| Root {
-                path: RootPath::from_uri_path(f.uri.path()),
-                name: f.name.clone(),
-            })
+            .filter_map(|f| f.uri.to_file_path().ok())
+            .filter_map(|pb| RootPath::from_path(&pb))
             .collect();
     }
-    if let Some(ref uri) = init_params.root_uri {
-        if uri.scheme() == FILE_SCHEME {
-            let mut name = "";
-            if let Some(seg) = uri.path_segments() {
-                name = seg.last().unwrap_or("");
-            }
-            return vec![Root {
-                path: RootPath::from_uri_path(uri.path()),
-                name: name.to_owned(),
-            }];
-        }
-    }
-    vec![]
+    init_params
+        .root_uri
+        .iter()
+        .filter(|uri| uri.scheme() == FILE_SCHEME)
+        .filter_map(|uri| uri.to_file_path().ok())
+        .filter_map(|pb| RootPath::from_path(&pb))
+        .collect()
 }
 
 fn register_module_root_watchers(conn: &lsp_server::Connection) -> Result<(), anyhow::Error> {

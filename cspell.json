@@ -36,6 +36,7 @@
         "multiword",
         "nosources",
         "opengraph",
+        "pathbuf",
         "pemfile",
         "petrosyan",
         "postconditions",
