@@ -116,7 +116,7 @@ fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<Root> {
             .iter()
             .filter(|f| f.uri.scheme() == FILE_SCHEME)
             .map(|f| Root {
-                path: uri_to_root_path(&f.uri),
+                path: RootPath::from_uri_path(f.uri.path()),
                 name: f.name.clone(),
             })
             .collect();
@@ -128,14 +128,10 @@ fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<Root> {
                 name = seg.last().unwrap_or("");
             }
             return vec![Root {
-                path: uri_to_root_path(uri),
+                path: RootPath::from_uri_path(uri.path()),
                 name: name.to_owned(),
             }];
         }
     }
     vec![]
-}
-
-fn uri_to_root_path(_uri: &lsp_types::Url) -> RootPath {
-    todo!()
 }

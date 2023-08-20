@@ -7,6 +7,14 @@
 pub struct RootPath(String);
 pub struct FilePath(String);
 
+impl RootPath {
+    #[must_use]
+    pub fn from_uri_path(path: &str) -> RootPath {
+        // TODO: do we need to do any normalization here?
+        RootPath(path.to_owned())
+    }
+}
+
 pub struct Root {
     pub path: RootPath,
     pub name: String,
