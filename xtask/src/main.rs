@@ -28,11 +28,10 @@ fn main() -> anyhow::Result<()> {
                 cmd!(sh, "cargo update -p fennec --locked").run()?;
                 run_spellcheck(&sh)?;
                 run_check_deps(&sh)?;
-            }
-            sh.change_dir("ide/vscode-fennec");
-            cmd!(sh, "npm run compile-tests").run()?;
-            cmd!(sh, "npm run lint").run()?;
-            if all {
+
+                sh.change_dir("ide/vscode-fennec");
+                cmd!(sh, "npm run compile-tests").run()?;
+                cmd!(sh, "npm run lint").run()?;
                 cmd!(sh, "npm run test").run()?;
             }
             Ok(())
