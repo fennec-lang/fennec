@@ -23,7 +23,6 @@ pub struct Server {
 }
 
 impl Server {
-    #[allow(deprecated)]
     pub fn new_stdio(version: &str) -> Result<Server, anyhow::Error> {
         let (conn, io_threads) = lsp_server::Connection::stdio();
 
@@ -46,12 +45,6 @@ impl Server {
         }
 
         let mut folders: Vec<Root> = vec![];
-        if let Some(path) = init_params.root_path {
-            folders = vec![Root {
-                path: path_to_root_path(&path),
-                name: path_to_basename(&path),
-            }];
-        }
         if let Some(uri) = init_params.root_uri {
             let mut name = "";
             if let Some(seg) = uri.path_segments() {
@@ -127,14 +120,6 @@ impl Server {
         }
         Ok(())
     }
-}
-
-fn path_to_basename(_path: &str) -> String {
-    todo!()
-}
-
-fn path_to_root_path(_path: &str) -> RootPath {
-    todo!()
 }
 
 fn uri_to_root_path(_uri: &lsp_types::Url) -> RootPath {
