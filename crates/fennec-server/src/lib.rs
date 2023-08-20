@@ -6,7 +6,7 @@
 
 #![forbid(unsafe_code)]
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use fennec_common::{
     types::{Root, RootPath},
     PROJECT_NAME,
@@ -39,6 +39,11 @@ impl Server {
             log::debug!("InitializeParams: {init_pretty}");
         }
 
+        let dyn_watch = cap_fs_watch_dynamic(&init_params);
+        if !dyn_watch {
+            return Err(anyhow!("Fennec LSP server requires client to support dynamic registration in DidChangeWatchedFilesClientCapabilities"));
+        }
+
         let utf8_pos = cap_utf8_positions(&init_params);
         let folders = workspace_roots(&init_params);
 
@@ -62,7 +67,7 @@ impl Server {
         conn.initialize_finish(id, init_result)
             .context("failed to send InitializeResult")?;
 
-        // TODO: register watcher for `fennec.toml` files in all workspaces
+        // TODO: register watcher for `fennec.toml` files in all workspaces `client/registerCapability`
 
         Ok(Server {
             conn,
@@ -99,6 +104,15 @@ impl Server {
         }
         Ok(())
     }
+}
+
+fn cap_fs_watch_dynamic(init_params: &lsp_types::InitializeParams) -> bool {
+    if let Some(ref workspace_caps) = init_params.capabilities.workspace {
+        if let Some(ref change_watched) = workspace_caps.did_change_watched_files {
+            return change_watched.dynamic_registration.unwrap_or(false);
+        }
+    }
+    false
 }
 
 fn cap_utf8_positions(init_params: &lsp_types::InitializeParams) -> bool {
