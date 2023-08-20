@@ -12,6 +12,8 @@ use fennec_common::{
     PROJECT_NAME,
 };
 
+const FILE_SCHEME: &str = "file";
+
 pub struct Server {
     conn: lsp_server::Connection,
     io_threads: lsp_server::IoThreads,
@@ -37,33 +39,8 @@ impl Server {
             log::debug!("InitializeParams: {init_pretty}");
         }
 
-        let mut utf8_pos = false;
-        if let Some(general_caps) = init_params.capabilities.general {
-            if let Some(encodings) = general_caps.position_encodings {
-                utf8_pos = encodings.contains(&lsp_types::PositionEncodingKind::UTF8);
-            }
-        }
-
-        let mut folders: Vec<Root> = vec![];
-        if let Some(uri) = init_params.root_uri {
-            let mut name = "";
-            if let Some(seg) = uri.path_segments() {
-                name = seg.last().unwrap_or("");
-            }
-            folders = vec![Root {
-                path: uri_to_root_path(&uri),
-                name: name.to_owned(),
-            }];
-        }
-        if let Some(wf) = init_params.workspace_folders {
-            folders = wf
-                .iter()
-                .map(|f| Root {
-                    path: uri_to_root_path(&f.uri),
-                    name: f.name.clone(),
-                })
-                .collect();
-        }
+        let utf8_pos = cap_utf8_positions(&init_params);
+        let folders = workspace_roots(&init_params);
 
         let init_result = lsp_types::InitializeResult {
             capabilities: lsp_types::ServerCapabilities {
@@ -85,7 +62,7 @@ impl Server {
         conn.initialize_finish(id, init_result)
             .context("failed to send InitializeResult")?;
 
-        // TODO: register watcher for `fennec.toml` files
+        // TODO: register watcher for `fennec.toml` files in all workspaces
 
         Ok(Server {
             conn,
@@ -122,6 +99,41 @@ impl Server {
         }
         Ok(())
     }
+}
+
+fn cap_utf8_positions(init_params: &lsp_types::InitializeParams) -> bool {
+    if let Some(ref general_caps) = init_params.capabilities.general {
+        if let Some(ref encodings) = general_caps.position_encodings {
+            return encodings.contains(&lsp_types::PositionEncodingKind::UTF8);
+        }
+    }
+    false
+}
+
+fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<Root> {
+    if let Some(ref wf) = init_params.workspace_folders {
+        return wf
+            .iter()
+            .filter(|f| f.uri.scheme() == FILE_SCHEME)
+            .map(|f| Root {
+                path: uri_to_root_path(&f.uri),
+                name: f.name.clone(),
+            })
+            .collect();
+    }
+    if let Some(ref uri) = init_params.root_uri {
+        if uri.scheme() == FILE_SCHEME {
+            let mut name = "";
+            if let Some(seg) = uri.path_segments() {
+                name = seg.last().unwrap_or("");
+            }
+            return vec![Root {
+                path: uri_to_root_path(uri),
+                name: name.to_owned(),
+            }];
+        }
+    }
+    vec![]
 }
 
 fn uri_to_root_path(_uri: &lsp_types::Url) -> RootPath {
