@@ -5,15 +5,14 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::anyhow;
-use ecow::EcoString;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Path {
-    path: EcoString,
-    package: EcoString,
+    path: String,
+    package: String,
     has_domain: bool,
 }
 

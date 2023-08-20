@@ -24,7 +24,6 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1"
 clap = "4.3"
-ecow = "0.1.1"
 env_logger = "0.10"
 lalrpop = { version = "0.20", default-features = false }
 lalrpop-util = { version = "0.20", default-features = false }
