@@ -85,6 +85,8 @@ impl Server {
         conn.initialize_finish(id, init_result)
             .context("failed to send InitializeResult")?;
 
+        // TODO: register watcher for `fennec.toml` files
+
         Ok(Server {
             conn,
             io_threads,
