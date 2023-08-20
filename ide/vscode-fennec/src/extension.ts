@@ -31,9 +31,9 @@ class Extension {
 
     async init() {
         await this.client.start().then(() => {
-            this.bar.updateStatus('ok');
-        }).catch(() => {
-            this.bar.updateStatus('broken');
+            this.bar.updateStatus('ok', undefined);
+        }).catch((err) => {
+            this.bar.updateStatus('broken', err.toString());
         });
     }
 

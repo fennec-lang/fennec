@@ -61,16 +61,17 @@ export class StatusBar {
 
         this.bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this.bar.name = 'Fennec Status';
-        this.updateStatus(this.status);
+        this.updateStatus(this.status, 'Initializing...');
         this.bar.show();
     }
 
-    updateStatus(s: Status) {
+    updateStatus(s: Status, tooltip: string | undefined) {
         this.status = s;
         const t = expandStatus(this.status);
         this.bar.text = `Fennec ${this.version}\u2000${t.icon}`;
         this.bar.color = t.foreground;
         this.bar.backgroundColor = t.background;
+        this.bar.tooltip = tooltip;
     }
 
     dispose() {
