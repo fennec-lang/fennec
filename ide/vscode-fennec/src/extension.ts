@@ -13,16 +13,20 @@ import { StatusBar } from './statusbar';
 let _ext: Extension | undefined = undefined;
 
 class Extension {
-    private readonly ch: vscode.OutputChannel;
+    private readonly chan: vscode.OutputChannel;
+    private readonly clientChan: vscode.OutputChannel;
+    private readonly clientTraceChan: vscode.OutputChannel;
     private readonly bar: StatusBar;
     private readonly path: string;
     private readonly client: lc.LanguageClient;
 
     constructor(readonly ctx: vscode.ExtensionContext) {
-        this.ch = vscode.window.createOutputChannel("Fennec Language Server");
+        this.chan = vscode.window.createOutputChannel("Fennec");
+        this.clientChan = vscode.window.createOutputChannel("Fennec Language Server");
+        this.clientTraceChan = vscode.window.createOutputChannel("Fennec Language Server Trace");
         this.bar = new StatusBar(ctx);
         this.path = fennecPath();
-        this.client = createClient(this.path, this.ch);
+        this.client = createClient(this.path, this.clientChan, this.clientTraceChan);
     }
 
     async init() {
@@ -36,7 +40,9 @@ class Extension {
     async dispose() {
         await this.client.dispose();
         this.bar.dispose();
-        this.ch.dispose();
+        this.clientTraceChan.dispose();
+        this.clientChan.dispose();
+        this.chan.dispose();
     }
 }
 
@@ -57,7 +63,7 @@ function fennecPath(): string {
     return path.join(os.homedir(), '.fennec', 'bin', 'fennec');
 }
 
-function createClient(serverPath: string, ch: vscode.OutputChannel): lc.LanguageClient {
+function createClient(serverPath: string, chan: vscode.OutputChannel, traceChan: vscode.OutputChannel): lc.LanguageClient {
     const run: lc.Executable = {
         command: serverPath,
         args: ['server'],
@@ -70,7 +76,8 @@ function createClient(serverPath: string, ch: vscode.OutputChannel): lc.Language
 
     const clientOpts: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "fennec" }],
-        outputChannel: ch,
+        outputChannel: chan,
+        traceOutputChannel: traceChan,
     };
 
     const client = new lc.LanguageClient(
