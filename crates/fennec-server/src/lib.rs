@@ -32,6 +32,11 @@ impl Server {
             .context("failed to wait for InitializeParams")?;
         let init_params: lsp_types::InitializeParams =
             serde_json::from_value(init_params).context("failed to unmarshal InitializeParams")?;
+        if log::log_enabled!(log::Level::Debug) {
+            let init_pretty =
+                serde_json::to_string_pretty(&init_params).unwrap_or_else(|e| e.to_string());
+            log::debug!("InitializeParams: {init_pretty}");
+        }
 
         let mut utf8_pos = false;
         if let Some(general_caps) = init_params.capabilities.general {
@@ -104,19 +109,19 @@ impl Server {
     // TODO: write real code
     pub fn serve(&mut self) -> Result<(), anyhow::Error> {
         for msg in &self.conn.receiver {
-            log::debug!("got msg: {msg:?}");
+            log::trace!("got msg: {msg:?}");
             match msg {
                 lsp_server::Message::Request(req) => {
-                    log::debug!("got request: {req:?}");
+                    log::trace!("got request: {req:?}");
                     if self.conn.handle_shutdown(&req)? {
                         return Ok(());
                     }
                 }
                 lsp_server::Message::Response(resp) => {
-                    log::debug!("got response: {resp:?}");
+                    log::trace!("got response: {resp:?}");
                 }
                 lsp_server::Message::Notification(not) => {
-                    log::debug!("got notification: {not:?}");
+                    log::trace!("got notification: {not:?}");
                 }
             }
         }

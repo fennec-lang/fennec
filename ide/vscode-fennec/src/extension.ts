@@ -64,14 +64,17 @@ function fennecPath(): string {
 }
 
 function createClient(serverPath: string, chan: vscode.OutputChannel, traceChan: vscode.OutputChannel): lc.LanguageClient {
-    const run: lc.Executable = {
-        command: serverPath,
-        args: ['server'],
-        transport: lc.TransportKind.stdio,
-    };
     const serverOpts: lc.ServerOptions = {
-        run,
-        debug: run,
+        run: {
+            command: serverPath,
+            args: ['server'],
+            transport: lc.TransportKind.stdio,
+        },
+        debug: {
+            command: serverPath,
+            args: ['server', '--verbose'],
+            transport: lc.TransportKind.stdio,
+        },
     };
 
     const clientOpts: lc.LanguageClientOptions = {
