@@ -3,6 +3,26 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "cargo build",
+            "group": "build",
+            "type": "shell",
+            "command": "cargo build",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "clear": true
+            }
+        },
+        {
+            "label": "npm watch + cargo",
+            "dependsOn": [
+                "npm watch",
+                "cargo build"
+            ]
+        },
+        {
+            "label": "npm watch",
             "type": "npm",
             "script": "watch",
             "problemMatcher": "$ts-webpack-watch",
@@ -16,9 +36,9 @@
                 "isDefault": true
             },
             "path": "ide/vscode-fennec/"
-
         },
         {
+            "label": "npm watch-tests",
             "type": "npm",
             "script": "watch-tests",
             "problemMatcher": "$tsc-watch",
@@ -31,10 +51,10 @@
             "path": "ide/vscode-fennec/"
         },
         {
-            "label": "tasks: watch-tests",
+            "label": "npm watch + watch-tests",
             "dependsOn": [
-                "npm: watch",
-                "npm: watch-tests"
+                "npm watch",
+                "npm watch-tests"
             ],
             "problemMatcher": []
         }

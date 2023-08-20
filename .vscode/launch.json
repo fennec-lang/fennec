@@ -13,7 +13,10 @@
             "outFiles": [
                 "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
             ],
-            "preLaunchTask": "${defaultBuildTask}"
+            "preLaunchTask": "npm watch + cargo",
+            "env": {
+                "FENNEC_PATH": "${workspaceFolder}/target/debug/fennec"
+            }
         },
         {
             "name": "Run Extension (disabled extensions)",
@@ -27,7 +30,10 @@
             "outFiles": [
                 "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
             ],
-            "preLaunchTask": "${defaultBuildTask}"
+            "preLaunchTask": "npm watch + cargo",
+            "env": {
+                "FENNEC_PATH": "${workspaceFolder}/target/debug/fennec"
+            }
         },
         {
             "name": "Run Extension (temp. profile)",
@@ -41,7 +47,10 @@
             "outFiles": [
                 "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
             ],
-            "preLaunchTask": "${defaultBuildTask}"
+            "preLaunchTask": "npm watch + cargo",
+            "env": {
+                "FENNEC_PATH": "${workspaceFolder}/target/debug/fennec"
+            }
         },
         {
             "name": "Extension Tests",
@@ -56,7 +65,7 @@
                 "${workspaceFolder}/ide/vscode-fennec/out/**/*.js",
                 "${workspaceFolder}/ide/vscode-fennec/dist/**/*.js"
             ],
-            "preLaunchTask": "tasks: watch-tests"
+            "preLaunchTask": "npm watch + watch-tests"
         }
     ]
 }

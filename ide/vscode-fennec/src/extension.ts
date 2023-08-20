@@ -50,6 +50,10 @@ export async function deactivate() {
 }
 
 function fennecPath(): string {
+    const fp = process.env['FENNEC_PATH'];
+    if (fp !== undefined && fp !== '') {
+        return fp;
+    }
     return path.join(os.homedir(), '.fennec', 'bin', 'fennec');
 }
 
