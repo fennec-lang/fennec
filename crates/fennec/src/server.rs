@@ -22,5 +22,6 @@ pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
     let version = vcs_version();
     let mut srv = Server::new_stdio(version).context("failed to initialize LSP server")?;
     srv.serve().context("failed to serve LSP")?;
-    todo!()
+    srv.join().context("failed to join IO threads")?;
+    Ok(())
 }
