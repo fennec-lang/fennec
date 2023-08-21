@@ -9,6 +9,7 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{types::RootPath, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
+use std::path::PathBuf;
 
 const FILE_SCHEME: &str = "file";
 
@@ -16,11 +17,12 @@ pub struct Server {
     conn: lsp_server::Connection,
     io_threads: lsp_server::IoThreads,
     request_id: i32,
+    module_roots: Vec<RootPath>,
 
-    // TODO: use
-    pub folders: Vec<RootPath>,
-    pub utf8_pos: bool,
-    pub parent_process_id: Option<u32>, // TODO: exit when parent is dead
+    // from LSP InitializeParams
+    workspace_folders: Vec<PathBuf>,
+    pub utf8_pos: bool,                 // TODO: remove pub, use
+    pub parent_process_id: Option<u32>, // TODO: remove pub, exit when parent is dead
 }
 
 impl Server {
@@ -70,8 +72,9 @@ impl Server {
             conn,
             io_threads,
             request_id: 0,
+            module_roots: vec![],
             utf8_pos,
-            folders,
+            workspace_folders: folders,
             parent_process_id: init_params.process_id,
         })
     }
@@ -121,7 +124,7 @@ impl Server {
                         if let Some(lsp_server::ResponseError { code, message, .. }) = resp.error {
                             return Err(anyhow!("failed to register {MODULE_ROOT_FILENAME} watchers: [{code}] {message}"));
                         }
-                        // TODO: walkdir
+                        self.module_roots = find_module_root(&self.workspace_folders);
                         registered_root_watchers = true;
                     }
                 }
@@ -132,6 +135,7 @@ impl Server {
                             r#"got "{method}" notification before root watchers were registered, ignoring"#
                         );
                     }
+                    // TODO: react on new module roots
                 }
             }
         }
@@ -157,13 +161,12 @@ fn cap_utf8_positions(init_params: &lsp_types::InitializeParams) -> bool {
     false
 }
 
-fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<RootPath> {
+fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<PathBuf> {
     if let Some(ref wf) = init_params.workspace_folders {
         return wf
             .iter()
             .filter(|f| f.uri.scheme() == FILE_SCHEME)
             .filter_map(|f| f.uri.to_file_path().ok())
-            .filter_map(|pb| RootPath::from_path(&pb))
             .collect();
     }
     init_params
@@ -171,7 +174,6 @@ fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<RootPath> {
         .iter()
         .filter(|uri| uri.scheme() == FILE_SCHEME)
         .filter_map(|uri| uri.to_file_path().ok())
-        .filter_map(|pb| RootPath::from_path(&pb))
         .collect()
 }
 
@@ -207,4 +209,38 @@ fn register_module_root_watchers(
         .context("failed to send client/registerCapability request")?;
 
     Ok(())
+}
+
+fn find_module_root(workspace_folders: &Vec<PathBuf>) -> Vec<RootPath> {
+    let mut roots: Vec<RootPath> = Vec::with_capacity(workspace_folders.len());
+    for folder in workspace_folders {
+        let walker = walkdir::WalkDir::new(folder).into_iter();
+        for entry in walker.filter_entry(|e| !is_hidden(e)) {
+            match entry {
+                Ok(entry) => {
+                    if entry.file_type().is_file()
+                        && entry.file_name().to_str() == Some(MODULE_ROOT_FILENAME)
+                    {
+                        if let Some(rp) = RootPath::from_path(entry.path()) {
+                            roots.push(rp);
+                        } else {
+                            let path_disp = entry.path().display();
+                            log::warn!(r#"invalid root path "{path_disp}", ignoring"#);
+                        }
+                    }
+                }
+                Err(err) => {
+                    log::warn!("error while finding module roots: {err}");
+                }
+            }
+        }
+    }
+    roots
+}
+
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map_or(false, |s| s.starts_with('.'))
 }
