@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context};
-use fennec_common::{types::RootPath, MODULE_ROOT_FILENAME, PROJECT_NAME};
+use fennec_common::{MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
 use std::path::PathBuf;
 
@@ -17,7 +17,7 @@ pub struct Server {
     conn: lsp_server::Connection,
     io_threads: lsp_server::IoThreads,
     request_id: i32,
-    module_roots: Vec<RootPath>,
+    module_roots: Vec<PathBuf>,
 
     // from LSP InitializeParams
     workspace_folders: Vec<PathBuf>,
@@ -124,6 +124,9 @@ impl Server {
                         if let Some(lsp_server::ResponseError { code, message, .. }) = resp.error {
                             return Err(anyhow!("failed to register {MODULE_ROOT_FILENAME} watchers: [{code}] {message}"));
                         }
+                        // We find the roots only after watchers are registered to avoid possible races
+                        // where we would miss new roots that appeared after the walk is complete but
+                        // before the watch is set up.
                         self.module_roots = find_module_root(&self.workspace_folders);
                         registered_root_watchers = true;
                     }
@@ -211,8 +214,8 @@ fn register_module_root_watchers(
     Ok(())
 }
 
-fn find_module_root(workspace_folders: &Vec<PathBuf>) -> Vec<RootPath> {
-    let mut roots: Vec<RootPath> = Vec::with_capacity(workspace_folders.len());
+fn find_module_root(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
         let walker = walkdir::WalkDir::new(folder).into_iter();
         for entry in walker.filter_entry(|e| !is_hidden(e)) {
@@ -221,12 +224,7 @@ fn find_module_root(workspace_folders: &Vec<PathBuf>) -> Vec<RootPath> {
                     if entry.file_type().is_file()
                         && entry.file_name().to_str() == Some(MODULE_ROOT_FILENAME)
                     {
-                        if let Some(rp) = RootPath::from_path(entry.path()) {
-                            roots.push(rp);
-                        } else {
-                            let path_disp = entry.path().display();
-                            log::warn!(r#"invalid root path "{path_disp}", ignoring"#);
-                        }
+                        roots.push(entry.into_path());
                     }
                 }
                 Err(err) => {
