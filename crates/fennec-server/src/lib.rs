@@ -127,7 +127,7 @@ impl Server {
                         // We find the roots only after watchers are registered to avoid possible races
                         // where we would miss new roots that appeared after the walk is complete but
                         // before the watch is set up.
-                        self.module_roots = find_module_root(&self.workspace_folders);
+                        self.module_roots = find_module_roots(&self.workspace_folders);
                         registered_root_watchers = true;
                     }
                 }
@@ -214,7 +214,7 @@ fn register_module_root_watchers(
     Ok(())
 }
 
-fn find_module_root(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
+fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
         let walker = walkdir::WalkDir::new(folder).into_iter();
