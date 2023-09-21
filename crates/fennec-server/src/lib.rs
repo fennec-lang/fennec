@@ -218,7 +218,7 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
         let walker = walkdir::WalkDir::new(folder).into_iter();
-        for entry in walker.filter_entry(|e| !is_hidden(e)) {
+        for entry in walker.filter_entry(is_valid_utf8_visible) {
             match entry {
                 Ok(entry) => {
                     if entry.file_type().is_file()
@@ -236,9 +236,9 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
     roots
 }
 
-fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+fn is_valid_utf8_visible(entry: &walkdir::DirEntry) -> bool {
     entry
-        .file_name()
-        .to_str()
-        .map_or(false, |s| s.starts_with('.'))
+        .file_name() // windows: WTF-8, unix: byte slice, usually UTF-8
+        .to_str() // maybe UTF-8
+        .map_or(false, |s| !s.starts_with('.'))
 }
