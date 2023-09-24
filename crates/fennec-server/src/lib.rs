@@ -7,8 +7,9 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context};
-use fennec_common::{MODULE_ROOT_FILENAME, PROJECT_NAME};
+use fennec_common::{types, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
+use parking_lot::{Condvar, Mutex};
 use std::path::PathBuf;
 
 const FILE_SCHEME: &str = "file";
@@ -17,7 +18,6 @@ pub struct Server {
     conn: lsp_server::Connection,
     io_threads: lsp_server::IoThreads,
     request_id: i32,
-    module_roots: Vec<PathBuf>,
 
     // from LSP InitializeParams
     workspace_folders: Vec<PathBuf>,
@@ -72,7 +72,6 @@ impl Server {
             conn,
             io_threads,
             request_id: 0,
-            module_roots: vec![],
             utf8_pos,
             workspace_folders: folders,
             parent_process_id: init_params.process_id,
@@ -90,7 +89,12 @@ impl Server {
         lsp_server::RequestId::from(id)
     }
 
-    pub fn serve(&mut self) -> Result<(), anyhow::Error> {
+    pub fn serve(
+        &mut self,
+        watch_module_root: &dyn Fn(&types::AbsolutePath),
+        _state: &Mutex<types::ChangeBuffer>,
+        _condvar: &Condvar,
+    ) -> Result<(), anyhow::Error> {
         let reg_id = self.next_id();
         let mut registered_root_watchers = false;
         register_module_root_watchers(&self.conn, reg_id.clone()).context(format!(
@@ -124,21 +128,33 @@ impl Server {
                         if let Some(lsp_server::ResponseError { code, message, .. }) = resp.error {
                             return Err(anyhow!("failed to register {MODULE_ROOT_FILENAME} watchers: [{code}] {message}"));
                         }
+
                         // We find the roots only after watchers are registered to avoid possible races
                         // where we would miss new roots that appeared after the walk is complete but
                         // before the watch is set up.
-                        self.module_roots = find_module_roots(&self.workspace_folders);
+                        let roots = find_module_roots(&self.workspace_folders);
+
+                        for root in roots {
+                            let path = types::AbsolutePath::from_path(&root);
+                            if let Some(path) = path {
+                                watch_module_root(&path);
+                            } else {
+                                let root = root.display();
+                                log::warn!(r#"ignoring invalid module root path "{root}""#);
+                            }
+                        }
                         registered_root_watchers = true;
                     }
                 }
-                lsp_server::Message::Notification(not) => {
+                lsp_server::Message::Notification(lsp_server::Notification { method, .. }) => {
                     if !registered_root_watchers {
-                        let lsp_server::Notification { method, .. } = not;
                         log::warn!(
                             r#"got "{method}" notification before root watchers were registered, ignoring"#
                         );
                     }
+
                     // TODO: react on new module roots
+                    log::info!(r#"got "{method}" notification"#);
                 }
             }
         }

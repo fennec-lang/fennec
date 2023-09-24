@@ -19,6 +19,7 @@
         "byteslice",
         "clippy",
         "composability",
+        "condvar",
         "debuggable",
         "disp",
         "dotgraphs",

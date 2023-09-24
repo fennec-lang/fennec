@@ -290,6 +290,7 @@ dependencies = [
  "fennec-vfs",
  "log",
  "once_cell",
+ "parking_lot",
  "regex",
  "time",
  "xshell",
@@ -327,6 +328,7 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
+ "parking_lot",
  "serde",
  "serde_json",
  "walkdir",
@@ -335,6 +337,11 @@ dependencies = [
 [[package]]
 name = "fennec-vfs"
 version = "0.1.6"
+dependencies = [
+ "anyhow",
+ "fennec-common",
+ "parking_lot",
+]
 
 [[package]]
 name = "fixedbitset"

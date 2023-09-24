@@ -323,6 +323,7 @@ module = "example.org/hello"
   - decision paralysis of searching for the fanciest way to express something is bad (rust)
 - shadowing for typestate-like things is convenient
 - Go-like `Public` vs `private` is very convenient for reading the code
+- have a builtin `TODO`/`todo` which can fill any gap?
 
 ### UI
 

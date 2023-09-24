@@ -6,16 +6,35 @@
 
 use std::path::Path;
 
-pub struct RootPath(String); // UTF-8 + forward slash
-pub struct FilePath(String); // UTF-8 + forward slash
+pub struct AbsolutePath(String); // UTF-8 + forward slash
+pub struct RelativePath(String); // UTF-8 + forward slash
 
-impl RootPath {
+impl AbsolutePath {
     #[must_use]
-    pub fn from_path(path: &Path) -> Option<RootPath> {
-        // TODO: do we need to do any normalization here?
-        // TODO: check what we get on windows
-        Some(RootPath(path.to_str()?.to_string()))
+    pub fn from_path(path: &Path) -> Option<AbsolutePath> {
+        let path = path.to_str()?;
+        let path = if cfg!(windows) {
+            path.replace('\\', "/")
+        } else {
+            path.to_string()
+        };
+        Some(AbsolutePath(path))
     }
 }
 
-pub struct Change {}
+pub struct ChangeBuffer {
+    // TODO: atomic? flag for core to check
+}
+
+impl ChangeBuffer {
+    #[must_use]
+    pub fn new() -> ChangeBuffer {
+        ChangeBuffer {}
+    }
+}
+
+impl Default for ChangeBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
