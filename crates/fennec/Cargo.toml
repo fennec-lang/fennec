@@ -16,7 +16,6 @@ clap = { workspace = true, features = ["derive"] }
 env_logger.workspace = true
 log.workspace = true
 once_cell.workspace = true
-parking_lot.workspace = true
 regex.workspace = true
 
 fennec-common.workspace = true

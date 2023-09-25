@@ -9,7 +9,6 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{types, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
-use parking_lot::{Condvar, Mutex};
 use std::path::PathBuf;
 
 const FILE_SCHEME: &str = "file";
@@ -89,12 +88,7 @@ impl Server {
         lsp_server::RequestId::from(id)
     }
 
-    pub fn serve(
-        &mut self,
-        watch_module_root: &dyn Fn(&types::AbsolutePath),
-        _state: &Mutex<types::ChangeBuffer>,
-        _condvar: &Condvar,
-    ) -> Result<(), anyhow::Error> {
+    pub fn run(&mut self, state: &types::State) -> Result<(), anyhow::Error> {
         let reg_id = self.next_id();
         let mut registered_root_watchers = false;
         register_module_root_watchers(&self.conn, reg_id.clone()).context(format!(
@@ -128,22 +122,13 @@ impl Server {
                         if let Some(lsp_server::ResponseError { code, message, .. }) = resp.error {
                             return Err(anyhow!("failed to register {MODULE_ROOT_FILENAME} watchers: [{code}] {message}"));
                         }
+                        registered_root_watchers = true;
 
                         // We find the roots only after watchers are registered to avoid possible races
                         // where we would miss new roots that appeared after the walk is complete but
                         // before the watch is set up.
                         let roots = find_module_roots(&self.workspace_folders);
-
-                        for root in roots {
-                            let path = types::AbsolutePath::from_path(&root);
-                            if let Some(path) = path {
-                                watch_module_root(&path);
-                            } else {
-                                let root = root.display();
-                                log::warn!(r#"ignoring invalid module root path "{root}""#);
-                            }
-                        }
-                        registered_root_watchers = true;
+                        state.signal_new_roots(roots);
                     }
                 }
                 lsp_server::Message::Notification(lsp_server::Notification { method, .. }) => {
@@ -230,8 +215,8 @@ fn register_module_root_watchers(
     Ok(())
 }
 
-fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
-    let mut roots: Vec<PathBuf> = Vec::with_capacity(workspace_folders.len());
+fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<types::AbsolutePath> {
+    let mut roots: Vec<types::AbsolutePath> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
         let walker = walkdir::WalkDir::new(folder).into_iter();
         for entry in walker.filter_entry(is_valid_utf8_visible) {
@@ -240,11 +225,18 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
                     if entry.file_type().is_file()
                         && entry.file_name().to_str() == Some(MODULE_ROOT_FILENAME)
                     {
-                        roots.push(entry.into_path());
+                        let root = entry.into_path();
+                        let path = types::AbsolutePath::from_path(&root);
+                        if let Some(path) = path {
+                            roots.push(path);
+                        } else {
+                            let root = root.display();
+                            log::warn!(r#"ignoring invalid module root path "{root}""#);
+                        }
                     }
                 }
                 Err(err) => {
-                    log::warn!("error while finding module roots: {err}");
+                    log::warn!("error while finding module roots, ignoring: {err}");
                 }
             }
         }

@@ -7,30 +7,47 @@
 #![forbid(unsafe_code)]
 
 use fennec_common::types;
-use parking_lot::{Condvar, Mutex};
+use std::time::Duration;
 
-pub struct Vfs {}
+const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
+
+pub struct Vfs {
+    poll_interval: Duration,
+    module_roots: Vec<types::AbsolutePath>,
+}
 
 impl Vfs {
     #[must_use]
     pub fn new() -> Vfs {
-        Vfs {}
-    }
-
-    pub fn run(&self, _state: &Mutex<types::ChangeBuffer>, _condvar: &Condvar) {
-        loop {
-            // TODO: scan
-            // TODO: sleep
-            todo!()
+        Vfs {
+            poll_interval: DEFAULT_POLL_INTERVAL,
+            module_roots: vec![],
         }
     }
 
-    pub fn watch_module_root(&self, _path: &types::AbsolutePath) {
+    pub fn run(&mut self, state: &types::State) {
+        loop {
+            if self.scan() {
+                state.signal_vfs_updates();
+            }
+
+            let changes = state.wait_vfs(self.poll_interval);
+            if changes.exit {
+                return;
+            }
+            for root in changes.module_roots {
+                self.add_root(root);
+            }
+        }
+    }
+
+    fn add_root(&mut self, root: types::AbsolutePath) {
+        self.module_roots.push(root);
         todo!()
     }
 
-    pub fn join(self) -> Result<(), anyhow::Error> {
-        Ok(())
+    fn scan(&self) -> bool {
+        todo!()
     }
 }
 
@@ -38,8 +55,4 @@ impl Default for Vfs {
     fn default() -> Self {
         Self::new()
     }
-}
-
-impl Drop for Vfs {
-    fn drop(&mut self) {}
 }

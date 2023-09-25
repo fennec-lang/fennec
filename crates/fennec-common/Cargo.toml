@@ -10,6 +10,7 @@ edition.workspace = true
 readme = false
 
 [dependencies]
+parking_lot.workspace = true
 
 [package.metadata.release]
 pre-release-replacements = [

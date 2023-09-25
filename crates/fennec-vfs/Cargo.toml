@@ -11,6 +11,6 @@ readme = false
 
 [dependencies]
 anyhow.workspace = true
-parking_lot.workspace = true
+walkdir.workspace = true
 
 fennec-common.workspace = true

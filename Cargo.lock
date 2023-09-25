@@ -294,7 +294,6 @@ dependencies = [
  "fennec-vfs",
  "log",
  "once_cell",
- "parking_lot",
  "regex",
  "time",
  "xshell",
@@ -303,6 +302,9 @@ dependencies = [
 [[package]]
 name = "fennec-common"
 version = "0.1.6"
+dependencies = [
+ "parking_lot",
+]
 
 [[package]]
 name = "fennec-core"
@@ -332,7 +334,6 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
- "parking_lot",
  "serde",
  "serde_json",
  "walkdir",
@@ -344,7 +345,6 @@ version = "0.1.6"
 dependencies = [
  "anyhow",
  "fennec-common",
- "parking_lot",
  "walkdir",
 ]
 
