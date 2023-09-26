@@ -9,7 +9,7 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{types, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const FILE_SCHEME: &str = "file";
 
@@ -131,20 +131,65 @@ impl Server {
                         state.signal_new_roots(roots);
                     }
                 }
-                lsp_server::Message::Notification(lsp_server::Notification { method, .. }) => {
+                lsp_server::Message::Notification(note) => {
                     if !registered_root_watchers {
+                        let method = note.method;
                         log::warn!(
                             r#"got "{method}" notification before root watchers were registered, ignoring"#
                         );
+                        continue;
                     }
 
-                    // TODO: react on new module roots
-                    log::info!(r#"got "{method}" notification"#);
+                    match extract_note::<lsp_types::notification::DidChangeWatchedFiles>(note) {
+                        Ok(params) => {
+                            let mut roots: Vec<types::AbsolutePath> = vec![];
+                            for change in params.changes {
+                                if change.typ != lsp_types::FileChangeType::CREATED {
+                                    // We react to create events only because we expect to get change/delete events from our VFS.
+                                    // Note that VSCode seems to miss e.g. delete events for module roots
+                                    // when module root parent folder is deleted.
+                                    continue;
+                                }
+                                let uri = change.uri;
+                                if uri.scheme() != FILE_SCHEME {
+                                    log::warn!(
+                                        r#"ignoring non-file-scheme change event for "{uri}""#
+                                    );
+                                    continue;
+                                }
+                                if let Ok(root) = uri.to_file_path() {
+                                    let root = module_root_path_or_warn(&root);
+                                    roots.extend(root);
+                                } else {
+                                    log::warn!(
+                                        r#"ignoring change event with invalid file path "{uri}""#
+                                    );
+                                }
+                            }
+                            state.signal_new_roots(roots);
+                        }
+                        Err(err) => {
+                            let method = lsp_types::notification::DidChangeWatchedFiles::METHOD;
+                            log::warn!(
+                                r#"failed to extract "{method}" notification params, ignoring: {err}"#
+                            );
+                        }
+                    }
                 }
             }
         }
         Ok(())
     }
+}
+
+fn extract_note<N>(
+    note: lsp_server::Notification,
+) -> Result<N::Params, lsp_server::ExtractError<lsp_server::Notification>>
+where
+    N: lsp_types::notification::Notification,
+    N::Params: serde::de::DeserializeOwned,
+{
+    note.extract(N::METHOD)
 }
 
 fn cap_fs_watch_dynamic(init_params: &lsp_types::InitializeParams) -> bool {
@@ -188,7 +233,7 @@ fn register_module_root_watchers(
     let opts = lsp_types::DidChangeWatchedFilesRegistrationOptions {
         watchers: vec![lsp_types::FileSystemWatcher {
             glob_pattern: lsp_types::GlobPattern::String(format!("**/{MODULE_ROOT_FILENAME}")),
-            kind: None, // create + change + delete
+            kind: Some(lsp_types::WatchKind::Create),
         }],
     };
     let opts = serde_json::to_value(opts)
@@ -215,6 +260,15 @@ fn register_module_root_watchers(
     Ok(())
 }
 
+fn module_root_path_or_warn(root: &Path) -> Option<types::AbsolutePath> {
+    let path = types::AbsolutePath::from_path(root);
+    if path.is_none() {
+        let root = root.display();
+        log::warn!(r#"ignoring invalid module root path "{root}""#);
+    }
+    path
+}
+
 fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<types::AbsolutePath> {
     let mut roots: Vec<types::AbsolutePath> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
@@ -226,13 +280,7 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<types::AbsolutePat
                         && entry.file_name().to_str() == Some(MODULE_ROOT_FILENAME)
                     {
                         let root = entry.into_path();
-                        let path = types::AbsolutePath::from_path(&root);
-                        if let Some(path) = path {
-                            roots.push(path);
-                        } else {
-                            let root = root.display();
-                            log::warn!(r#"ignoring invalid module root path "{root}""#);
-                        }
+                        roots.extend(module_root_path_or_warn(&root));
                     }
                 }
                 Err(err) => {
