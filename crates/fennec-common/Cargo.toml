@@ -10,6 +10,7 @@ edition.workspace = true
 readme = false
 
 [dependencies]
+ahash.workspace = true
 parking_lot.workspace = true
 
 [package.metadata.release]

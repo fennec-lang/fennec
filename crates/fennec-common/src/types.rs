@@ -6,32 +6,21 @@
 
 use parking_lot::{Condvar, Mutex};
 use std::{
-    path::Path,
+    path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
 
-pub struct AbsolutePath(String); // UTF-8 + forward slash
-pub struct RelativePath(String); // UTF-8 + forward slash
-
-impl AbsolutePath {
-    #[must_use]
-    pub fn from_path(path: &Path) -> Option<AbsolutePath> {
-        debug_assert!(path.is_absolute());
-        let path = path.to_str()?;
-        let path = if cfg!(windows) {
-            path.replace('\\', "/")
-        } else {
-            path.to_string()
-        };
-        Some(AbsolutePath(path))
-    }
-}
+pub type HashMap<K, V> = std::collections::HashMap<K, V, ahash::RandomState>;
+pub type HashSet<K> = std::collections::HashSet<K, ahash::RandomState>;
 
 #[derive(Default)]
 pub struct VfsChangeBuffer {
     pub exit: bool,
-    pub module_roots: Vec<AbsolutePath>,
+    // Another possibility would be to watch workspace roots and not module roots.
+    // While more general, that would duplicate more of the client-side watching
+    // and be less efficient, so we expect the client to feed us with module roots.
+    pub module_roots: Vec<PathBuf>,
 }
 
 #[derive(Default)]
@@ -86,7 +75,7 @@ impl State {
         }
     }
 
-    pub fn signal_new_roots(&self, roots: Vec<AbsolutePath>) {
+    pub fn signal_new_roots(&self, roots: Vec<PathBuf>) {
         let mut vfs = self.vfs_changes.lock();
         vfs.module_roots.extend(roots);
         self.notify_vfs();
@@ -98,10 +87,10 @@ impl State {
         self.notify_core();
     }
 
-    pub fn wait_vfs(&self, timeout: Duration) -> VfsChangeBuffer {
+    pub fn wait_vfs(&self, timeout: Duration) -> (VfsChangeBuffer, bool) {
         let mut vfs = self.vfs_changes.lock();
-        self.vfs_condvar.wait_for(&mut vfs, timeout);
-        std::mem::take(&mut vfs)
+        let res = self.vfs_condvar.wait_for(&mut vfs, timeout);
+        (std::mem::take(&mut vfs), res.timed_out())
     }
 
     pub fn wait_core(&self) -> CoreChangeBuffer {

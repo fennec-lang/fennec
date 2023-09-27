@@ -15,8 +15,10 @@
         "adn:and"
     ],
     "words": [
+        "ahash",
         "bstr",
         "byteslice",
+        "canonicalize",
         "clippy",
         "composability",
         "condvar",

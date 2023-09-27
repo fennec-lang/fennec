@@ -4,13 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#![forbid(unsafe_code)]
+use std::ffi::OsStr;
 
-pub mod module;
-pub mod types;
-pub mod util;
-
-pub const PROJECT_NAME: &str = "fennec";
-pub const RELEASE_VERSION: &str = "0.1.6";
-pub const MODULE_ROOT_FILENAME: &str = "fennec.toml";
-pub const SOURCE_EXTENSION: &str = "fn";
+#[must_use]
+pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
+    file_name // windows: WTF-8, unix: byte slice, usually UTF-8
+        .to_str() // maybe UTF-8
+        .map_or(false, |s| !s.starts_with('.'))
+}

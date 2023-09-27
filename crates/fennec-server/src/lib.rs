@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context};
-use fennec_common::{types, MODULE_ROOT_FILENAME, PROJECT_NAME};
+use fennec_common::{types, util, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
 use std::path::{Path, PathBuf};
 
@@ -142,7 +142,7 @@ impl Server {
 
                     match extract_note::<lsp_types::notification::DidChangeWatchedFiles>(note) {
                         Ok(params) => {
-                            let mut roots: Vec<types::AbsolutePath> = vec![];
+                            let mut roots: Vec<PathBuf> = vec![];
                             for change in params.changes {
                                 if change.typ != lsp_types::FileChangeType::CREATED {
                                     // We react to create events only because we expect to get change/delete events from our VFS.
@@ -158,8 +158,7 @@ impl Server {
                                     continue;
                                 }
                                 if let Ok(root) = uri.to_file_path() {
-                                    let root = module_root_path_or_warn(&root);
-                                    roots.extend(root);
+                                    roots.extend(canonical_module_root_parent(&root));
                                 } else {
                                     log::warn!(
                                         r#"ignoring change event with invalid file path "{uri}""#
@@ -260,27 +259,15 @@ fn register_module_root_watchers(
     Ok(())
 }
 
-fn module_root_path_or_warn(root: &Path) -> Option<types::AbsolutePath> {
-    let path = types::AbsolutePath::from_path(root);
-    if path.is_none() {
-        let root = root.display();
-        log::warn!(r#"ignoring invalid module root path "{root}""#);
-    }
-    path
-}
-
-fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<types::AbsolutePath> {
-    let mut roots: Vec<types::AbsolutePath> = Vec::with_capacity(workspace_folders.len());
+fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::with_capacity(workspace_folders.len());
     for folder in workspace_folders {
         let walker = walkdir::WalkDir::new(folder).into_iter();
-        for entry in walker.filter_entry(is_valid_utf8_visible) {
+        for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
             match entry {
                 Ok(entry) => {
-                    if entry.file_type().is_file()
-                        && entry.file_name().to_str() == Some(MODULE_ROOT_FILENAME)
-                    {
-                        let root = entry.into_path();
-                        roots.extend(module_root_path_or_warn(&root));
+                    if entry.file_type().is_file() && entry.file_name() == MODULE_ROOT_FILENAME {
+                        roots.extend(canonical_module_root_parent(&entry.into_path()));
                     }
                 }
                 Err(err) => {
@@ -292,9 +279,14 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<types::AbsolutePat
     roots
 }
 
-fn is_valid_utf8_visible(entry: &walkdir::DirEntry) -> bool {
-    entry
-        .file_name() // windows: WTF-8, unix: byte slice, usually UTF-8
-        .to_str() // maybe UTF-8
-        .map_or(false, |s| !s.starts_with('.'))
+fn canonical_module_root_parent(root: &Path) -> Option<PathBuf> {
+    debug_assert!(root.file_name() == Some(MODULE_ROOT_FILENAME.as_ref()));
+    match root.canonicalize() {
+        Ok(root) => Some(root.parent()?.to_path_buf()),
+        Err(err) => {
+            let root = root.display();
+            log::warn!(r#"failed to canonicalize module root "{root}", ignoring: {err}"#);
+            None
+        }
+    }
 }

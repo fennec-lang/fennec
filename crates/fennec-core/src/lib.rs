@@ -29,9 +29,10 @@ impl Core {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn apply(&mut self, _changes: &mut types::CoreChangeBuffer, _state: &types::State) {
         // TODO: take changes by value
-        todo!()
+        log::warn!("TODO");
     }
 
     // TODO: sync + async diagnostics + results
