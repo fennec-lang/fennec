@@ -20,8 +20,7 @@ pub struct Server {
 
     // from LSP InitializeParams
     workspace_folders: Vec<PathBuf>,
-    pub utf8_pos: bool,                 // TODO: remove pub, use
-    pub parent_process_id: Option<u32>, // TODO: remove pub, exit when parent is dead
+    pub utf8_pos: bool, // TODO: remove pub, use
 }
 
 impl Server {
@@ -67,13 +66,17 @@ impl Server {
         conn.initialize_finish(id, init_result)
             .context("failed to send InitializeResult")?;
 
+        // We don't handle init_params.process_id in any way here.
+        // Ideally, lsp_server should react to EOF from stdin and
+        // initiate clean shutdown (disconnect the sending side of conn.receiver).
+        // However, I have not tested that it actually works.
+
         Ok(Server {
             conn,
             io_threads,
             request_id: 0,
             utf8_pos,
             workspace_folders: folders,
-            parent_process_id: init_params.process_id,
         })
     }
 
