@@ -9,6 +9,7 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{types, util, MODULE_ROOT_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
+use normalize_path::NormalizePath;
 use std::path::{Path, PathBuf};
 
 const FILE_SCHEME: &str = "file";
@@ -161,7 +162,7 @@ impl Server {
                                     continue;
                                 }
                                 if let Ok(root) = uri.to_file_path() {
-                                    roots.extend(canonical_module_root_parent(&root));
+                                    roots.extend(module_root_parent(&root));
                                 } else {
                                     log::warn!(
                                         r#"ignoring change event with invalid file path "{uri}""#
@@ -270,7 +271,7 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
             match entry {
                 Ok(entry) => {
                     if entry.file_type().is_file() && entry.file_name() == MODULE_ROOT_FILENAME {
-                        roots.extend(canonical_module_root_parent(&entry.into_path()));
+                        roots.extend(module_root_parent(&entry.into_path()));
                     }
                 }
                 Err(err) => {
@@ -282,14 +283,7 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
     roots
 }
 
-fn canonical_module_root_parent(root: &Path) -> Option<PathBuf> {
+fn module_root_parent(root: &Path) -> Option<PathBuf> {
     debug_assert!(root.file_name() == Some(MODULE_ROOT_FILENAME.as_ref()));
-    match root.canonicalize() {
-        Ok(root) => Some(root.parent()?.to_path_buf()),
-        Err(err) => {
-            let root = root.display();
-            log::warn!(r#"failed to canonicalize module root "{root}", ignoring: {err}"#);
-            None
-        }
-    }
+    Some(root.normalize().parent()?.to_path_buf())
 }
