@@ -324,6 +324,9 @@ module = "example.org/hello"
 - shadowing for typestate-like things is convenient
 - Go-like `Public` vs `private` is very convenient for reading the code
 - have a builtin `TODO`/`todo` which can fill any gap?
+- consider treating `ctx` (zig-like) as fundamental building block
+  - reification of lexical scoping
+  - build scoped (structured) arena allocations, scoped (structured) concurrency around it
 
 ### UI
 
