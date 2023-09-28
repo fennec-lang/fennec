@@ -29,7 +29,7 @@ pub struct CoreChangeBuffer {
     pub vfs_version: i32, // TODO: store the real thing
 }
 
-pub struct State {
+pub struct SyncState {
     vfs_changes: Mutex<VfsChangeBuffer>,
     vfs_condvar: Condvar,
     core_changes: Mutex<CoreChangeBuffer>,
@@ -37,10 +37,10 @@ pub struct State {
     core_condvar: Condvar,
 }
 
-impl State {
+impl SyncState {
     #[must_use]
-    pub fn new() -> State {
-        State {
+    pub fn new() -> SyncState {
+        SyncState {
             vfs_changes: Mutex::new(VfsChangeBuffer::default()),
             vfs_condvar: Condvar::new(),
             core_changes: Mutex::new(CoreChangeBuffer::default()),
@@ -100,7 +100,7 @@ impl State {
     }
 }
 
-impl Default for State {
+impl Default for SyncState {
     fn default() -> Self {
         Self::new()
     }

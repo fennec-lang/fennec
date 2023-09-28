@@ -25,7 +25,7 @@ impl Vfs {
         }
     }
 
-    pub fn run(&mut self, state: &types::State) {
+    pub fn run(&mut self, state: &types::SyncState) {
         loop {
             let (changes, timed_out) = state.wait_vfs(self.poll_interval);
             if changes.exit {

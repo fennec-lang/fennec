@@ -92,7 +92,7 @@ impl Server {
         lsp_server::RequestId::from(id)
     }
 
-    pub fn run(&mut self, state: &types::State) -> Result<(), anyhow::Error> {
+    pub fn run(&mut self, state: &types::SyncState) -> Result<(), anyhow::Error> {
         let reg_id = self.next_id();
         let mut registered_manifest_watchers = false;
         register_module_manifest_watchers(&self.conn, reg_id.clone()).context(format!(

@@ -18,7 +18,7 @@ impl Core {
         Core {}
     }
 
-    pub fn run(&mut self, state: &types::State) {
+    pub fn run(&mut self, state: &types::SyncState) {
         loop {
             let mut changes = state.wait_core();
             if changes.exit {
@@ -30,7 +30,7 @@ impl Core {
     }
 
     #[allow(clippy::unused_self)]
-    fn apply(&mut self, _changes: &mut types::CoreChangeBuffer, _state: &types::State) {
+    fn apply(&mut self, _changes: &mut types::CoreChangeBuffer, _state: &types::SyncState) {
         // TODO: take changes by value
         log::warn!("TODO");
     }

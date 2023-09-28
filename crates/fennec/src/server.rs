@@ -24,7 +24,7 @@ pub fn cmd(args: &Args) -> anyhow::Result<()> {
         return Err(anyhow!("--stdio is the only supported LSP mode"));
     }
 
-    let state = types::State::new();
+    let state = types::SyncState::new();
     let mut vfs = Vfs::new();
     let mut core = Core::new();
     let mut srv = Server::new_stdio(vcs_version()).context("failed to initialize LSP server")?;
