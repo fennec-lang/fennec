@@ -16,6 +16,8 @@ pub struct Vfs {
     module_roots: types::HashSet<PathBuf>,
 }
 
+// TODO: react on "saved" notifications from the client to update the in-memory content more efficiently
+
 impl Vfs {
     #[must_use]
     pub fn new() -> Vfs {
@@ -46,7 +48,7 @@ impl Vfs {
 
     fn scan(&mut self) -> bool {
         for root in &self.module_roots {
-            let walker = walkdir::WalkDir::new(root).into_iter();
+            let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
             for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
                 match entry {
                     // TODO: ensure root still has `fennec.toml`
