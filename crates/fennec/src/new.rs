@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::Context;
-use fennec_common::{MODULE_ROOT_FILENAME, PROJECT_NAME, RELEASE_VERSION};
+use fennec_common::{MODULE_MANIFEST_FILENAME, PROJECT_NAME, RELEASE_VERSION};
 use fennec_core::import;
 use std::{fs, io::Write, path::Path};
 
@@ -28,7 +28,7 @@ pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
     fs::create_dir_all(dir)
         .with_context(|| format!(r#"failed to create module directory "{dir}""#))?;
 
-    let path = Path::new(dir).join(MODULE_ROOT_FILENAME);
+    let path = Path::new(dir).join(MODULE_MANIFEST_FILENAME);
     let disp = path.display();
     let mut file = fs::OpenOptions::new()
         .create_new(true)

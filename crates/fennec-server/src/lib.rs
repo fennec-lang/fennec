@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context};
-use fennec_common::{types, util, MODULE_ROOT_FILENAME, PROJECT_NAME};
+use fennec_common::{types, util, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
 use normalize_path::NormalizePath;
 use std::path::{Path, PathBuf};
@@ -94,9 +94,9 @@ impl Server {
 
     pub fn run(&mut self, state: &types::State) -> Result<(), anyhow::Error> {
         let reg_id = self.next_id();
-        let mut registered_root_watchers = false;
-        register_module_root_watchers(&self.conn, reg_id.clone()).context(format!(
-            "failed to register {MODULE_ROOT_FILENAME} watchers"
+        let mut registered_manifest_watchers = false;
+        register_module_manifest_watchers(&self.conn, reg_id.clone()).context(format!(
+            "failed to register {MODULE_MANIFEST_FILENAME} watchers"
         ))?;
 
         for msg in &self.conn.receiver {
@@ -105,10 +105,10 @@ impl Server {
                     if self.conn.handle_shutdown(&req)? {
                         return Ok(());
                     }
-                    if !registered_root_watchers {
+                    if !registered_manifest_watchers {
                         let lsp_server::Request { id, method, .. } = req;
                         let msg = format!(
-                            r#"got "{method}" (id {id}) request before root watchers were registered, ignoring"#
+                            r#"got "{method}" (id {id}) request before module manifest watchers were registered, ignoring"#
                         );
                         log::warn!("{msg}");
                         let _ = self.conn.sender.send(
@@ -124,9 +124,9 @@ impl Server {
                 lsp_server::Message::Response(resp) => {
                     if resp.id == reg_id {
                         if let Some(lsp_server::ResponseError { code, message, .. }) = resp.error {
-                            return Err(anyhow!("failed to register {MODULE_ROOT_FILENAME} watchers: [{code}] {message}"));
+                            return Err(anyhow!("failed to register {MODULE_MANIFEST_FILENAME} watchers: [{code}] {message}"));
                         }
-                        registered_root_watchers = true;
+                        registered_manifest_watchers = true;
 
                         // We find the roots only after watchers are registered to avoid possible races
                         // where we would miss new roots that appeared after the walk is complete but
@@ -136,10 +136,10 @@ impl Server {
                     }
                 }
                 lsp_server::Message::Notification(note) => {
-                    if !registered_root_watchers {
+                    if !registered_manifest_watchers {
                         let method = note.method;
                         log::warn!(
-                            r#"got "{method}" notification before root watchers were registered, ignoring"#
+                            r#"got "{method}" notification before module manifest watchers were registered, ignoring"#
                         );
                         continue;
                     }
@@ -150,8 +150,8 @@ impl Server {
                             for change in params.changes {
                                 if change.typ != lsp_types::FileChangeType::CREATED {
                                     // We react to create events only because we expect to get change/delete events from our VFS.
-                                    // Note that VSCode seems to miss e.g. delete events for module roots
-                                    // when module root parent folder is deleted.
+                                    // Note that VSCode seems to miss e.g. delete events for module manifests
+                                    // when module manifest parent folder is deleted.
                                     continue;
                                 }
                                 let uri = change.uri;
@@ -161,8 +161,8 @@ impl Server {
                                     );
                                     continue;
                                 }
-                                if let Ok(root) = uri.to_file_path() {
-                                    roots.extend(module_root_parent(&root));
+                                if let Ok(manifest) = uri.to_file_path() {
+                                    roots.extend(module_manifest_parent(&manifest));
                                 } else {
                                     log::warn!(
                                         r#"ignoring change event with invalid file path "{uri}""#
@@ -229,13 +229,13 @@ fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<PathBuf> {
         .collect()
 }
 
-fn register_module_root_watchers(
+fn register_module_manifest_watchers(
     conn: &lsp_server::Connection,
     id: lsp_server::RequestId,
 ) -> Result<(), anyhow::Error> {
     let opts = lsp_types::DidChangeWatchedFilesRegistrationOptions {
         watchers: vec![lsp_types::FileSystemWatcher {
-            glob_pattern: lsp_types::GlobPattern::String(format!("**/{MODULE_ROOT_FILENAME}")),
+            glob_pattern: lsp_types::GlobPattern::String(format!("**/{MODULE_MANIFEST_FILENAME}")),
             kind: Some(lsp_types::WatchKind::Create),
         }],
     };
@@ -244,7 +244,7 @@ fn register_module_root_watchers(
 
     let params = lsp_types::RegistrationParams {
         registrations: vec![lsp_types::Registration {
-            id: MODULE_ROOT_FILENAME.to_owned(),
+            id: MODULE_MANIFEST_FILENAME.to_owned(),
             method: lsp_types::notification::DidChangeWatchedFiles::METHOD.to_owned(),
             register_options: Some(opts),
         }],
@@ -270,12 +270,13 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
         for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
             match entry {
                 Ok(entry) => {
-                    if entry.file_type().is_file() && entry.file_name() == MODULE_ROOT_FILENAME {
-                        roots.extend(module_root_parent(&entry.into_path()));
+                    if entry.file_type().is_file() && entry.file_name() == MODULE_MANIFEST_FILENAME
+                    {
+                        roots.extend(module_manifest_parent(&entry.into_path()));
                     }
                 }
                 Err(err) => {
-                    log::warn!("error while finding module roots, ignoring: {err}");
+                    log::warn!("error while scanning for module roots, ignoring: {err}");
                 }
             }
         }
@@ -283,7 +284,7 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
     roots
 }
 
-fn module_root_parent(root: &Path) -> Option<PathBuf> {
-    debug_assert!(root.file_name() == Some(MODULE_ROOT_FILENAME.as_ref()));
-    Some(root.normalize().parent()?.to_path_buf())
+fn module_manifest_parent(manifest: &Path) -> Option<PathBuf> {
+    debug_assert!(manifest.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref()));
+    Some(manifest.normalize().parent()?.to_path_buf())
 }

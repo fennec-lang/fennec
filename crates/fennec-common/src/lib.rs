@@ -12,5 +12,5 @@ pub mod util;
 
 pub const PROJECT_NAME: &str = "fennec";
 pub const RELEASE_VERSION: &str = "0.1.6";
-pub const MODULE_ROOT_FILENAME: &str = "fennec.toml";
+pub const MODULE_MANIFEST_FILENAME: &str = "fennec.toml";
 pub const SOURCE_EXTENSION: &str = "fn";
