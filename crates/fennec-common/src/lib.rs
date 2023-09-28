@@ -6,9 +6,11 @@
 
 #![forbid(unsafe_code)]
 
-pub mod module;
 pub mod types;
 pub mod util;
+
+mod module;
+mod syncstate;
 
 pub const PROJECT_NAME: &str = "fennec";
 pub const RELEASE_VERSION: &str = "0.1.6";
