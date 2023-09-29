@@ -21,7 +21,7 @@ pub struct Server {
 
     // from LSP InitializeParams
     workspace_folders: Vec<PathBuf>,
-    pub utf8_pos: bool, // TODO: remove pub, use
+    _utf8_pos: bool, // TODO: use
 }
 
 impl Server {
@@ -76,7 +76,7 @@ impl Server {
             conn,
             io_threads,
             request_id: 0,
-            utf8_pos,
+            _utf8_pos: utf8_pos,
             workspace_folders: folders,
         })
     }

@@ -5,8 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::Context;
-use fennec_common::{MODULE_MANIFEST_FILENAME, PROJECT_NAME, RELEASE_VERSION};
-use fennec_core::import;
+use fennec_common::{types, MODULE_MANIFEST_FILENAME, PROJECT_NAME, RELEASE_VERSION};
 use std::{fs, io::Write, path::Path};
 
 #[derive(clap::Args)]
@@ -21,7 +20,7 @@ pub struct Args {
 
 pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
     let mod_path = &args.module_path;
-    let mod_path = import::Path::parse(mod_path)
+    let mod_path = types::ImportPath::parse(mod_path)
         .with_context(|| format!(r#"invalid module path "{mod_path}""#))?;
 
     let dir = args.dir.as_deref().unwrap_or(mod_path.package());

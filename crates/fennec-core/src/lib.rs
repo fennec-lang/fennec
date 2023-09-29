@@ -8,8 +8,6 @@
 
 use fennec_common::types;
 
-pub mod import;
-
 pub struct Core {}
 
 impl Core {

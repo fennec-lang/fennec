@@ -10,7 +10,7 @@ use regex::Regex;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct Path {
+pub struct ImportPath {
     path: String,
     package: String,
     has_domain: bool,
@@ -23,7 +23,7 @@ static DOMAIN_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9.-]+$").expect
 static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect(BAD_RE));
 const BAD_RE: &str = "invalid regex literal";
 
-impl Path {
+impl ImportPath {
     // From https://go.dev/ref/mod#go-mod-file-ident:
     //
     // A module path must satisfy the following requirements:
@@ -51,15 +51,15 @@ impl Path {
     //   digits and dots), N must not begin with a leading zero, must not be /v1,
     //   and must not contain any dots.
 
-    pub fn parse(path: &str) -> Result<Path, anyhow::Error> {
+    pub fn parse(path: &str) -> Result<ImportPath, anyhow::Error> {
         Self::do_parse(path, false)
     }
 
-    pub fn parse_external_dep(path: &str) -> Result<Path, anyhow::Error> {
+    pub fn parse_external_dep(path: &str) -> Result<ImportPath, anyhow::Error> {
         Self::do_parse(path, true)
     }
 
-    fn do_parse(path: &str, expect_domain: bool) -> Result<Path, anyhow::Error> {
+    fn do_parse(path: &str, expect_domain: bool) -> Result<ImportPath, anyhow::Error> {
         let mut last: Option<&str> = None;
         let mut before_last: Option<&str> = None;
         let mut has_domain = false;
@@ -93,7 +93,7 @@ impl Path {
         };
         Self::check_package(package)?;
 
-        Ok(Path {
+        Ok(ImportPath {
             path: path.into(),
             package: package.into(),
             has_domain,
@@ -205,7 +205,7 @@ impl Path {
     }
 }
 
-impl fmt::Display for Path {
+impl fmt::Display for ImportPath {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_str().fmt(f)
     }
@@ -226,10 +226,10 @@ mod tests {
 
     #[test]
     fn parse_path() -> Result<(), anyhow::Error> {
-        let expected: HashMap<&str, Path> = HashMap::from([
+        let expected: HashMap<&str, ImportPath> = HashMap::from([
             (
                 "fmt",
-                Path {
+                ImportPath {
                     path: "fmt".into(),
                     package: "fmt".into(),
                     has_domain: false,
@@ -237,7 +237,7 @@ mod tests {
             ),
             (
                 "math/bits",
-                Path {
+                ImportPath {
                     path: "math/bits".into(),
                     package: "bits".into(),
                     has_domain: false,
@@ -245,7 +245,7 @@ mod tests {
             ),
             (
                 "math/bits/v2",
-                Path {
+                ImportPath {
                     path: "math/bits/v2".into(),
                     package: "bits".into(),
                     has_domain: false,
@@ -253,7 +253,7 @@ mod tests {
             ),
             (
                 "example/hello",
-                Path {
+                ImportPath {
                     path: "example/hello".into(),
                     package: "hello".into(),
                     has_domain: false,
@@ -261,7 +261,7 @@ mod tests {
             ),
             (
                 "example.org/hello",
-                Path {
+                ImportPath {
                     path: "example.org/hello".into(),
                     package: "hello".into(),
                     has_domain: true,
@@ -269,7 +269,7 @@ mod tests {
             ),
             (
                 "github.com/fennec-lang/fennec",
-                Path {
+                ImportPath {
                     path: "github.com/fennec-lang/fennec".into(),
                     package: "fennec".into(),
                     has_domain: true,
@@ -277,7 +277,7 @@ mod tests {
             ),
             (
                 "github.com/fennec-lang/fennec/v2/test",
-                Path {
+                ImportPath {
                     path: "github.com/fennec-lang/fennec/v2/test".into(),
                     package: "test".into(),
                     has_domain: true,
@@ -286,7 +286,7 @@ mod tests {
         ]);
 
         for p in expected {
-            let r = Path::parse(p.0)?;
+            let r = ImportPath::parse(p.0)?;
             assert_eq!(r, p.1);
         }
 
@@ -303,7 +303,7 @@ mod tests {
         ];
 
         for e in errors {
-            let r = Path::parse(e);
+            let r = ImportPath::parse(e);
             assert!(r.is_err());
         }
 
@@ -321,7 +321,7 @@ mod tests {
         ];
 
         for e in dep_errors {
-            let r = Path::parse_external_dep(e);
+            let r = ImportPath::parse_external_dep(e);
             assert!(r.is_err());
         }
 

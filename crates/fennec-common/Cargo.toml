@@ -11,7 +11,10 @@ readme = false
 
 [dependencies]
 ahash.workspace = true
+anyhow.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
+regex.workspace = true
 
 [package.metadata.release]
 pre-release-replacements = [

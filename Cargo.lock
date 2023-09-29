@@ -316,18 +316,18 @@ name = "fennec-common"
 version = "0.1.6"
 dependencies = [
  "ahash",
+ "anyhow",
+ "once_cell",
  "parking_lot",
+ "regex",
 ]
 
 [[package]]
 name = "fennec-core"
 version = "0.1.6"
 dependencies = [
- "anyhow",
  "fennec-common",
  "log",
- "once_cell",
- "regex",
 ]
 
 [[package]]
