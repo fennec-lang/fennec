@@ -137,15 +137,15 @@ impl ImportPath {
             return Err(anyhow!("import path element must match {re}"));
         }
 
-        if PATH_ELEM_DENY_RE.is_match(elem) {
-            let re = PATH_ELEM_DENY_RE.as_str();
-            return Err(anyhow!("import path element must not match {re}"));
-        }
-
         let prefix = match elem.split_once('.') {
             Some(s) => s.0,
             None => elem,
         };
+
+        if PATH_ELEM_DENY_RE.is_match(prefix) {
+            let re = PATH_ELEM_DENY_RE.as_str();
+            return Err(anyhow!("import path element prefix must not match {re}"));
+        }
 
         for reserved in RESERVED_WINDOWS_NAMES {
             if prefix.eq_ignore_ascii_case(reserved) {
@@ -314,6 +314,7 @@ mod tests {
             "example.org//test",
             "example.org/CON.2/test",
             "example.org/hello~0/test",
+            "example.org/hello~0.com/test",
             "example.org/hello/test~",
             "example.org/test/v1",
             "example.org/test/v0.1",
