@@ -67,6 +67,8 @@
         "stackless",
         "struct",
         "structs",
+        "subdir",
+        "subdirs",
         "typestate",
         "udeps",
         "UFCS",

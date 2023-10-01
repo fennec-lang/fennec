@@ -4,14 +4,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use fennec_common::{types, util, SOURCE_EXTENSION};
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use std::{path::PathBuf, time::Duration};
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
 
+#[derive(Default)]
+struct DirectoryTree {
+    _subdirs: Vec<DirectoryTree>,
+    _files: Vec<workspace::File>,
+}
+
 pub struct Vfs {
     poll_interval: Duration,
     scan_roots: Vec<PathBuf>, // sorted; no element is a prefix of another element
+    scan_trees: Vec<DirectoryTree>, // same order as scan_roots
 }
 
 impl Vfs {
@@ -20,6 +27,7 @@ impl Vfs {
         Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
             scan_roots: Vec::default(),
+            scan_trees: Vec::default(),
         }
     }
 
@@ -39,8 +47,8 @@ impl Vfs {
                 should_scan |= self.add_root(root);
             }
 
-            if should_scan && self.scan() {
-                // TODO: update the local workspace state
+            if should_scan {
+                self.scan();
                 state.signal_vfs_updates(Vec::default());
             }
         }
@@ -58,33 +66,43 @@ impl Vfs {
                     }
                 }
                 self.scan_roots.insert(ix, root);
+                self.scan_trees.insert(ix, DirectoryTree::default());
                 true
             }
         }
     }
 
-    fn scan(&mut self) -> bool {
-        for root in &self.scan_roots {
-            let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
-            for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
-                match entry {
-                    Ok(entry) => {
-                        if entry.file_type().is_file()
-                            && entry.path().extension() == Some(SOURCE_EXTENSION.as_ref())
-                        {
-                            log::info!("got {entry:?} !!!");
+    fn scan(&mut self) {
+        for (root, prev_tree) in self.scan_roots.iter().zip(self.scan_trees.iter()) {
+            Self::scan_root(root, prev_tree);
+        }
+        // TODO: build a fs tree; from it produce a module tree; diff it to the prev. module tree and push the changes
+    }
+
+    fn scan_root(root: &PathBuf, _prev_tree: &DirectoryTree) -> DirectoryTree {
+        let tree = DirectoryTree::default();
+        let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
+        for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
+            match entry {
+                Ok(entry) => {
+                    if entry.file_type().is_file() {
+                        if entry.file_name() == MODULE_MANIFEST_FILENAME {
+                            log::info!("got manifest {entry:?} !!!");
+                        } else if util::valid_source_file_name(entry.file_name()) {
+                            log::info!("got source {entry:?} !!!");
                         }
+                    } else if entry.file_type().is_dir()
+                        && util::valid_package_name(entry.file_name())
+                    {
+                        log::info!("got directory {entry:?} !!!");
                     }
-                    Err(err) => {
-                        log::warn!("error while scanning VFS, ignoring: {err}");
-                    }
+                }
+                Err(err) => {
+                    log::warn!("error while scanning VFS, ignoring: {err}");
                 }
             }
         }
-
-        // TODO: build a fs tree; from it produce a module tree; diff it to the prev. module tree and push the changes
-
-        true // TODO: return if we found something new
+        tree
     }
 }
 
