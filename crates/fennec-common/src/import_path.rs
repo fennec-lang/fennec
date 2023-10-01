@@ -16,7 +16,8 @@ pub struct ImportPath {
     has_domain: bool,
 }
 
-static PACKAGE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z][a-z0-9_]*$").expect(BAD_RE));
+pub(crate) static PACKAGE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[a-z][a-z0-9_]*$").expect(BAD_RE));
 static PATH_ELEM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._\-~]+$").expect(BAD_RE));
 static PATH_ELEM_DENY_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"~[0-9]+$").expect(BAD_RE));
 static DOMAIN_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9.-]+$").expect(BAD_RE));
@@ -212,7 +213,7 @@ impl fmt::Display for ImportPath {
 }
 
 // https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
-const RESERVED_WINDOWS_NAMES: &[&str] = &[
+pub(crate) const RESERVED_WINDOWS_NAMES: &[&str] = &[
     "CON", "PRN", "AUX", "NUL", //
     "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", //
     "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
