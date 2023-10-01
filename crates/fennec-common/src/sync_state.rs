@@ -16,10 +16,8 @@ use crate::workspace;
 #[derive(Default)]
 pub struct VfsChangeBuffer {
     pub exit: bool,
-    // Another possibility would be to watch workspace roots and not module roots.
-    // While more general, that would duplicate more of the client-side watching
-    // and be less efficient, so we expect the client to feed us with module roots.
-    pub module_roots: Vec<PathBuf>,
+    // Scan roots usually correspond to directories with a manifest file, but they don't have to.
+    pub scan_roots: Vec<PathBuf>,
 }
 
 #[derive(Default)]
@@ -76,7 +74,7 @@ impl SyncState {
 
     pub fn signal_new_roots(&self, roots: Vec<PathBuf>) {
         let mut vfs = self.vfs_changes.lock();
-        vfs.module_roots.extend(roots);
+        vfs.scan_roots.extend(roots);
         self.notify_vfs();
     }
 

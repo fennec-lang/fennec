@@ -17,7 +17,7 @@ pub struct Server {
     io_threads: lsp_server::IoThreads,
     request_id: i32,
 
-    // from LSP InitializeParams
+    // From LSP InitializeParams:
     workspace_folders: Vec<PathBuf>,
     _utf8_pos: bool, // TODO: use
 }

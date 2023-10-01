@@ -164,6 +164,14 @@ module = "example.org/hello"
 - mutexes
   - should be able to make them non-atomic for single-threaded components
 
+### Synchronization
+
+- can we unify channels and condvars in one primitive (state + lock + optional notification)?
+  - channel can be seen as a specialization of condvar for `vec[T]` state
+  - condvar can be seen as a generalization of channel for "arbitrary" (constrained) state
+    - that can be inspected and modified (e.g. for cancellation)
+  - [Go proposal to remove sync.Cond](https://github.com/golang/go/issues/21165)
+
 ### Strings / byte slices / vectors
 
 - want:
@@ -248,6 +256,7 @@ module = "example.org/hello"
 ### Testing
 
 - liberal use of assertions in non-test code
+  - allow to specify type invariants
 - always test automatically
   - no crashes
   - no leaks

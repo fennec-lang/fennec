@@ -11,7 +11,7 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
 
 pub struct Vfs {
     poll_interval: Duration,
-    module_roots: types::HashSet<PathBuf>,
+    scan_roots: Vec<PathBuf>, // sorted; no element is a prefix of another element
 }
 
 impl Vfs {
@@ -19,7 +19,7 @@ impl Vfs {
     pub fn new() -> Vfs {
         Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
-            module_roots: types::HashSet::default(),
+            scan_roots: Vec::default(),
         }
     }
 
@@ -34,9 +34,9 @@ impl Vfs {
             // in addition to periodic scanning here.
 
             let mut should_scan = timed_out;
-            for root in changes.module_roots {
+            for root in changes.scan_roots {
                 // We don't want to re-scan if we got notified about a root we are already watching.
-                should_scan |= self.module_roots.insert(root);
+                should_scan |= self.add_root(root);
             }
 
             if should_scan && self.scan() {
@@ -46,13 +46,28 @@ impl Vfs {
         }
     }
 
+    fn add_root(&mut self, root: PathBuf) -> bool {
+        let ins = self.scan_roots.binary_search(&root);
+        match ins {
+            Ok(_) => false,
+            Err(ix) => {
+                if let Some(prev_root) = self.scan_roots.get(ix - 1) {
+                    if root.strip_prefix(prev_root).is_ok() {
+                        // Trying to add subdirectory of an existing root; do nothing.
+                        return false;
+                    }
+                }
+                self.scan_roots.insert(ix, root);
+                true
+            }
+        }
+    }
+
     fn scan(&mut self) -> bool {
-        for root in &self.module_roots {
+        for root in &self.scan_roots {
             let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
             for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
                 match entry {
-                    // TODO: ensure root still has `fennec.toml`
-                    // TODO: stop descending if we hit a root (DFS?)
                     Ok(entry) => {
                         if entry.file_type().is_file()
                             && entry.path().extension() == Some(SOURCE_EXTENSION.as_ref())
@@ -66,7 +81,8 @@ impl Vfs {
                 }
             }
         }
-        // TODO: remove roots from the set if required
+
+        // TODO: build a fs tree; from it produce a module tree; diff it to the prev. module tree and push the changes
 
         true // TODO: return if we found something new
     }
