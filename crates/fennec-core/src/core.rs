@@ -21,6 +21,9 @@ impl Core {
                 return;
             }
 
+            // In the future, we could consider simplifying the changes before processing
+            // (e.g., ignoring any update that was later followed by removal).
+
             self.apply(&mut changes, state);
         }
     }

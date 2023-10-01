@@ -14,8 +14,6 @@ pub struct Vfs {
     module_roots: types::HashSet<PathBuf>,
 }
 
-// TODO: react on "saved" notifications from the client to update the in-memory content more efficiently
-
 impl Vfs {
     #[must_use]
     pub fn new() -> Vfs {
@@ -32,6 +30,9 @@ impl Vfs {
                 return;
             }
 
+            // In the future, we could consider reacting to the client-side watch notifications
+            // in addition to periodic scanning here.
+
             let mut should_scan = timed_out;
             for root in changes.module_roots {
                 // We don't want to re-scan if we got notified about a root we are already watching.
@@ -39,7 +40,8 @@ impl Vfs {
             }
 
             if should_scan && self.scan() {
-                state.signal_vfs_updates(types::ContentVersion::default());
+                // TODO: update the local workspace state
+                state.signal_vfs_updates(Vec::default());
             }
         }
     }

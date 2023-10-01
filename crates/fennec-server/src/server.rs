@@ -97,6 +97,8 @@ impl Server {
             "failed to register {MODULE_MANIFEST_FILENAME} watchers"
         ))?;
 
+        // TODO: server must wait for responses from the core (and be able to cancel them)
+
         for msg in &self.conn.receiver {
             match msg {
                 lsp_server::Message::Request(req) => {

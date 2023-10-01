@@ -8,10 +8,10 @@
 
 pub mod types;
 pub mod util;
+pub mod workspace;
 
 mod import_path;
 mod sync_state;
-mod workspace;
 
 pub const PROJECT_NAME: &str = "fennec";
 pub const RELEASE_VERSION: &str = "0.1.6";

@@ -100,6 +100,7 @@ module = "example.org/hello"
 
 - explicit copy and move
 - all objects trivially moveable
+  - what about mutex?
   - how do we forbid interior references?
   - interior pointer already impossible because pointers only point to heap
 - RAII with deterministic destruction as an important design tool
@@ -317,6 +318,7 @@ module = "example.org/hello"
 ### Ergonomics
 
 - combinator chains should be avoided in favor of native control flow
+  - however, can we really create an ergonomic replacement for the closure-argument pattern?
 - `string`, `option`, `result`, `error` ergonomics are fundamental
   - `option -> result + unwrap` pattern (`Option::ok_or/ok_or_else` in rust)
 - it should be obvious what code to write (like in go)

@@ -11,6 +11,8 @@ use std::{
     time::Duration,
 };
 
+use crate::workspace;
+
 #[derive(Default)]
 pub struct VfsChangeBuffer {
     pub exit: bool,
@@ -23,7 +25,7 @@ pub struct VfsChangeBuffer {
 #[derive(Default)]
 pub struct CoreChangeBuffer {
     pub exit: bool,
-    pub vfs_version: i32, // TODO: store the real thing
+    pub module_updates: Vec<workspace::ModuleUpdate>,
 }
 
 pub struct SyncState {
@@ -78,9 +80,9 @@ impl SyncState {
         self.notify_vfs();
     }
 
-    pub fn signal_vfs_updates(&self) {
+    pub fn signal_vfs_updates(&self, updates: Vec<workspace::ModuleUpdate>) {
         let mut core = self.core_changes.lock();
-        core.vfs_version += 1;
+        core.module_updates.extend(updates);
         self.notify_core();
     }
 
