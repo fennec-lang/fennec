@@ -7,7 +7,6 @@
 use anyhow::{anyhow, Context};
 use fennec_common::{types, util, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
 use lsp_types::{notification::Notification, request::Request};
-use normalize_path::NormalizePath;
 use std::path::{Path, PathBuf};
 
 const FILE_SCHEME: &str = "file";
@@ -286,5 +285,5 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
 
 fn module_manifest_parent(manifest: &Path) -> Option<PathBuf> {
     debug_assert!(manifest.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref()));
-    Some(manifest.normalize().parent()?.to_path_buf())
+    Some(util::normalize_path(manifest).parent()?.to_path_buf())
 }

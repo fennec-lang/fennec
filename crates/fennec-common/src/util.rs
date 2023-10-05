@@ -4,7 +4,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::ffi::OsStr;
+use std::{
+    ffi::OsStr,
+    path::{Component, Path, PathBuf},
+};
 
 use crate::{
     import_path::{PACKAGE_RE, RESERVED_WINDOWS_NAMES},
@@ -36,4 +39,35 @@ pub fn valid_source_file_name(file_name: &OsStr) -> bool {
             Some((name, SOURCE_EXTENSION)) => valid_package_name(name.as_ref()),
             _ => false,
         })
+}
+
+// Adapted from the normalize-path crate, MIT license.
+#[must_use]
+pub fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek() {
+        let buf = PathBuf::from(c.as_os_str());
+        components.next();
+        buf
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+
+    ret
 }

@@ -42,6 +42,7 @@
         "nosources",
         "opengraph",
         "pathbuf",
+        "peekable",
         "pemfile",
         "petrosyan",
         "postconditions",
