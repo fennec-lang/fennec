@@ -55,10 +55,10 @@ impl File {
         self.content.is_some()
     }
 
-    fn take_existing(file: &mut File) -> File {
+    fn take_existing(file: &mut File, modified: bool) -> File {
         assert!(file.content.is_some());
         let mut f = std::mem::take(file);
-        f.content_changed = Some(false);
+        f.content_changed = Some(modified);
         f
     }
 
@@ -253,16 +253,16 @@ impl Vfs {
                                 if is_modified(file.modified, prev_file.modified)
                                     && file.read_content()
                                 {
-                                    merged_files.push(File::take_existing(file));
+                                    merged_files.push(File::take_existing(file, true));
                                 } else {
-                                    merged_files.push(File::take_existing(prev_file));
+                                    merged_files.push(File::take_existing(prev_file, false));
                                 }
                                 file_ix += 1;
                                 prev_file_ix += 1;
                             }
                             std::cmp::Ordering::Less => {
                                 if file.read_content() {
-                                    merged_files.push(File::take_existing(file));
+                                    merged_files.push(File::take_existing(file, true));
                                 }
                                 file_ix += 1;
                             }
@@ -274,7 +274,7 @@ impl Vfs {
                     }
                     (Some(file), None) => {
                         if file.read_content() {
-                            merged_files.push(File::take_existing(file));
+                            merged_files.push(File::take_existing(file, true));
                         }
                         file_ix += 1;
                     }
