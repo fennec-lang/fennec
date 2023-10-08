@@ -94,6 +94,12 @@ module = "example.org/hello"
   - avoid throw-while-throwing, exception safety, etc.
   - runtime should re-instantiate and re-wire component if desirable
   - runtime will manage all external resources, leaks are not a problem
+- assertions are only checked in debug builds
+  - a lot of invariants are too expensive to check always
+  - don't want people to choose between different assertion kinds
+  - since all code must be safe, missing assertions can't result in unsafety
+  - when testing, we only check the assertions of module under test
+    - faster and mirrors the release build semantics
 - otherwise, `Result`
 
 ### Value semantics
