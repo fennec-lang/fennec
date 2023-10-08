@@ -246,31 +246,28 @@ impl Vfs {
                 .filter(|f| f.content.is_some()) // ignore deleted entries
                 .peekable();
             loop {
-                match (file_iter.peek_mut(), prev_file_iter.peek_mut()) {
+                let (cur, prev) = match (file_iter.peek_mut(), prev_file_iter.peek_mut()) {
                     (Some(file), Some(prev_file)) => {
                         match file.file_name().cmp(prev_file.file_name()) {
-                            std::cmp::Ordering::Equal => {
-                                if is_modified(file.modified, prev_file.modified)
-                                    && file.read_content()
-                                {
-                                    merged_files.push(File::take_existing(file, true));
-                                } else {
-                                    merged_files.push(File::take_existing(prev_file, false));
-                                }
-                                file_iter.next();
-                                prev_file_iter.next();
-                            }
-                            std::cmp::Ordering::Less => {
-                                if file.read_content() {
-                                    merged_files.push(File::take_existing(file, true));
-                                }
-                                file_iter.next();
-                            }
-                            std::cmp::Ordering::Greater => {
-                                merged_files.push(File::take_deleted(prev_file));
-                                prev_file_iter.next();
-                            }
-                        };
+                            std::cmp::Ordering::Equal => (Some(file), Some(prev_file)),
+                            std::cmp::Ordering::Less => (Some(file), None),
+                            std::cmp::Ordering::Greater => (None, Some(prev_file)),
+                        }
+                    }
+                    only_cur @ (Some(_), None) => only_cur,
+                    only_prev @ (None, Some(_)) => only_prev,
+                    (None, None) => break,
+                };
+
+                match (cur, prev) {
+                    (Some(file), Some(prev_file)) => {
+                        if is_modified(file.modified, prev_file.modified) && file.read_content() {
+                            merged_files.push(File::take_existing(file, true));
+                        } else {
+                            merged_files.push(File::take_existing(prev_file, false));
+                        }
+                        file_iter.next();
+                        prev_file_iter.next();
                     }
                     (Some(file), None) => {
                         if file.read_content() {
@@ -282,7 +279,7 @@ impl Vfs {
                         merged_files.push(File::take_deleted(prev_file));
                         prev_file_iter.next();
                     }
-                    (None, None) => break,
+                    _ => unreachable!("at least one file must be set"),
                 }
             }
             dir.source_files = merged_files;
