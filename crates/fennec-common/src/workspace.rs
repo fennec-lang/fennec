@@ -15,7 +15,7 @@ pub struct ModuleManifest {
 
 pub struct Package {
     pub path: types::ImportPath,
-    pub files: types::HashMap<String, File>,
+    pub files: types::HashMap<String, File>, // TODO: replace with Vec?
 }
 
 pub struct File {

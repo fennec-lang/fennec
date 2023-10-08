@@ -251,6 +251,9 @@ module = "example.org/hello"
   }
   ```
 
+- each enum variant must be a separate type (for flow-dependent typing and more)
+- for pattern matching, swift-like syntax to refer to variants must be implemented
+
 ## Random ideas
 
 ### Testing

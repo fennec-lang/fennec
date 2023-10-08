@@ -284,6 +284,6 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
 }
 
 fn module_manifest_parent(manifest: &Path) -> Option<PathBuf> {
-    debug_assert!(manifest.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref()));
+    assert!(manifest.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref()));
     Some(util::normalize_path(manifest).parent()?.to_path_buf())
 }

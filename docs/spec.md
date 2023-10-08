@@ -13,8 +13,13 @@ Quick specification of what is *actually implemented*.
   - if it is not domain-like, it is either a module from std or self
   - this is a compromise between clean separation of std
     and requirement to invent random domain names to create new modules
-- module root directory is identified by a `fennec.toml` file
-  - module directory subtrees with `fennec.toml` are excluded from the "parent" module
+- module root directory is identified by a module manifest (`fennec.toml`)
+  - module directory subtrees with manifests are excluded from the "parent" module
 - module consists of packages (directories) with source (`.fn`) files
-- package names and source file names must follow valid identifier syntax
+- subdirectories of module root and source files that do not follow
+  valid lowercase identifier syntax are ignored
+  - in addition to consistency in naming, this allows to not think
+    about file system case sensitivity
 - when gathering content of a module, symlinks (files and directories) are ignored
+- when gathering content of a module, we rely on file modification time
+  to detect changes (we assume the change every time if mtime is unavailable)

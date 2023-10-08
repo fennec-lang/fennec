@@ -22,23 +22,19 @@ pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
 }
 
 #[must_use]
-pub fn valid_package_name(file_name: &OsStr) -> bool {
-    file_name.to_str().map_or(false, |s| {
-        PACKAGE_RE.is_match(s)
-            && !RESERVED_WINDOWS_NAMES
-                .iter()
-                .any(|r| s.eq_ignore_ascii_case(r))
-    })
+pub fn valid_package_name(file_name: &str) -> bool {
+    PACKAGE_RE.is_match(file_name)
+        && !RESERVED_WINDOWS_NAMES
+            .iter()
+            .any(|r| file_name.eq_ignore_ascii_case(r))
 }
 
 #[must_use]
-pub fn valid_source_file_name(file_name: &OsStr) -> bool {
-    file_name
-        .to_str()
-        .map_or(false, |s| match s.rsplit_once('.') {
-            Some((name, SOURCE_EXTENSION)) => valid_package_name(name.as_ref()),
-            _ => false,
-        })
+pub fn valid_source_file_name(file_name: &str) -> bool {
+    match file_name.rsplit_once('.') {
+        Some((name, SOURCE_EXTENSION)) => valid_package_name(name),
+        _ => false,
+    }
 }
 
 // Adapted from the normalize-path crate, MIT license.
