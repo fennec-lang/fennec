@@ -239,14 +239,14 @@ impl Vfs {
             let prev_dir = &mut prev_tree[cur_dir_ix];
 
             // For matching directories, merge files.
-            let mut file_ix = 0;
-            let mut prev_file_ix = 0;
             let mut merged_files: Vec<File> = Vec::with_capacity(dir.source_files.len());
+            let mut file_iter = std::mem::take(&mut dir.source_files).into_iter().peekable();
+            let mut prev_file_iter = std::mem::take(&mut prev_dir.source_files)
+                .into_iter()
+                .filter(|f| f.content.is_some()) // ignore deleted entries
+                .peekable();
             loop {
-                match (
-                    dir.source_files.get_mut(file_ix),
-                    prev_dir.source_files.get_mut(prev_file_ix),
-                ) {
+                match (file_iter.peek_mut(), prev_file_iter.peek_mut()) {
                     (Some(file), Some(prev_file)) => {
                         match file.file_name().cmp(prev_file.file_name()) {
                             std::cmp::Ordering::Equal => {
@@ -257,18 +257,18 @@ impl Vfs {
                                 } else {
                                     merged_files.push(File::take_existing(prev_file, false));
                                 }
-                                file_ix += 1;
-                                prev_file_ix += 1;
+                                file_iter.next();
+                                prev_file_iter.next();
                             }
                             std::cmp::Ordering::Less => {
                                 if file.read_content() {
                                     merged_files.push(File::take_existing(file, true));
                                 }
-                                file_ix += 1;
+                                file_iter.next();
                             }
                             std::cmp::Ordering::Greater => {
                                 merged_files.push(File::take_deleted(prev_file));
-                                prev_file_ix += 1;
+                                prev_file_iter.next();
                             }
                         };
                     }
@@ -276,15 +276,16 @@ impl Vfs {
                         if file.read_content() {
                             merged_files.push(File::take_existing(file, true));
                         }
-                        file_ix += 1;
+                        file_iter.next();
                     }
                     (None, Some(prev_file)) => {
                         merged_files.push(File::take_deleted(prev_file));
-                        prev_file_ix += 1;
+                        prev_file_iter.next();
                     }
                     (None, None) => break,
                 }
             }
+            dir.source_files = merged_files;
         }
     }
 }
