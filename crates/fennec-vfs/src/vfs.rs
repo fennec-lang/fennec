@@ -4,7 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::Context;
 use fennec_common::{types, util, MODULE_MANIFEST_FILENAME};
 use std::{
     cmp::Ordering,
@@ -49,7 +48,7 @@ impl File {
         self.content = match res {
             Ok(content) => Some(content),
             Err(err) => {
-                let disp = self.path.display(); // TODO: we duplicate display from below
+                let disp = self.path.display();
                 log::warn!(r#"failed to read content of "{disp}", ignoring: {err}"#);
                 None
             }
@@ -58,15 +57,9 @@ impl File {
     }
 
     fn read_utf8_lossy(path: &Path) -> Result<Arc<str>, anyhow::Error> {
-        let mut file = std::fs::File::open(path).with_context(|| {
-            let disp = path.display();
-            format!(r#"failed to open source file "{disp}""#)
-        })?;
+        let mut file = std::fs::File::open(path)?;
         let mut buf = Vec::new();
-        file.read_to_end(&mut buf).with_context(|| {
-            let disp = path.display();
-            format!(r#"failed to read source file "{disp}""#)
-        })?;
+        file.read_to_end(&mut buf)?;
         let s = String::from_utf8_lossy(&buf);
         Ok(Arc::from(s))
         // Vec -> Cow -> Arc is quite a lot of copies, but hopefully guaranteed UTF-8 simplifies things downstream.
@@ -154,30 +147,32 @@ impl TreeBuildState {
     }
 
     fn navigate(&mut self, depth: usize) {
-        if depth != self.cur_depth {
-            // Traverse up if necessary.
-            while self.cur_depth >= depth {
-                self.cur_dir_ix =
-                    self.parents[self.cur_dir_ix].expect("must not traverse outside the root");
-                self.cur_depth -= 1;
-            }
-            assert!(depth == self.cur_depth + 1);
-
-            // Navigate to the next subdirectory.
-            let parent = &mut self.tree[self.cur_dir_ix];
-            let subdir_at = self.subdirectories_at[self.cur_dir_ix];
-            self.subdirectories_at[self.cur_dir_ix] += 1;
-            self.cur_dir_ix = parent.subdirectories[subdir_at];
-            self.cur_depth = depth;
+        if depth == self.cur_depth {
+            return;
         }
+
+        // Traverse up if necessary.
+        while self.cur_depth >= depth {
+            self.cur_dir_ix =
+                self.parents[self.cur_dir_ix].expect("must not traverse outside the root");
+            self.cur_depth -= 1;
+        }
+        assert!(depth == self.cur_depth + 1);
+
+        // Navigate to the next subdirectory.
+        let parent = &mut self.tree[self.cur_dir_ix];
+        let subdir_at = self.subdirectories_at[self.cur_dir_ix];
+        self.subdirectories_at[self.cur_dir_ix] += 1;
+        self.cur_dir_ix = parent.subdirectories[subdir_at];
+        self.cur_depth = depth;
         // Next entry will be an immediate child of the current directory.
     }
 
     fn add_dir(&mut self, dir: Directory) {
         let dir_ix = self.tree.len();
-        self.parents.push(Some(self.cur_dir_ix));
         self.tree.push(dir);
         self.tree[self.cur_dir_ix].subdirectories.push(dir_ix);
+        self.parents.push(Some(self.cur_dir_ix));
     }
 
     fn add_file(&mut self, file: File) {
@@ -189,12 +184,24 @@ impl TreeBuildState {
     }
 }
 
+struct ScanState {
+    root: PathBuf,
+    tree: Vec<Directory>,
+}
+
+impl ScanState {
+    fn new(root: PathBuf) -> ScanState {
+        ScanState {
+            root,
+            tree: Vec::default(),
+        }
+    }
+}
+
 pub struct Vfs {
     poll_interval: Duration,
-    scan_roots: Vec<PathBuf>, // sorted; no element is a prefix of another element
-    scan_trees: Vec<Vec<Directory>>, // same order as scan_roots
-    // TODO: unify above vectors in one?
-    scan_state: TreeBuildState,
+    scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
+    scan_aux: TreeBuildState,
 }
 
 impl Vfs {
@@ -202,9 +209,8 @@ impl Vfs {
     pub fn new() -> Vfs {
         Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
-            scan_roots: Vec::default(),
-            scan_trees: Vec::default(),
-            scan_state: TreeBuildState::default(),
+            scan_state: Vec::default(),
+            scan_aux: TreeBuildState::default(),
         }
     }
 
@@ -232,32 +238,30 @@ impl Vfs {
     }
 
     fn add_root(&mut self, root: PathBuf) -> bool {
-        let ins = self.scan_roots.binary_search(&root);
+        let ins = self.scan_state.binary_search_by_key(&&root, |s| &s.root);
         match ins {
             Ok(_) => false,
             Err(ix) => {
-                if let Some(prev_root) = self.scan_roots.get(ix - 1) {
-                    if root.strip_prefix(prev_root).is_ok() {
+                if let Some(prev_state) = self.scan_state.get(ix - 1) {
+                    if root.strip_prefix(&prev_state.root).is_ok() {
                         // Trying to add subdirectory of an existing root; do nothing.
                         return false;
                     }
                 }
-                self.scan_roots.insert(ix, root);
-                // TODO: self.scan_trees.insert(ix, Directory::default());
+                self.scan_state.insert(ix, ScanState::new(root));
                 true
             }
         }
     }
 
     fn scan(&mut self) {
-        for (root, prev_tree) in self
-            .scan_roots
-            .iter()
-            .zip(take(&mut self.scan_trees).into_iter())
-        {
-            let tree = Self::scan_root(root, &mut self.scan_state);
-            let _ = Self::merge_hydrate_sorted_preorder_dirs(tree, prev_tree, &mut self.scan_state);
-            // TODO
+        for state in &mut self.scan_state {
+            let scan_tree = Self::scan_root(&state.root, &mut self.scan_aux);
+            state.tree = Self::merge_hydrate_sorted_preorder_dirs(
+                scan_tree,
+                take(&mut state.tree),
+                &mut self.scan_aux,
+            );
         }
     }
 
