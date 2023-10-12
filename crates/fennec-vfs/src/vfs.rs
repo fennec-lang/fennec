@@ -85,7 +85,7 @@ impl File {
 
 #[derive(Default)]
 struct Directory {
-    name: String,
+    path: PathBuf,
     depth: usize,
     deleted: bool,
     _content_changed: Option<bool>,
@@ -94,12 +94,20 @@ struct Directory {
 }
 
 impl Directory {
-    fn new(name: String, depth: usize) -> Directory {
+    fn new(path: PathBuf, depth: usize) -> Directory {
         Directory {
-            name,
+            path,
             depth,
             ..Default::default()
         }
+    }
+
+    fn name(&self) -> &str {
+        self.path
+            .file_name()
+            .expect("directory must have a valid file name")
+            .to_str()
+            .expect("directory name must be valid UTF-8")
     }
 
     fn take_existing(dir: &mut Directory, modified: bool) -> Directory {
@@ -107,7 +115,7 @@ impl Directory {
         let mut subdirs = take(&mut dir.subdirectories);
         subdirs.truncate(0);
         Directory {
-            name: take(&mut dir.name),
+            path: take(&mut dir.path),
             depth: dir.depth,
             deleted: false,
             _content_changed: Some(modified),
@@ -119,7 +127,7 @@ impl Directory {
     fn take_deleted(dir: &mut Directory) -> Directory {
         assert!(!dir.deleted);
         Directory {
-            name: take(&mut dir.name),
+            path: take(&mut dir.path),
             depth: dir.depth,
             deleted: true,
             _content_changed: Some(true),
@@ -139,7 +147,7 @@ struct TreeBuildState {
 
 impl TreeBuildState {
     fn reset(&mut self) {
-        self.tree = vec![Directory::new(String::new(), 0)]; // root entry
+        self.tree = vec![Directory::new(PathBuf::new(), 0)]; // root entry
         self.cur_depth = 0;
         self.cur_dir_ix = 0;
         self.parents.resize(1, None);
@@ -266,6 +274,8 @@ impl Vfs {
         // TODO: remove obsolete roots?
     }
 
+    // TODO: use valid_package_name
+
     fn scan_root(root: &PathBuf, state: &mut TreeBuildState) -> Vec<Directory> {
         state.reset();
         let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
@@ -278,20 +288,20 @@ impl Vfs {
                         continue;
                     }
                     let typ = entry.file_type();
-                    let name = entry
-                        .file_name()
-                        .to_str()
-                        .expect("is_valid_utf8_visible() must ensure UTF-8");
                     if typ.is_dir() {
-                        let dir = Directory::new(name.to_owned(), state.cur_depth);
+                        let dir = Directory::new(entry.into_path(), state.cur_depth);
                         state.add_dir(dir);
-                    } else if typ.is_file()
-                        && (name == MODULE_MANIFEST_FILENAME || util::valid_source_file_name(name))
-                    {
-                        let modified = entry.metadata().ok().and_then(|meta| meta.modified().ok());
-                        let path = entry.into_path();
-                        let file = File::new(path, modified);
-                        state.add_file(file);
+                    } else if typ.is_file() {
+                        let name = entry
+                            .file_name()
+                            .to_str()
+                            .expect("is_valid_utf8_visible() must ensure UTF-8");
+                        if name == MODULE_MANIFEST_FILENAME || util::valid_source_file_name(name) {
+                            let modified =
+                                entry.metadata().ok().and_then(|meta| meta.modified().ok());
+                            let file = File::new(entry.into_path(), modified);
+                            state.add_file(file);
+                        }
                     }
                 }
                 Err(err) => {
@@ -317,7 +327,7 @@ impl Vfs {
                 (None, None) => break,
                 (Some(dir), Some(prev_dir)) => match dir.depth.cmp(&prev_dir.depth) {
                     Ordering::Equal => {
-                        match (dir.depth, &dir.name).cmp(&(prev_dir.depth, &prev_dir.name)) {
+                        match (dir.depth, dir.name()).cmp(&(prev_dir.depth, prev_dir.name())) {
                             Ordering::Equal => (Some(dir), Some(prev_dir)),
                             Ordering::Less => (Some(dir), None),
                             Ordering::Greater => (None, Some(prev_dir)),
