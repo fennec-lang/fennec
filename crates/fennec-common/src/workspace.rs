@@ -10,7 +10,7 @@ use crate::types;
 
 pub struct ModuleManifest {
     pub module: types::ImportPath,
-    pub fennec: String,
+    pub fennec: types::FennecVersion,
 }
 
 pub struct Package {
@@ -30,7 +30,7 @@ pub struct ModuleUpdate {
 
 pub enum ModuleUpdateData {
     ModuleAdded(ModuleManifest),
-    ModuleRemoved,
+    ModuleRemoved, // implicitly means removing all module's packages
     ModuleManifestUpdated(Vec<ManifestUpdate>),
     ModulePackagesUpdated(Vec<PackageUpdate>),
 }

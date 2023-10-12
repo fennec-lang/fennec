@@ -263,6 +263,7 @@ impl Vfs {
                 &mut self.scan_aux,
             );
         }
+        // TODO: remove obsolete roots?
     }
 
     fn scan_root(root: &PathBuf, state: &mut TreeBuildState) -> Vec<Directory> {

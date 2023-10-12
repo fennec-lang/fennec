@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod manifest;
 mod vfs;
 
 pub use vfs::*;

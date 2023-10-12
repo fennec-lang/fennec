@@ -12,6 +12,9 @@ readme = false
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
+semver.workspace = true
+serde.workspace = true
+toml.workspace = true
 walkdir.workspace = true
 
 fennec-common.workspace = true
