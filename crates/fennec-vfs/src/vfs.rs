@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use fennec_common::{types, util, MODULE_MANIFEST_FILENAME};
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use std::{
     cmp::Ordering,
     io::Read,
@@ -14,6 +14,8 @@ use std::{
     time::{Duration, SystemTime},
     vec,
 };
+
+use crate::manifest;
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
 
@@ -74,12 +76,10 @@ impl File {
 
     fn take_deleted(file: &mut File) -> File {
         assert!(!file.deleted && file.content.is_some());
-        File {
-            path: take(&mut file.path),
-            deleted: true,
-            content_changed: Some(true),
-            ..Default::default()
-        }
+        let mut f = File::new(take(&mut file.path), None);
+        f.content_changed = Some(true);
+        f.deleted = true;
+        f
     }
 }
 
@@ -88,9 +88,10 @@ struct Directory {
     path: PathBuf,
     depth: usize,
     deleted: bool,
-    _content_changed: Option<bool>,
+    content_changed: Option<bool>,
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name
+    manifest: Option<workspace::ModuleManifest>, // set when the manifest file was changed and parse was successful
 }
 
 impl Directory {
@@ -110,34 +111,61 @@ impl Directory {
             .expect("directory name must be valid UTF-8")
     }
 
+    fn fill_manifest(&mut self) {
+        self.manifest = self.get_manifest();
+    }
+
+    fn get_manifest(&self) -> Option<workspace::ModuleManifest> {
+        let ins = self
+            .source_files
+            .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name());
+        match ins {
+            Ok(ix) => {
+                let m = &self.source_files[ix];
+                let changed = m.content_changed.expect("change indicator must be set");
+                if !changed || m.deleted {
+                    return None;
+                }
+                let content = m
+                    .content
+                    .as_ref()
+                    .expect("changed file must contain content")
+                    .as_ref();
+                let res = manifest::parse(content);
+                match res {
+                    Ok(manifest) => Some(manifest),
+                    Err(err) => {
+                        let disp = m.path.display();
+                        log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
+                        None
+                    }
+                }
+            }
+            Err(_) => None,
+        }
+    }
+
     fn take_existing(dir: &mut Directory, modified: bool) -> Directory {
         assert!(!dir.deleted);
-        let mut subdirs = take(&mut dir.subdirectories);
-        subdirs.truncate(0);
-        Directory {
-            path: take(&mut dir.path),
-            depth: dir.depth,
-            deleted: false,
-            _content_changed: Some(modified),
-            subdirectories: subdirs,
-            source_files: take(&mut dir.source_files),
-        }
+        let mut d = take(dir);
+        d.content_changed = Some(modified);
+        d.subdirectories.truncate(0);
+        d
     }
 
     fn take_deleted(dir: &mut Directory) -> Directory {
         assert!(!dir.deleted);
-        Directory {
-            path: take(&mut dir.path),
-            depth: dir.depth,
-            deleted: true,
-            _content_changed: Some(true),
-            ..Default::default()
-        }
+        let mut d = Directory::new(take(&mut dir.path), dir.depth);
+        d.content_changed = Some(true);
+        d.deleted = true;
+        d
     }
 }
 
+struct Module {}
+
 #[derive(Default)]
-struct TreeBuildState {
+struct DirTreeBuildState {
     tree: Vec<Directory>,
     cur_depth: usize,
     cur_dir_ix: usize,
@@ -145,7 +173,7 @@ struct TreeBuildState {
     subdirectories_at: Vec<usize>, // next index to visit in subdirectories of i'th directory
 }
 
-impl TreeBuildState {
+impl DirTreeBuildState {
     fn reset(&mut self) {
         self.tree = vec![Directory::new(PathBuf::new(), 0)]; // root entry
         self.cur_depth = 0;
@@ -209,7 +237,8 @@ impl ScanState {
 pub struct Vfs {
     poll_interval: Duration,
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
-    scan_aux: TreeBuildState,
+    scan_aux: DirTreeBuildState,
+    _modules: Vec<Module>,
 }
 
 impl Vfs {
@@ -218,7 +247,8 @@ impl Vfs {
         Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
             scan_state: Vec::default(),
-            scan_aux: TreeBuildState::default(),
+            scan_aux: DirTreeBuildState::default(),
+            _modules: Vec::default(),
         }
     }
 
@@ -239,8 +269,8 @@ impl Vfs {
             }
 
             if should_scan {
-                self.scan();
-                state.signal_vfs_updates(Vec::default());
+                let updates = self.scan();
+                state.signal_vfs_updates(updates);
             }
         }
     }
@@ -262,7 +292,7 @@ impl Vfs {
         }
     }
 
-    fn scan(&mut self) {
+    fn scan(&mut self) -> Vec<workspace::ModuleUpdate> {
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root, &mut self.scan_aux);
             state.tree = Self::merge_hydrate_sorted_preorder_dirs(
@@ -272,11 +302,12 @@ impl Vfs {
             );
         }
         // TODO: remove obsolete roots?
+        todo!()
     }
 
     // TODO: use valid_package_name
 
-    fn scan_root(root: &PathBuf, state: &mut TreeBuildState) -> Vec<Directory> {
+    fn scan_root(root: &PathBuf, state: &mut DirTreeBuildState) -> Vec<Directory> {
         state.reset();
         let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
         for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
@@ -315,7 +346,7 @@ impl Vfs {
     fn merge_hydrate_sorted_preorder_dirs(
         dirs: Vec<Directory>,
         prev_dirs: Vec<Directory>,
-        state: &mut TreeBuildState,
+        state: &mut DirTreeBuildState,
     ) -> Vec<Directory> {
         state.reset();
         let mut dir_iter = dirs.into_iter().peekable();
@@ -353,6 +384,7 @@ impl Vfs {
                         take(&mut dir.source_files),
                         take(&mut prev_dir.source_files),
                     );
+                    dir.fill_manifest();
                     let diff = dir
                         .source_files
                         .iter()
@@ -362,6 +394,9 @@ impl Vfs {
                     prev_dir_iter.next();
                 }
                 (Some(dir), None) => {
+                    dir.source_files =
+                        Self::merge_hydrate_sorted_files(take(&mut dir.source_files), Vec::new());
+                    dir.fill_manifest();
                     state.add_dir(Directory::take_existing(dir, true));
                     dir_iter.next();
                 }
