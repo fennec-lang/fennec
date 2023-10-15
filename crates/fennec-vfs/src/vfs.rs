@@ -293,6 +293,7 @@ impl Vfs {
     }
 
     fn scan(&mut self) -> Vec<workspace::ModuleUpdate> {
+        let mut ret: Vec<workspace::ModuleUpdate> = Vec::new();
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root, &mut self.scan_aux);
             state.tree = Self::merge_hydrate_sorted_preorder_dirs(
@@ -300,8 +301,18 @@ impl Vfs {
                 take(&mut state.tree),
                 &mut self.scan_aux,
             );
+            let updates = Self::build_module_updates(&state.tree);
+            ret.extend(updates);
+            // TODO: remove obsolete roots?
         }
-        // TODO: remove obsolete roots?
+        // Ensure binary search can be used on the updates.
+        // Doing this here and not outside feels better because when sorted invariant
+        // is encapsulated, we are free to use a different implementation in VFS if necessary.
+        ret.sort_unstable_by_key(|_u| (0));
+        ret
+    }
+
+    fn build_module_updates(_tree: &[Directory]) -> Vec<workspace::ModuleUpdate> {
         todo!()
     }
 
