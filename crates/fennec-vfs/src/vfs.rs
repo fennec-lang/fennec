@@ -86,7 +86,9 @@ impl File {
 #[derive(Default)]
 enum DirManifestState {
     #[default]
-    None, // used in case of deleted manifest as well
+    None,
+    Deleted,
+    // TODO: we want to have the content in the Same case as well
     Same, // used in case of parse error as well
     Changed(workspace::ModuleManifest),
 }
@@ -95,7 +97,7 @@ impl DirManifestState {
     fn is_some(&self) -> bool {
         match self {
             DirManifestState::Changed(_) | DirManifestState::Same => true,
-            DirManifestState::None => false,
+            DirManifestState::None | DirManifestState::Deleted => false,
         }
     }
 }
@@ -144,7 +146,7 @@ impl Directory {
                     return DirManifestState::Same;
                 }
                 if m.deleted {
-                    return DirManifestState::None;
+                    return DirManifestState::Deleted;
                 }
                 let content = m
                     .content
@@ -252,11 +254,18 @@ impl ScanState {
     }
 }
 
+struct ModTraverse {
+    _update: workspace::ModuleUpdate,
+    depth: usize,
+    cur_ignore_pkgs_depth: Option<usize>,
+}
+
 pub struct Vfs {
     poll_interval: Duration,
     cleanup_stale_roots: bool,
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
     scan_aux: DirTreeBuildState,
+    build_aux: Vec<ModTraverse>,
 }
 
 impl Vfs {
@@ -267,6 +276,7 @@ impl Vfs {
             cleanup_stale_roots,
             scan_state: Vec::default(),
             scan_aux: DirTreeBuildState::default(),
+            build_aux: Vec::default(),
         }
     }
 
@@ -319,7 +329,7 @@ impl Vfs {
                 take(&mut state.tree),
                 &mut self.scan_aux,
             );
-            let updates = Self::build_module_updates(&state.tree);
+            let updates = Self::build_module_updates(&state.tree, &mut self.build_aux);
             ret.extend(updates);
         }
         if self.cleanup_stale_roots {
@@ -329,15 +339,78 @@ impl Vfs {
         // Ensure binary search can be used on the updates.
         // Doing this here and not outside feels better because when sorted invariant
         // is encapsulated, we are free to use a different implementation in VFS if necessary.
-        ret.sort_unstable_by_key(|_u| (0));
+        ret.sort_unstable_by(|a, b| (&a.module, &a.source).cmp(&(&b.module, &b.source)));
         ret
     }
 
-    fn build_module_updates(_tree: &[Directory]) -> Vec<workspace::ModuleUpdate> {
-        todo!()
-    }
+    fn build_module_updates(
+        tree: &[Directory],
+        stack: &mut Vec<ModTraverse>,
+    ) -> Vec<workspace::ModuleUpdate> {
+        let ret: Vec<workspace::ModuleUpdate> = Vec::new();
+        stack.truncate(0);
+        for dir in tree {
+            // Pop finished modules off the stack until the depth is increasing
+            // (equal depth means we are processing a potential new module at the same depth, so old one is done).
+            while !stack.is_empty() && dir.depth <= stack.last().expect("stack is not empty").depth
+            {
+                let _ = stack.pop().expect("stack is not empty");
+                todo!(); // fill ret
+            }
 
-    // TODO: use valid_package_name
+            // Push new module on the stack, if we are visiting a module root.
+            match &dir.manifest {
+                DirManifestState::None => {}
+                DirManifestState::Deleted => {
+                    todo!()
+                }
+                DirManifestState::Same => {
+                    todo!()
+                }
+                DirManifestState::Changed(_) => {
+                    todo!()
+                }
+            }
+            // If we are not inside a module, do nothing.
+            if stack.is_empty() {
+                continue;
+            }
+
+            // Inside a module, process the potential package.
+            let m = stack.last_mut().expect("stack is not empty");
+            let root_pkg = dir.depth == m.depth;
+
+            // Ensure that we are either processing a root package
+            // (where we don't care about the directory name
+            // as we use the import path from the module manifest instead)
+            // or the directory name is a valid package name.
+            if !root_pkg {
+                // Maybe we have finished a subtree with an invalid path element?
+                let ignore_finished = match m.cur_ignore_pkgs_depth {
+                    Some(depth) => dir.depth <= depth,
+                    None => true,
+                };
+                if !ignore_finished {
+                    // We are still processing an ignored subtree where we are only interested in new module roots.
+                    continue;
+                }
+                // Maybe we have to start a new ignore subtree?
+                let valid = util::valid_package_name(dir.name());
+                if !valid {
+                    m.cur_ignore_pkgs_depth = Some(dir.depth);
+                    continue;
+                }
+            }
+
+            // TODO: construct an import path and add a (potentially empty) pkg
+
+            // TODO: the directory content may have not changed, but somewhere up top a module declaration may be placed (meaning all packages are "new"), what do?
+        }
+        for _ in stack.iter_mut().rev() {
+            todo!(); // fill ret
+        }
+        ret
+    }
 
     fn scan_root(root: &PathBuf, state: &mut DirTreeBuildState) -> Vec<Directory> {
         state.reset();
@@ -490,8 +563,3 @@ impl Vfs {
         merged_files // sorted by file name
     }
 }
-
-// TODO:
-// - transform N fs trees into M module trees (after parsing the manifests), sorted by import path (preserving change indicators for files)
-// - diff the module trees, producing the workspace update events
-// - save new trees as the current trees
