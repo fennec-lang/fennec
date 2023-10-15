@@ -78,6 +78,11 @@ impl Server {
         })
     }
 
+    #[must_use]
+    pub fn watch_for_roots(&self) -> bool {
+        true // ¯\_(ツ)_/¯
+    }
+
     pub fn join(self) -> Result<(), anyhow::Error> {
         self.io_threads.join()?;
         Ok(())

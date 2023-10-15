@@ -84,6 +84,23 @@ impl File {
 }
 
 #[derive(Default)]
+enum DirManifestState {
+    #[default]
+    None, // used in case of deleted manifest as well
+    Same, // used in case of parse error as well
+    Changed(workspace::ModuleManifest),
+}
+
+impl DirManifestState {
+    fn is_some(&self) -> bool {
+        match self {
+            DirManifestState::Changed(_) | DirManifestState::Same => true,
+            DirManifestState::None => false,
+        }
+    }
+}
+
+#[derive(Default)]
 struct Directory {
     path: PathBuf,
     depth: usize,
@@ -91,7 +108,7 @@ struct Directory {
     content_changed: Option<bool>,
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name
-    manifest: Option<workspace::ModuleManifest>, // set when the manifest file was changed and parse was successful
+    manifest: DirManifestState,
 }
 
 impl Directory {
@@ -115,7 +132,7 @@ impl Directory {
         self.manifest = self.get_manifest();
     }
 
-    fn get_manifest(&self) -> Option<workspace::ModuleManifest> {
+    fn get_manifest(&self) -> DirManifestState {
         let ins = self
             .source_files
             .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name());
@@ -123,8 +140,11 @@ impl Directory {
             Ok(ix) => {
                 let m = &self.source_files[ix];
                 let changed = m.content_changed.expect("change indicator must be set");
-                if !changed || m.deleted {
-                    return None;
+                if !changed {
+                    return DirManifestState::Same;
+                }
+                if m.deleted {
+                    return DirManifestState::None;
                 }
                 let content = m
                     .content
@@ -133,15 +153,15 @@ impl Directory {
                     .as_ref();
                 let res = manifest::parse(content);
                 match res {
-                    Ok(manifest) => Some(manifest),
+                    Ok(manifest) => DirManifestState::Changed(manifest),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
-                        None
+                        DirManifestState::Same
                     }
                 }
             }
-            Err(_) => None,
+            Err(_) => DirManifestState::None,
         }
     }
 
@@ -161,8 +181,6 @@ impl Directory {
         d
     }
 }
-
-struct Module {}
 
 #[derive(Default)]
 struct DirTreeBuildState {
@@ -236,19 +254,19 @@ impl ScanState {
 
 pub struct Vfs {
     poll_interval: Duration,
+    cleanup_stale_roots: bool,
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
     scan_aux: DirTreeBuildState,
-    _modules: Vec<Module>,
 }
 
 impl Vfs {
     #[must_use]
-    pub fn new() -> Vfs {
+    pub fn new(cleanup_stale_roots: bool) -> Vfs {
         Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
+            cleanup_stale_roots,
             scan_state: Vec::default(),
             scan_aux: DirTreeBuildState::default(),
-            _modules: Vec::default(),
         }
     }
 
@@ -303,7 +321,10 @@ impl Vfs {
             );
             let updates = Self::build_module_updates(&state.tree);
             ret.extend(updates);
-            // TODO: remove obsolete roots?
+        }
+        if self.cleanup_stale_roots {
+            self.scan_state
+                .retain_mut(|s| s.tree.iter().any(|dir| dir.manifest.is_some()));
         }
         // Ensure binary search can be used on the updates.
         // Doing this here and not outside feels better because when sorted invariant
@@ -474,9 +495,3 @@ impl Vfs {
 // - transform N fs trees into M module trees (after parsing the manifests), sorted by import path (preserving change indicators for files)
 // - diff the module trees, producing the workspace update events
 // - save new trees as the current trees
-
-impl Default for Vfs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
