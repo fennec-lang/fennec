@@ -95,10 +95,7 @@ enum DirManifestState {
 
 impl DirManifestState {
     fn is_some(&self) -> bool {
-        match self {
-            DirManifestState::Changed(_) | DirManifestState::Same => true,
-            DirManifestState::None | DirManifestState::Deleted => false,
-        }
+        !matches!(self, DirManifestState::None)
     }
 }
 
@@ -184,7 +181,6 @@ impl Directory {
     }
 }
 
-#[derive(Default)]
 struct DirTreeBuildState {
     tree: Vec<Directory>,
     cur_depth: usize,
@@ -194,12 +190,16 @@ struct DirTreeBuildState {
 }
 
 impl DirTreeBuildState {
-    fn reset(&mut self) {
-        self.tree = vec![Directory::new(PathBuf::new(), 0)]; // root entry
-        self.cur_depth = 0;
-        self.cur_dir_ix = 0;
-        self.parents.resize(1, None);
-        self.subdirectories_at.resize(1, 0);
+    // We could play tricks with reuse of the state between scans/traversals,
+    // but let's avoid premature optimization for now.
+    fn new() -> DirTreeBuildState {
+        DirTreeBuildState {
+            tree: vec![Directory::new(PathBuf::new(), 0)], // root entry
+            cur_depth: 0,
+            cur_dir_ix: 0,
+            parents: vec![None],
+            subdirectories_at: vec![0],
+        }
     }
 
     fn navigate(&mut self, depth: usize) {
@@ -243,6 +243,7 @@ impl DirTreeBuildState {
 struct ScanState {
     root: PathBuf,
     tree: Vec<Directory>,
+    modules: Vec<ModTraverse>,
 }
 
 impl ScanState {
@@ -250,22 +251,33 @@ impl ScanState {
         ScanState {
             root,
             tree: Vec::default(),
+            modules: Vec::default(),
         }
     }
 }
 
+#[derive(Default)]
 struct ModTraverse {
-    _update: workspace::ModuleUpdate,
+    _root: usize,
+    packages: Vec<usize>,
     depth: usize,
     cur_ignore_pkgs_depth: Option<usize>,
+}
+
+impl ModTraverse {
+    fn new(root: usize, depth: usize) -> ModTraverse {
+        ModTraverse {
+            _root: root,
+            depth,
+            ..Default::default()
+        }
+    }
 }
 
 pub struct Vfs {
     poll_interval: Duration,
     cleanup_stale_roots: bool,
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
-    scan_aux: DirTreeBuildState,
-    build_aux: Vec<ModTraverse>,
 }
 
 impl Vfs {
@@ -275,8 +287,6 @@ impl Vfs {
             poll_interval: DEFAULT_POLL_INTERVAL,
             cleanup_stale_roots,
             scan_state: Vec::default(),
-            scan_aux: DirTreeBuildState::default(),
-            build_aux: Vec::default(),
         }
     }
 
@@ -323,63 +333,49 @@ impl Vfs {
     fn scan(&mut self) -> Vec<workspace::ModuleUpdate> {
         let mut ret: Vec<workspace::ModuleUpdate> = Vec::new();
         for state in &mut self.scan_state {
-            let scan_tree = Self::scan_root(&state.root, &mut self.scan_aux);
-            state.tree = Self::merge_hydrate_sorted_preorder_dirs(
-                scan_tree,
-                take(&mut state.tree),
-                &mut self.scan_aux,
-            );
-            let updates = Self::build_module_updates(&state.tree, &mut self.build_aux);
+            let scan_tree = Self::scan_root(&state.root);
+            let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, take(&mut state.tree));
+            let modules = Self::build_modules(&tree);
+            let updates = Self::build_module_updates(&tree, &modules, &state.tree, &state.modules);
             ret.extend(updates);
+            state.tree = tree;
+            state.modules = modules;
+            // TODO: we need old tree to still be alive because old modules refer to stuff in old tree (we can kill it after we are done with old modules)
         }
         if self.cleanup_stale_roots {
-            self.scan_state
-                .retain_mut(|s| s.tree.iter().any(|dir| dir.manifest.is_some()));
+            // Since we only clean up after manifest all manifests are in the None state,
+            // by that time we have already reported that the modules are deleted;
+            // no need to special-case scan root removal in module diff calculation.
+            self.scan_state.retain_mut(|s| {
+                let any_manifest = s.tree.iter().any(|dir| dir.manifest.is_some());
+                assert!(any_manifest || s.modules.is_empty());
+                any_manifest
+            });
         }
-        // Ensure binary search can be used on the updates.
-        // Doing this here and not outside feels better because when sorted invariant
-        // is encapsulated, we are free to use a different implementation in VFS if necessary.
-        ret.sort_unstable_by(|a, b| (&a.module, &a.source).cmp(&(&b.module, &b.source)));
         ret
     }
 
-    fn build_module_updates(
-        tree: &[Directory],
-        stack: &mut Vec<ModTraverse>,
-    ) -> Vec<workspace::ModuleUpdate> {
-        let ret: Vec<workspace::ModuleUpdate> = Vec::new();
-        stack.truncate(0);
-        for dir in tree {
+    fn build_modules(tree: &[Directory]) -> Vec<ModTraverse> {
+        let mut ret: Vec<ModTraverse> = Vec::new();
+        let mut stack: Vec<ModTraverse> = Vec::new();
+        for (ix, dir) in tree.iter().enumerate() {
             // Pop finished modules off the stack until the depth is increasing
             // (equal depth means we are processing a potential new module at the same depth, so old one is done).
             while !stack.is_empty() && dir.depth <= stack.last().expect("stack is not empty").depth
             {
-                let _ = stack.pop().expect("stack is not empty");
-                todo!(); // fill ret
+                ret.push(stack.pop().expect("stack is not empty"));
             }
-
             // Push new module on the stack, if we are visiting a module root.
-            match &dir.manifest {
-                DirManifestState::None => {}
-                DirManifestState::Deleted => {
-                    todo!()
-                }
-                DirManifestState::Same => {
-                    todo!()
-                }
-                DirManifestState::Changed(_) => {
-                    todo!()
-                }
+            if dir.manifest.is_some() {
+                stack.push(ModTraverse::new(ix, dir.depth));
             }
             // If we are not inside a module, do nothing.
             if stack.is_empty() {
                 continue;
             }
-
             // Inside a module, process the potential package.
             let m = stack.last_mut().expect("stack is not empty");
             let root_pkg = dir.depth == m.depth;
-
             // Ensure that we are either processing a root package
             // (where we don't care about the directory name
             // as we use the import path from the module manifest instead)
@@ -401,19 +397,23 @@ impl Vfs {
                     continue;
                 }
             }
-
-            // TODO: construct an import path and add a (potentially empty) pkg
-
-            // TODO: the directory content may have not changed, but somewhere up top a module declaration may be placed (meaning all packages are "new"), what do?
+            m.packages.push(ix);
         }
-        for _ in stack.iter_mut().rev() {
-            todo!(); // fill ret
-        }
+        ret.extend(stack.into_iter().rev());
         ret
     }
 
-    fn scan_root(root: &PathBuf, state: &mut DirTreeBuildState) -> Vec<Directory> {
-        state.reset();
+    fn build_module_updates(
+        _tree: &[Directory],
+        _modules: &[ModTraverse],
+        _prev_tree: &[Directory],
+        _prev_modules: &[ModTraverse],
+    ) -> Vec<workspace::ModuleUpdate> {
+        todo!();
+    }
+
+    fn scan_root(root: &PathBuf) -> Vec<Directory> {
+        let mut state = DirTreeBuildState::new();
         let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
         for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
             match entry {
@@ -451,9 +451,8 @@ impl Vfs {
     fn merge_hydrate_sorted_preorder_dirs(
         dirs: Vec<Directory>,
         prev_dirs: Vec<Directory>,
-        state: &mut DirTreeBuildState,
     ) -> Vec<Directory> {
-        state.reset();
+        let mut state = DirTreeBuildState::new();
         let mut dir_iter = dirs.into_iter().peekable();
         let mut prev_dir_iter = prev_dirs.into_iter().filter(|d| !d.deleted).peekable();
         loop {
