@@ -19,7 +19,7 @@ use crate::manifest;
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct File {
     path: PathBuf,
     modified: Option<SystemTime>,
@@ -33,6 +33,21 @@ impl File {
         File {
             path,
             modified,
+            ..Default::default()
+        }
+    }
+
+    fn new_from_existing(mut file: File, content_changed: bool) -> File {
+        assert!(!file.deleted && file.content.is_some());
+        file.content_changed = Some(content_changed);
+        file
+    }
+
+    fn new_deleted(path: PathBuf) -> File {
+        File {
+            path,
+            deleted: true,
+            content_changed: Some(true),
             ..Default::default()
         }
     }
@@ -66,48 +81,25 @@ impl File {
         Ok(Arc::from(s))
         // Vec -> Cow -> Arc is quite a lot of copies, but hopefully guaranteed UTF-8 simplifies things downstream.
     }
-
-    fn take_existing(file: &mut File, modified: bool) -> File {
-        assert!(!file.deleted && file.content.is_some());
-        let mut f = take(file);
-        f.content_changed = Some(modified);
-        f
-    }
-
-    fn take_deleted(file: &mut File) -> File {
-        assert!(!file.deleted && file.content.is_some());
-        let mut f = File::new(take(&mut file.path), None);
-        f.content_changed = Some(true);
-        f.deleted = true;
-        f
-    }
 }
 
-#[derive(Default)]
+#[derive(Clone)]
 enum DirManifestState {
-    #[default]
-    None,
     Deleted,
     // TODO: we want to have the content in the Same case as well
     Same, // used in case of parse error as well
     Changed(workspace::ModuleManifest),
 }
 
-impl DirManifestState {
-    fn is_some(&self) -> bool {
-        !matches!(self, DirManifestState::None)
-    }
-}
-
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Directory {
     path: PathBuf,
     depth: usize,
     deleted: bool,
-    content_changed: Option<bool>,
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name
-    manifest: DirManifestState,
+    content_changed: Option<bool>,
+    manifest: Option<DirManifestState>,
 }
 
 impl Directory {
@@ -115,6 +107,23 @@ impl Directory {
         Directory {
             path,
             depth,
+            ..Default::default()
+        }
+    }
+
+    fn new_from_existing(mut dir: Directory) -> Directory {
+        assert!(!dir.deleted);
+        dir.subdirectories.truncate(0);
+        dir.content_changed = None;
+        dir.manifest = None;
+        dir
+    }
+
+    fn new_deleted(path: PathBuf, depth: usize) -> Directory {
+        Directory {
+            path,
+            depth,
+            deleted: true,
             ..Default::default()
         }
     }
@@ -127,11 +136,17 @@ impl Directory {
             .expect("directory name must be valid UTF-8")
     }
 
-    fn fill_manifest(&mut self) {
+    fn set_files(&mut self, files: Vec<File>) {
+        self.source_files = files;
+        self.content_changed = Some(
+            self.source_files
+                .iter()
+                .any(|f| f.content_changed.expect("change marker must be set")),
+        );
         self.manifest = self.get_manifest();
     }
 
-    fn get_manifest(&self) -> DirManifestState {
+    fn get_manifest(&self) -> Option<DirManifestState> {
         let ins = self
             .source_files
             .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name());
@@ -140,10 +155,10 @@ impl Directory {
                 let m = &self.source_files[ix];
                 let changed = m.content_changed.expect("change indicator must be set");
                 if !changed {
-                    return DirManifestState::Same;
+                    return Some(DirManifestState::Same);
                 }
                 if m.deleted {
-                    return DirManifestState::Deleted;
+                    return Some(DirManifestState::Deleted);
                 }
                 let content = m
                     .content
@@ -152,32 +167,16 @@ impl Directory {
                     .as_ref();
                 let res = manifest::parse(content);
                 match res {
-                    Ok(manifest) => DirManifestState::Changed(manifest),
+                    Ok(manifest) => Some(DirManifestState::Changed(manifest)),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
-                        DirManifestState::Same
+                        Some(DirManifestState::Same)
                     }
                 }
             }
-            Err(_) => DirManifestState::None,
+            Err(_) => None,
         }
-    }
-
-    fn take_existing(dir: &mut Directory, modified: bool) -> Directory {
-        assert!(!dir.deleted);
-        let mut d = take(dir);
-        d.content_changed = Some(modified);
-        d.subdirectories.truncate(0);
-        d
-    }
-
-    fn take_deleted(dir: &mut Directory) -> Directory {
-        assert!(!dir.deleted);
-        let mut d = Directory::new(take(&mut dir.path), dir.depth);
-        d.content_changed = Some(true);
-        d.deleted = true;
-        d
     }
 }
 
@@ -258,7 +257,7 @@ impl ScanState {
 
 #[derive(Default)]
 struct ModTraverse {
-    _root: usize,
+    root: usize,
     packages: Vec<usize>,
     depth: usize,
     cur_ignore_pkgs_depth: Option<usize>,
@@ -267,7 +266,7 @@ struct ModTraverse {
 impl ModTraverse {
     fn new(root: usize, depth: usize) -> ModTraverse {
         ModTraverse {
-            _root: root,
+            root,
             depth,
             ..Default::default()
         }
@@ -331,16 +330,15 @@ impl Vfs {
     }
 
     fn scan(&mut self) -> Vec<workspace::ModuleUpdate> {
-        let mut ret: Vec<workspace::ModuleUpdate> = Vec::new();
+        let mut all_updates: Vec<workspace::ModuleUpdate> = Vec::new();
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root);
-            let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, take(&mut state.tree));
+            let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &state.tree);
             let modules = Self::build_modules(&tree);
             let updates = Self::build_module_updates(&tree, &modules, &state.tree, &state.modules);
-            ret.extend(updates);
+            all_updates.extend(updates);
             state.tree = tree;
             state.modules = modules;
-            // TODO: we need old tree to still be alive because old modules refer to stuff in old tree (we can kill it after we are done with old modules)
         }
         if self.cleanup_stale_roots {
             // Since we only clean up after manifest all manifests are in the None state,
@@ -352,18 +350,18 @@ impl Vfs {
                 any_manifest
             });
         }
-        ret
+        all_updates
     }
 
     fn build_modules(tree: &[Directory]) -> Vec<ModTraverse> {
-        let mut ret: Vec<ModTraverse> = Vec::new();
+        let mut modules: Vec<ModTraverse> = Vec::new();
         let mut stack: Vec<ModTraverse> = Vec::new();
         for (ix, dir) in tree.iter().enumerate() {
             // Pop finished modules off the stack until the depth is increasing
             // (equal depth means we are processing a potential new module at the same depth, so old one is done).
             while !stack.is_empty() && dir.depth <= stack.last().expect("stack is not empty").depth
             {
-                ret.push(stack.pop().expect("stack is not empty"));
+                modules.push(stack.pop().expect("stack is not empty"));
             }
             // Push new module on the stack, if we are visiting a module root.
             if dir.manifest.is_some() {
@@ -399,17 +397,49 @@ impl Vfs {
             }
             m.packages.push(ix);
         }
-        ret.extend(stack.into_iter().rev());
-        ret
+        modules.extend(stack.into_iter().rev());
+        modules
     }
 
     fn build_module_updates(
-        _tree: &[Directory],
-        _modules: &[ModTraverse],
-        _prev_tree: &[Directory],
-        _prev_modules: &[ModTraverse],
+        tree: &[Directory],
+        modules: &[ModTraverse],
+        prev_tree: &[Directory],
+        prev_modules: &[ModTraverse],
     ) -> Vec<workspace::ModuleUpdate> {
-        todo!();
+        let updates: Vec<workspace::ModuleUpdate> = Vec::new();
+        let mut mod_iter = modules.iter().peekable();
+        let mut prev_mod_iter = prev_modules
+            .iter()
+            .filter(|m| {
+                let _ = &prev_tree[m.root];
+                // TODO: filter deleted
+                todo!()
+            })
+            .peekable();
+        loop {
+            // Loop invariant: (cur, prev) point to a pair of matching modules.
+            let (_cur, _prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
+                (None, None) => break,
+                (Some(module), Some(prev_module)) => {
+                    let mod_dir = &tree[module.root];
+                    let prev_mod_dir = &prev_tree[prev_module.root];
+                    let _manifest = mod_dir
+                        .manifest
+                        .as_ref()
+                        .expect("manifest must exist in module root");
+                    let _prev_manifest = prev_mod_dir
+                        .manifest
+                        .as_ref()
+                        .expect("manifest must exist in module root");
+                    todo!(); // TODO: match import-path + source
+                             // match (manifest, prev_manifest) {
+                }
+                only_one => only_one,
+            };
+            todo!();
+        }
+        updates
     }
 
     fn scan_root(root: &PathBuf) -> Vec<Directory> {
@@ -450,15 +480,15 @@ impl Vfs {
 
     fn merge_hydrate_sorted_preorder_dirs(
         dirs: Vec<Directory>,
-        prev_dirs: Vec<Directory>,
+        prev_dirs: &[Directory],
     ) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
         let mut dir_iter = dirs.into_iter().peekable();
-        let mut prev_dir_iter = prev_dirs.into_iter().filter(|d| !d.deleted).peekable();
+        let mut prev_dir_iter = prev_dirs.iter().filter(|d| !d.deleted).peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching (by depth and name) directories.
             // Loop invariant: parents of both cur and prev have already been visited (preorder traversal).
-            let (cur, prev) = match (dir_iter.peek_mut(), prev_dir_iter.peek_mut()) {
+            let (cur, prev) = match (dir_iter.peek_mut(), prev_dir_iter.peek()) {
                 (None, None) => break,
                 (Some(dir), Some(prev_dir)) => match dir.depth.cmp(&prev_dir.depth) {
                     Ordering::Equal => {
@@ -484,28 +514,30 @@ impl Vfs {
             }
             match (cur, prev) {
                 (Some(dir), Some(prev_dir)) => {
-                    dir.source_files = Self::merge_hydrate_sorted_files(
-                        take(&mut dir.source_files),
-                        take(&mut prev_dir.source_files),
-                    );
-                    dir.fill_manifest();
-                    let diff = dir
-                        .source_files
-                        .iter()
-                        .any(|f| f.content_changed.expect("change marker must be set"));
-                    state.add_dir(Directory::take_existing(dir, diff));
+                    let mut d = Directory::new_from_existing(take(dir));
+                    let files = take(&mut d.source_files);
+                    d.set_files(Self::merge_hydrate_sorted_files(
+                        files,
+                        &prev_dir.source_files,
+                    ));
+                    state.add_dir(d);
                     dir_iter.next();
                     prev_dir_iter.next();
                 }
                 (Some(dir), None) => {
-                    dir.source_files =
-                        Self::merge_hydrate_sorted_files(take(&mut dir.source_files), Vec::new());
-                    dir.fill_manifest();
-                    state.add_dir(Directory::take_existing(dir, true));
+                    let mut d = Directory::new_from_existing(take(dir));
+                    let files = take(&mut d.source_files);
+                    d.set_files(Self::merge_hydrate_sorted_files(files, &[]));
+                    state.add_dir(d);
                     dir_iter.next();
                 }
                 (None, Some(prev_dir)) => {
-                    state.add_dir(Directory::take_deleted(prev_dir));
+                    let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
+                    d.set_files(Self::merge_hydrate_sorted_files(
+                        Vec::new(),
+                        &prev_dir.source_files,
+                    ));
+                    state.add_dir(d);
                     prev_dir_iter.next();
                 }
                 _ => unreachable!("at least one directory must be set"),
@@ -514,13 +546,13 @@ impl Vfs {
         state.take_tree()
     }
 
-    fn merge_hydrate_sorted_files(files: Vec<File>, prev_files: Vec<File>) -> Vec<File> {
+    fn merge_hydrate_sorted_files(files: Vec<File>, prev_files: &[File]) -> Vec<File> {
         let mut merged_files: Vec<File> = Vec::with_capacity(files.len());
         let mut file_iter = files.into_iter().peekable();
-        let mut prev_file_iter = prev_files.into_iter().filter(|f| !f.deleted).peekable();
+        let mut prev_file_iter = prev_files.iter().filter(|f| !f.deleted).peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching files.
-            let (cur, prev) = match (file_iter.peek_mut(), prev_file_iter.peek_mut()) {
+            let (cur, prev) = match (file_iter.peek_mut(), prev_file_iter.peek()) {
                 (None, None) => break,
                 (Some(file), Some(prev_file)) => {
                     match file.file_name().cmp(prev_file.file_name()) {
@@ -539,21 +571,21 @@ impl Vfs {
                     };
                     if modified && file.read_content() {
                         let diff = file.content != prev_file.content;
-                        merged_files.push(File::take_existing(file, diff));
+                        merged_files.push(File::new_from_existing(take(file), diff));
                     } else {
-                        merged_files.push(File::take_existing(prev_file, false));
+                        merged_files.push(File::new_from_existing((*prev_file).clone(), false));
                     }
                     file_iter.next();
                     prev_file_iter.next();
                 }
                 (Some(file), None) => {
                     if file.read_content() {
-                        merged_files.push(File::take_existing(file, true));
+                        merged_files.push(File::new_from_existing(take(file), true));
                     }
                     file_iter.next();
                 }
                 (None, Some(prev_file)) => {
-                    merged_files.push(File::take_deleted(prev_file));
+                    merged_files.push(File::new_deleted(prev_file.path.clone()));
                     prev_file_iter.next();
                 }
                 _ => unreachable!("at least one file must be set"),

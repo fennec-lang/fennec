@@ -139,6 +139,10 @@ module = "example.org/hello"
 - `and`, `or`, `not`?
   - `and`, `or` to avoid confusion with `&` and `|`, but type checker should help with that
   - `not` to make reading code easier (ensuring `!` is used where it should can be hard)
+- experiment with making borrow the default?
+  - or even require to explicitly indicate every use, so that `a.b.c` is just a path
+    - for maximum simplicity and consistency
+    - this may help with eliminating `ref` and friends as well in `match`?
 
 ### References and pointers
 

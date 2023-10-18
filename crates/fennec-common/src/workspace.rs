@@ -26,6 +26,7 @@ pub enum PackageUpdateKind {
     PackageUpdated,
 }
 
+#[derive(Clone)]
 pub struct ModuleManifest {
     pub module: types::ImportPath,
     pub fennec: types::FennecVersion,
