@@ -84,11 +84,16 @@ impl File {
 }
 
 #[derive(Clone)]
-enum DirManifestState {
+struct ManifestInfo {
+    manifest: workspace::ModuleManifest,
+    state: ManifestState,
+}
+
+#[derive(Clone)]
+enum ManifestState {
     Deleted,
-    // TODO: we want to have the content in the Same case as well
-    Same, // used in case of parse error as well
-    Changed(workspace::ModuleManifest),
+    Same,
+    Changed,
 }
 
 #[derive(Clone, Default)]
@@ -99,7 +104,7 @@ struct Directory {
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name
     content_changed: Option<bool>,
-    manifest: Option<DirManifestState>,
+    manifest_info: Option<ManifestInfo>,
 }
 
 impl Directory {
@@ -115,14 +120,14 @@ impl Directory {
         assert!(!dir.deleted);
         dir.subdirectories.truncate(0);
         dir.content_changed = None;
-        dir.manifest = None;
         dir
     }
 
-    fn new_deleted(path: PathBuf, depth: usize) -> Directory {
+    fn new_deleted(path: PathBuf, depth: usize, manifest: Option<ManifestInfo>) -> Directory {
         Directory {
             path,
             depth,
+            manifest_info: manifest,
             deleted: true,
             ..Default::default()
         }
@@ -143,10 +148,11 @@ impl Directory {
                 .iter()
                 .any(|f| f.content_changed.expect("change marker must be set")),
         );
-        self.manifest = self.get_manifest();
+        let prev_info = take(&mut self.manifest_info);
+        self.manifest_info = self.get_manifest(prev_info);
     }
 
-    fn get_manifest(&self) -> Option<DirManifestState> {
+    fn get_manifest(&self, prev_info: Option<ManifestInfo>) -> Option<ManifestInfo> {
         let ins = self
             .source_files
             .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name());
@@ -154,11 +160,20 @@ impl Directory {
             Ok(ix) => {
                 let m = &self.source_files[ix];
                 let changed = m.content_changed.expect("change indicator must be set");
+                let prev_manifest = prev_info
+                    .expect("previous manifest info must exist")
+                    .manifest;
                 if !changed {
-                    return Some(DirManifestState::Same);
+                    return Some(ManifestInfo {
+                        manifest: prev_manifest,
+                        state: ManifestState::Same,
+                    });
                 }
                 if m.deleted {
-                    return Some(DirManifestState::Deleted);
+                    return Some(ManifestInfo {
+                        manifest: prev_manifest,
+                        state: ManifestState::Deleted,
+                    });
                 }
                 let content = m
                     .content
@@ -167,11 +182,17 @@ impl Directory {
                     .as_ref();
                 let res = manifest::parse(content);
                 match res {
-                    Ok(manifest) => Some(DirManifestState::Changed(manifest)),
+                    Ok(manifest) => Some(ManifestInfo {
+                        manifest,
+                        state: ManifestState::Changed,
+                    }),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
-                        Some(DirManifestState::Same)
+                        Some(ManifestInfo {
+                            manifest: prev_manifest,
+                            state: ManifestState::Same,
+                        })
                     }
                 }
             }
@@ -345,7 +366,7 @@ impl Vfs {
             // by that time we have already reported that the modules are deleted;
             // no need to special-case scan root removal in module diff calculation.
             self.scan_state.retain_mut(|s| {
-                let any_manifest = s.tree.iter().any(|dir| dir.manifest.is_some());
+                let any_manifest = s.tree.iter().any(|dir| dir.manifest_info.is_some());
                 assert!(any_manifest || s.modules.is_empty());
                 any_manifest
             });
@@ -364,7 +385,7 @@ impl Vfs {
                 modules.push(stack.pop().expect("stack is not empty"));
             }
             // Push new module on the stack, if we are visiting a module root.
-            if dir.manifest.is_some() {
+            if dir.manifest_info.is_some() {
                 stack.push(ModTraverse::new(ix, dir.depth));
             }
             // If we are not inside a module, do nothing.
@@ -412,32 +433,57 @@ impl Vfs {
         let mut prev_mod_iter = prev_modules
             .iter()
             .filter(|m| {
-                let _ = &prev_tree[m.root];
-                // TODO: filter deleted
-                todo!()
+                let d = &prev_tree[m.root];
+                let m = d
+                    .manifest_info
+                    .as_ref()
+                    .expect("manifest must exist in module root");
+                !matches!(m.state, ManifestState::Deleted)
             })
             .peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching modules.
-            let (_cur, _prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
+            let (cur, prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
                 (None, None) => break,
                 (Some(module), Some(prev_module)) => {
                     let mod_dir = &tree[module.root];
                     let prev_mod_dir = &prev_tree[prev_module.root];
-                    let _manifest = mod_dir
-                        .manifest
+                    let m = &mod_dir
+                        .manifest_info
                         .as_ref()
-                        .expect("manifest must exist in module root");
-                    let _prev_manifest = prev_mod_dir
-                        .manifest
+                        .expect("manifest info must exist in module root")
+                        .manifest;
+                    let prev_m = &prev_mod_dir
+                        .manifest_info
                         .as_ref()
-                        .expect("manifest must exist in module root");
-                    todo!(); // TODO: match import-path + source
-                             // match (manifest, prev_manifest) {
+                        .expect("manifest info must exist in module root")
+                        .manifest;
+                    match (&m.module, &mod_dir.path).cmp(&(&prev_m.module, &prev_mod_dir.path)) {
+                        Ordering::Equal => (Some(module), Some(prev_module)),
+                        Ordering::Less => (Some(module), None),
+                        Ordering::Greater => (None, Some(prev_module)),
+                    }
                 }
                 only_one => only_one,
             };
+            match (cur, prev) {
+                (Some(_module), Some(_prev_module)) => {}
+                (Some(_module), None) => {}
+                (None, Some(_prev_module)) => {}
+                _ => unreachable!("at least one module must be set"),
+            }
             todo!();
+            // match (manifest, prev_manifest) {
+            //     (ManifestState::Deleted, ManifestState::Same) => {}
+            //     (ManifestState::Deleted, ManifestState::Changed(_)) => {}
+            //     (ManifestState::Same, ManifestState::Same) => {}
+            //     (ManifestState::Same, ManifestState::Changed(_)) => {}
+            //     (ManifestState::Changed(_), ManifestState::Same) => {}
+            //     (ManifestState::Changed(_), ManifestState::Changed(_)) => {}
+            //     (_, ManifestState::Deleted) => {
+            //         unreachable!("previously deleted modules were filtered")
+            //     }
+            // }
         }
         updates
     }
@@ -532,7 +578,11 @@ impl Vfs {
                     dir_iter.next();
                 }
                 (None, Some(prev_dir)) => {
-                    let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
+                    let mut d = Directory::new_deleted(
+                        prev_dir.path.clone(),
+                        prev_dir.depth,
+                        prev_dir.manifest_info.clone(),
+                    );
                     d.set_files(Self::merge_hydrate_sorted_files(
                         Vec::new(),
                         &prev_dir.source_files,
