@@ -86,7 +86,7 @@ impl File {
 #[derive(Clone)]
 struct ManifestInfo {
     manifest: workspace::ModuleManifest,
-    state: ManifestState,
+    file_state: ManifestState,
 }
 
 #[derive(Clone)]
@@ -166,13 +166,13 @@ impl Directory {
                 if !changed {
                     return Some(ManifestInfo {
                         manifest: prev_manifest,
-                        state: ManifestState::Same,
+                        file_state: ManifestState::Same,
                     });
                 }
                 if m.deleted {
                     return Some(ManifestInfo {
                         manifest: prev_manifest,
-                        state: ManifestState::Deleted,
+                        file_state: ManifestState::Deleted,
                     });
                 }
                 let content = m
@@ -184,14 +184,14 @@ impl Directory {
                 match res {
                     Ok(manifest) => Some(ManifestInfo {
                         manifest,
-                        state: ManifestState::Changed,
+                        file_state: ManifestState::Changed,
                     }),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
                         Some(ManifestInfo {
                             manifest: prev_manifest,
-                            state: ManifestState::Same,
+                            file_state: ManifestState::Same,
                         })
                     }
                 }
@@ -291,6 +291,15 @@ impl ModTraverse {
             depth,
             ..Default::default()
         }
+    }
+
+    fn index_root<'a>(&self, tree: &'a [Directory]) -> (&'a ManifestInfo, &'a Directory) {
+        let mod_dir = &tree[self.root];
+        let info = mod_dir
+            .manifest_info
+            .as_ref()
+            .expect("manifest info must exist in module root");
+        (info, mod_dir)
     }
 }
 
@@ -419,6 +428,12 @@ impl Vfs {
             m.packages.push(ix);
         }
         modules.extend(stack.into_iter().rev());
+        // Sort modules so that we can later merge them.
+        modules.sort_unstable_by(|a, b| {
+            let (a_info, a_dir) = a.index_root(tree);
+            let (b_info, b_dir) = b.index_root(tree);
+            (&a_info.manifest.module, &a_dir.path).cmp(&(&b_info.manifest.module, &b_dir.path))
+        });
         modules
     }
 
@@ -428,7 +443,7 @@ impl Vfs {
         prev_tree: &[Directory],
         prev_modules: &[ModTraverse],
     ) -> Vec<workspace::ModuleUpdate> {
-        let updates: Vec<workspace::ModuleUpdate> = Vec::new();
+        let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
         let mut mod_iter = modules.iter().peekable();
         let mut prev_mod_iter = prev_modules
             .iter()
@@ -438,7 +453,7 @@ impl Vfs {
                     .manifest_info
                     .as_ref()
                     .expect("manifest must exist in module root");
-                !matches!(m.state, ManifestState::Deleted)
+                !matches!(m.file_state, ManifestState::Deleted)
             })
             .peekable();
         loop {
@@ -446,19 +461,11 @@ impl Vfs {
             let (cur, prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
                 (None, None) => break,
                 (Some(module), Some(prev_module)) => {
-                    let mod_dir = &tree[module.root];
-                    let prev_mod_dir = &prev_tree[prev_module.root];
-                    let m = &mod_dir
-                        .manifest_info
-                        .as_ref()
-                        .expect("manifest info must exist in module root")
-                        .manifest;
-                    let prev_m = &prev_mod_dir
-                        .manifest_info
-                        .as_ref()
-                        .expect("manifest info must exist in module root")
-                        .manifest;
-                    match (&m.module, &mod_dir.path).cmp(&(&prev_m.module, &prev_mod_dir.path)) {
+                    let (info, mod_dir) = module.index_root(tree);
+                    let (prev_info, prev_mod_dir) = prev_module.index_root(prev_tree);
+                    match (&info.manifest.module, &mod_dir.path)
+                        .cmp(&(&prev_info.manifest.module, &prev_mod_dir.path))
+                    {
                         Ordering::Equal => (Some(module), Some(prev_module)),
                         Ordering::Less => (Some(module), None),
                         Ordering::Greater => (None, Some(prev_module)),
@@ -466,24 +473,72 @@ impl Vfs {
                 }
                 only_one => only_one,
             };
-            match (cur, prev) {
-                (Some(_module), Some(_prev_module)) => {}
-                (Some(_module), None) => {}
-                (None, Some(_prev_module)) => {}
+            let upd = match (cur, prev) {
+                (Some(module), Some(prev_module)) => {
+                    let (info, _dir) = module.index_root(tree);
+                    let (_prev_info, _prev_dir) = prev_module.index_root(prev_tree);
+                    match &info.file_state {
+                        ManifestState::Deleted => {
+                            // TODO: emit deleted (compare packages)
+                            todo!()
+                        }
+                        ManifestState::Same => {
+                            // TODO: compare packages; emit changes if any
+                            todo!()
+                        }
+                        ManifestState::Changed => {
+                            // TODO: emit manifest change; then as for Same
+                            todo!()
+                        }
+                    }
+                    // TODO: don't duplicate code with the cases below
+                }
+                (Some(module), None) => {
+                    let (info, dir) = module.index_root(tree);
+                    let mut packages = Vec::with_capacity(module.packages.len());
+                    for ix in &module.packages {
+                        let pkg_dir = &tree[*ix];
+                        let mut files = Vec::with_capacity(pkg_dir.source_files.len());
+                        for f in &pkg_dir.source_files {
+                            if !f.deleted && f.file_name() != MODULE_MANIFEST_FILENAME {
+                                files.push(workspace::File {
+                                    source: f.path.clone(),
+                                    content: f
+                                        .content
+                                        .as_ref()
+                                        .expect("content must be set on all files in a directory")
+                                        .clone(),
+                                });
+                            }
+                        }
+                        packages.push(workspace::PackageUpdate {
+                            source: pkg_dir.path.clone(),
+                            path: info.manifest.module.clone(), // TODO: join with package directories!!!
+                            files,
+                            update: workspace::PackageUpdateKind::PackageAdded,
+                        });
+                    }
+                    Some(workspace::ModuleUpdate {
+                        source: dir.path.clone(),
+                        module: info.manifest.module.clone(),
+                        manifest: Some(info.manifest.clone()),
+                        packages,
+                        update: workspace::ModuleUpdateKind::ModuleAdded,
+                    })
+                }
+                (None, Some(prev_module)) => {
+                    let (prev_info, prev_dir) = prev_module.index_root(prev_tree);
+                    Some(workspace::ModuleUpdate {
+                        source: prev_dir.path.clone(),
+                        module: prev_info.manifest.module.clone(),
+                        manifest: None,
+                        packages: Vec::new(),
+                        update: workspace::ModuleUpdateKind::ModuleRemoved,
+                    })
+                }
                 _ => unreachable!("at least one module must be set"),
-            }
-            todo!();
-            // match (manifest, prev_manifest) {
-            //     (ManifestState::Deleted, ManifestState::Same) => {}
-            //     (ManifestState::Deleted, ManifestState::Changed(_)) => {}
-            //     (ManifestState::Same, ManifestState::Same) => {}
-            //     (ManifestState::Same, ManifestState::Changed(_)) => {}
-            //     (ManifestState::Changed(_), ManifestState::Same) => {}
-            //     (ManifestState::Changed(_), ManifestState::Changed(_)) => {}
-            //     (_, ManifestState::Deleted) => {
-            //         unreachable!("previously deleted modules were filtered")
-            //     }
-            // }
+            };
+            updates.extend(upd);
         }
         updates
     }

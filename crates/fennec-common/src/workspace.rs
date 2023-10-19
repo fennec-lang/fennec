@@ -35,8 +35,8 @@ pub struct ModuleManifest {
 pub struct ModuleUpdate {
     pub source: PathBuf,
     pub module: types::ImportPath,        // same as manifest.module
-    pub manifest: Option<ModuleManifest>, // empty in case of no changes to the manifest
-    pub packages: Vec<PackageUpdate>,
+    pub manifest: Option<ModuleManifest>, // empty in case of no changes to the manifest or module was removed
+    pub packages: Vec<PackageUpdate>, // empty in case of no changes to the packages or module was removed
     pub update: ModuleUpdateKind,
 }
 
