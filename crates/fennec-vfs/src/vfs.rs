@@ -448,12 +448,8 @@ impl Vfs {
         let mut prev_mod_iter = prev_modules
             .iter()
             .filter(|m| {
-                let d = &prev_tree[m.root];
-                let m = d
-                    .manifest_info
-                    .as_ref()
-                    .expect("manifest must exist in module root");
-                !matches!(m.file_state, ManifestState::Deleted)
+                let (info, _) = m.index_root(prev_tree);
+                !matches!(info.file_state, ManifestState::Deleted)
             })
             .peekable();
         loop {
@@ -475,13 +471,16 @@ impl Vfs {
             };
             let upd = match (cur, prev) {
                 (Some(module), Some(prev_module)) => {
-                    let (info, _dir) = module.index_root(tree);
+                    let (info, dir) = module.index_root(tree);
                     let (_prev_info, _prev_dir) = prev_module.index_root(prev_tree);
                     match &info.file_state {
-                        ManifestState::Deleted => {
-                            // TODO: emit deleted (compare packages)
-                            todo!()
-                        }
+                        ManifestState::Deleted => Some(workspace::ModuleUpdate {
+                            source: dir.path.clone(),
+                            module: info.manifest.module.clone(),
+                            manifest: None,
+                            packages: Vec::new(),
+                            update: workspace::ModuleUpdateKind::ModuleRemoved,
+                        }),
                         ManifestState::Same => {
                             // TODO: compare packages; emit changes if any
                             todo!()
@@ -491,7 +490,6 @@ impl Vfs {
                             todo!()
                         }
                     }
-                    // TODO: don't duplicate code with the cases below
                 }
                 (Some(module), None) => {
                     let (info, dir) = module.index_root(tree);
@@ -525,10 +523,10 @@ impl Vfs {
                     })
                 }
                 (None, Some(prev_module)) => {
-                    let (prev_info, prev_dir) = prev_module.index_root(prev_tree);
+                    let (info, dir) = prev_module.index_root(prev_tree);
                     Some(workspace::ModuleUpdate {
-                        source: prev_dir.path.clone(),
-                        module: prev_info.manifest.module.clone(),
+                        source: dir.path.clone(),
+                        module: info.manifest.module.clone(),
                         manifest: None,
                         packages: Vec::new(),
                         update: workspace::ModuleUpdateKind::ModuleRemoved,
