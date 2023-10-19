@@ -495,34 +495,32 @@ impl Vfs {
                 }
                 (Some(module), None) => {
                     let (info, dir) = module.index_root(tree);
-                    let mut packages = Vec::with_capacity(module.packages.len());
-                    for ix in &module.packages {
+                    let packages = module.packages.iter().map(|ix| {
                         let pkg_dir = &tree[*ix];
-                        let mut files = Vec::with_capacity(pkg_dir.source_files.len());
-                        for f in &pkg_dir.source_files {
-                            if !f.deleted && f.file_name() != MODULE_MANIFEST_FILENAME {
-                                files.push(workspace::File {
-                                    source: f.path.clone(),
-                                    content: f
-                                        .content
-                                        .as_ref()
-                                        .expect("content must be set on all files in a directory")
-                                        .clone(),
-                                });
-                            }
-                        }
-                        packages.push(workspace::PackageUpdate {
+                        let files = pkg_dir
+                            .source_files
+                            .iter()
+                            .filter(|f| !f.deleted && f.file_name() != MODULE_MANIFEST_FILENAME)
+                            .map(|f| workspace::File {
+                                source: f.path.clone(),
+                                content: f
+                                    .content
+                                    .as_ref()
+                                    .expect("content must be set on all files in a directory")
+                                    .clone(),
+                            });
+                        workspace::PackageUpdate {
                             source: pkg_dir.path.clone(),
                             path: info.manifest.module.clone(), // TODO: join with package directories!!!
-                            files,
+                            files: files.collect(),
                             update: workspace::PackageUpdateKind::PackageAdded,
-                        });
-                    }
+                        }
+                    });
                     Some(workspace::ModuleUpdate {
                         source: dir.path.clone(),
                         module: info.manifest.module.clone(),
                         manifest: Some(info.manifest.clone()),
-                        packages,
+                        packages: packages.collect(),
                         update: workspace::ModuleUpdateKind::ModuleAdded,
                     })
                 }
