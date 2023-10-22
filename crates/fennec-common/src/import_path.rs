@@ -116,6 +116,13 @@ impl ImportPath {
         self.has_domain
     }
 
+    pub fn join(&self, rel: &str) -> Result<ImportPath, anyhow::Error> {
+        let mut path = self.path.clone();
+        path += "/";
+        path += rel;
+        Self::do_parse(&path, false)
+    }
+
     fn check_path_element(elem: &str) -> Result<(), anyhow::Error> {
         if elem.is_empty() {
             return Err(anyhow!("import path element must be non-empty"));

@@ -473,22 +473,19 @@ impl Vfs {
                 (Some(module), Some(prev_module)) => {
                     let (info, dir) = module.index_root(tree);
                     let (_prev_info, _prev_dir) = prev_module.index_root(prev_tree);
-                    match &info.file_state {
-                        ManifestState::Deleted => Some(workspace::ModuleUpdate {
+                    if matches!(&info.file_state, ManifestState::Deleted) {
+                        Some(workspace::ModuleUpdate {
                             source: dir.path.clone(),
                             module: info.manifest.module.clone(),
                             manifest: None,
                             packages: Vec::new(),
                             update: workspace::ModuleUpdateKind::ModuleRemoved,
-                        }),
-                        ManifestState::Same => {
-                            // TODO: compare packages; emit changes if any
-                            todo!()
-                        }
-                        ManifestState::Changed => {
-                            // TODO: emit manifest change; then as for Same
-                            todo!()
-                        }
+                        })
+                    } else {
+                        // TODO: directory and import path are the same; collect all package changes
+                        // TODO: merge package dirs; in each package dir, merge files
+                        // TODO: if manifest has changed, return Some(new_info) else None
+                        todo!()
                     }
                 }
                 (Some(module), None) => {
@@ -509,7 +506,11 @@ impl Vfs {
                             });
                         workspace::PackageUpdate {
                             source: pkg_dir.path.clone(),
-                            path: info.manifest.module.clone(), // TODO: join with package directories!!!
+                            path: Self::pkg_import_path(
+                                &info.manifest.module,
+                                &dir.path,
+                                &pkg_dir.path,
+                            ),
                             files: files.collect(),
                             update: workspace::PackageUpdateKind::PackageAdded,
                         }
@@ -537,6 +538,20 @@ impl Vfs {
             updates.extend(upd);
         }
         updates
+    }
+
+    fn pkg_import_path(
+        path: &types::ImportPath,
+        mod_dir: &Path,
+        pkg_dir: &Path,
+    ) -> types::ImportPath {
+        let rel = pkg_dir
+            .strip_prefix(mod_dir)
+            .expect("package must be a module subdirectory")
+            .to_str()
+            .expect("package relative path must be valid UTF-8");
+        path.join(rel)
+            .expect("join of package relative path to module import path must succeed")
     }
 
     fn scan_root(root: &PathBuf) -> Vec<Directory> {

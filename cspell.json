@@ -41,6 +41,7 @@
         "multiword",
         "nosources",
         "opengraph",
+        "papercuts",
         "pathbuf",
         "peekable",
         "pemfile",

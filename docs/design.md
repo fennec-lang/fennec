@@ -26,6 +26,7 @@
 - instant feedback
 - fast interpreter/compiler for development, WASM/C/LLVM for production
 - aggressively cut anything non-essential to vision
+- aggressively minimize papercuts
 
 ## Decisions
 

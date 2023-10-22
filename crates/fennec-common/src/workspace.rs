@@ -45,3 +45,5 @@ pub enum ModuleUpdateKind {
     ModuleRemoved,
     ModuleUpdated,
 }
+
+// TODO: consider Arc<PathBuf> everywhere?
