@@ -472,7 +472,6 @@ impl Vfs {
             let upd = match (cur, prev) {
                 (Some(module), Some(prev_module)) => {
                     let (info, dir) = module.index_root(tree);
-                    let (_prev_info, _prev_dir) = prev_module.index_root(prev_tree);
                     if matches!(&info.file_state, ManifestState::Deleted) {
                         Some(workspace::ModuleUpdate {
                             source: dir.path.clone(),
@@ -482,10 +481,16 @@ impl Vfs {
                             update: workspace::ModuleUpdateKind::ModuleRemoved,
                         })
                     } else {
-                        // TODO: directory and import path are the same; collect all package changes
-                        // TODO: merge package dirs; in each package dir, merge files
-                        // TODO: if manifest has changed, return Some(new_info) else None
-                        todo!()
+                        let packages =
+                            Self::build_package_updates(module, tree, prev_module, prev_tree);
+                        let same_manifest = matches!(&info.file_state, ManifestState::Same);
+                        (packages.is_empty() && same_manifest).then(|| workspace::ModuleUpdate {
+                            source: dir.path.clone(),
+                            module: info.manifest.module.clone(),
+                            manifest: same_manifest.then(|| info.manifest.clone()),
+                            packages,
+                            update: workspace::ModuleUpdateKind::ModuleUpdated,
+                        })
                     }
                 }
                 (Some(module), None) => {
@@ -511,7 +516,7 @@ impl Vfs {
                                 &dir.path,
                                 &pkg_dir.path,
                             ),
-                            files: files.collect(),
+                            files: files.collect(), // may be empty
                             update: workspace::PackageUpdateKind::PackageAdded,
                         }
                     });
@@ -519,7 +524,7 @@ impl Vfs {
                         source: dir.path.clone(),
                         module: info.manifest.module.clone(),
                         manifest: Some(info.manifest.clone()),
-                        packages: packages.collect(),
+                        packages: packages.collect(), // TODO: use build_package_updates
                         update: workspace::ModuleUpdateKind::ModuleAdded,
                     })
                 }
@@ -538,6 +543,21 @@ impl Vfs {
             updates.extend(upd);
         }
         updates
+    }
+
+    fn build_package_updates(
+        module: &ModTraverse,
+        tree: &[Directory],
+        prev_module: &ModTraverse,
+        prev_tree: &[Directory],
+    ) -> Vec<workspace::PackageUpdate> {
+        let _package_dirs = module.packages.iter().map(|ix| &tree[*ix]).peekable();
+        let _prev_package_dirs = prev_module
+            .packages
+            .iter()
+            .map(|ix| &prev_tree[*ix])
+            .peekable(); // TODO: filter deleted?
+        todo!()
     }
 
     fn pkg_import_path(
