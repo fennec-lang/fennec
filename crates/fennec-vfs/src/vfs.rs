@@ -179,8 +179,8 @@ impl Directory {
                 let res = manifest::parse(content);
                 match res {
                     Ok(manifest) => Some(ManifestInfo {
+                        manifest_changed: manifest != prev_manifest,
                         manifest,
-                        manifest_changed: true,
                     }),
                     Err(err) => {
                         let disp = m.path.display();
