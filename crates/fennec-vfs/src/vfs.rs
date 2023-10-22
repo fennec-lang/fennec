@@ -472,7 +472,7 @@ impl Vfs {
                             source: dir.path.clone(),
                             module: info.manifest.module.clone(),
                             manifest: info.manifest_changed.then(|| info.manifest.clone()),
-                            packages,
+                            packages, // may be empty
                             update: workspace::ModuleUpdateKind::ModuleUpdated,
                         });
                     }
@@ -527,7 +527,7 @@ impl Vfs {
         let mut package_dir_iter = packages.iter().map(|ix| &tree[*ix]).peekable();
         let mut prev_package_dir_iter = prev_packages.iter().map(|ix| &prev_tree[*ix]).peekable();
         loop {
-            // Loop invariant: (cur, prev) point to a pair of matching packages.
+            // Loop invariant: (cur, prev) point to a pair of matching package directories.
             let (cur, prev) = match (package_dir_iter.peek(), prev_package_dir_iter.peek()) {
                 (None, None) => break,
                 (Some(dir), Some(prev_dir)) => match dir.path.cmp(&prev_dir.path) {
