@@ -86,14 +86,7 @@ impl File {
 #[derive(Clone)]
 struct ManifestInfo {
     manifest: workspace::ModuleManifest,
-    file_state: ManifestState,
-}
-
-#[derive(Clone)]
-enum ManifestState {
-    Deleted,
-    Same,
-    Changed,
+    manifest_changed: bool,
 }
 
 #[derive(Clone, Default)]
@@ -104,7 +97,7 @@ struct Directory {
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name
     content_changed: Option<bool>,
-    manifest_info: Option<ManifestInfo>,
+    manifest_info: Option<ManifestInfo>, // empty if manifest does not currently exist
 }
 
 impl Directory {
@@ -123,11 +116,10 @@ impl Directory {
         dir
     }
 
-    fn new_deleted(path: PathBuf, depth: usize, manifest: Option<ManifestInfo>) -> Directory {
+    fn new_deleted(path: PathBuf, depth: usize) -> Directory {
         Directory {
             path,
             depth,
-            manifest_info: manifest,
             deleted: true,
             ..Default::default()
         }
@@ -159,6 +151,9 @@ impl Directory {
         match ins {
             Ok(ix) => {
                 let m = &self.source_files[ix];
+                if m.deleted {
+                    return None;
+                }
                 let changed = m.content_changed.expect("change indicator must be set");
                 let prev_manifest = prev_info
                     .expect("previous manifest info must exist")
@@ -166,13 +161,7 @@ impl Directory {
                 if !changed {
                     return Some(ManifestInfo {
                         manifest: prev_manifest,
-                        file_state: ManifestState::Same,
-                    });
-                }
-                if m.deleted {
-                    return Some(ManifestInfo {
-                        manifest: prev_manifest,
-                        file_state: ManifestState::Deleted,
+                        manifest_changed: false,
                     });
                 }
                 let content = m
@@ -184,14 +173,14 @@ impl Directory {
                 match res {
                     Ok(manifest) => Some(ManifestInfo {
                         manifest,
-                        file_state: ManifestState::Changed,
+                        manifest_changed: true,
                     }),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
                         Some(ManifestInfo {
                             manifest: prev_manifest,
-                            file_state: ManifestState::Same,
+                            manifest_changed: false,
                         })
                     }
                 }
@@ -387,13 +376,17 @@ impl Vfs {
         let mut modules: Vec<ModTraverse> = Vec::new();
         let mut stack: Vec<ModTraverse> = Vec::new();
         for (ix, dir) in tree.iter().enumerate() {
+            // Ignore all deleted directories.
+            if dir.deleted {
+                continue;
+            }
             // Pop finished modules off the stack until the depth is increasing
             // (equal depth means we are processing a potential new module at the same depth, so old one is done).
             while !stack.is_empty() && dir.depth <= stack.last().expect("stack is not empty").depth
             {
                 modules.push(stack.pop().expect("stack is not empty"));
             }
-            // Push new module on the stack, if we are visiting a module root.
+            // Push new module on the stack, if we are visiting an existing module root.
             if dir.manifest_info.is_some() {
                 stack.push(ModTraverse::new(ix, dir.depth));
             }
@@ -445,13 +438,7 @@ impl Vfs {
     ) -> Vec<workspace::ModuleUpdate> {
         let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
         let mut mod_iter = modules.iter().peekable();
-        let mut prev_mod_iter = prev_modules
-            .iter()
-            .filter(|m| {
-                let (info, _) = m.index_root(prev_tree);
-                !matches!(info.file_state, ManifestState::Deleted)
-            })
-            .peekable();
+        let mut prev_mod_iter = prev_modules.iter().peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching modules.
             let (cur, prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
@@ -469,95 +456,143 @@ impl Vfs {
                 }
                 only_one => only_one,
             };
-            let upd = match (cur, prev) {
+            match (cur, prev) {
                 (Some(module), Some(prev_module)) => {
                     let (info, dir) = module.index_root(tree);
-                    if matches!(&info.file_state, ManifestState::Deleted) {
-                        Some(workspace::ModuleUpdate {
+                    let packages = Self::build_package_updates(
+                        &info.manifest.module,
+                        &dir.path,
+                        &module.packages,
+                        tree,
+                        &prev_module.packages,
+                        prev_tree,
+                    );
+                    if info.manifest_changed || !packages.is_empty() {
+                        updates.push(workspace::ModuleUpdate {
                             source: dir.path.clone(),
                             module: info.manifest.module.clone(),
-                            manifest: None,
-                            packages: Vec::new(),
-                            update: workspace::ModuleUpdateKind::ModuleRemoved,
-                        })
-                    } else {
-                        let packages =
-                            Self::build_package_updates(module, tree, prev_module, prev_tree);
-                        let same_manifest = matches!(&info.file_state, ManifestState::Same);
-                        (packages.is_empty() && same_manifest).then(|| workspace::ModuleUpdate {
-                            source: dir.path.clone(),
-                            module: info.manifest.module.clone(),
-                            manifest: same_manifest.then(|| info.manifest.clone()),
+                            manifest: info.manifest_changed.then(|| info.manifest.clone()),
                             packages,
                             update: workspace::ModuleUpdateKind::ModuleUpdated,
-                        })
+                        });
                     }
+                    mod_iter.next();
+                    prev_mod_iter.next();
                 }
                 (Some(module), None) => {
                     let (info, dir) = module.index_root(tree);
-                    let packages = module.packages.iter().map(|ix| {
-                        let pkg_dir = &tree[*ix];
-                        let files = pkg_dir
-                            .source_files
-                            .iter()
-                            .filter(|f| !f.deleted && f.file_name() != MODULE_MANIFEST_FILENAME)
-                            .map(|f| workspace::File {
-                                source: f.path.clone(),
-                                content: f
-                                    .content
-                                    .as_ref()
-                                    .expect("content must be set on all files in a directory")
-                                    .clone(),
-                            });
-                        workspace::PackageUpdate {
-                            source: pkg_dir.path.clone(),
-                            path: Self::pkg_import_path(
-                                &info.manifest.module,
-                                &dir.path,
-                                &pkg_dir.path,
-                            ),
-                            files: files.collect(), // may be empty
-                            update: workspace::PackageUpdateKind::PackageAdded,
-                        }
-                    });
-                    Some(workspace::ModuleUpdate {
+                    let packages = Self::build_package_updates(
+                        &info.manifest.module,
+                        &dir.path,
+                        &module.packages,
+                        tree,
+                        &[],
+                        &[],
+                    );
+                    updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
                         module: info.manifest.module.clone(),
                         manifest: Some(info.manifest.clone()),
-                        packages: packages.collect(), // TODO: use build_package_updates
+                        packages,
                         update: workspace::ModuleUpdateKind::ModuleAdded,
-                    })
+                    });
+                    mod_iter.next();
                 }
                 (None, Some(prev_module)) => {
                     let (info, dir) = prev_module.index_root(prev_tree);
-                    Some(workspace::ModuleUpdate {
+                    updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
                         module: info.manifest.module.clone(),
                         manifest: None,
                         packages: Vec::new(),
                         update: workspace::ModuleUpdateKind::ModuleRemoved,
-                    })
+                    });
+                    prev_mod_iter.next();
                 }
                 _ => unreachable!("at least one module must be set"),
             };
-            updates.extend(upd);
         }
         updates
     }
 
     fn build_package_updates(
-        module: &ModTraverse,
+        mod_path: &types::ImportPath,
+        mod_dir: &Path,
+        packages: &[usize],
         tree: &[Directory],
-        prev_module: &ModTraverse,
+        prev_packages: &[usize],
         prev_tree: &[Directory],
     ) -> Vec<workspace::PackageUpdate> {
-        let _package_dirs = module.packages.iter().map(|ix| &tree[*ix]).peekable();
-        let _prev_package_dirs = prev_module
-            .packages
+        let mut updates: Vec<workspace::PackageUpdate> = Vec::new();
+        let mut package_dir_iter = packages.iter().map(|ix| &tree[*ix]).peekable();
+        let mut prev_package_dir_iter = prev_packages.iter().map(|ix| &prev_tree[*ix]).peekable();
+        loop {
+            // Loop invariant: (cur, prev) point to a pair of matching packages.
+            let (cur, prev) = match (package_dir_iter.peek(), prev_package_dir_iter.peek()) {
+                (None, None) => break,
+                (Some(dir), Some(prev_dir)) => match dir.path.cmp(&prev_dir.path) {
+                    Ordering::Equal => (Some(dir), Some(prev_dir)),
+                    Ordering::Less => (Some(dir), None),
+                    Ordering::Greater => (None, Some(prev_dir)),
+                },
+                only_one => only_one,
+            };
+            match (cur, prev) {
+                (Some(dir), Some(_)) => {
+                    let files = Self::build_package_files(&dir.source_files, true);
+                    if !files.is_empty() {
+                        updates.push(workspace::PackageUpdate {
+                            source: dir.path.clone(),
+                            path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
+                            files,
+                            update: workspace::PackageUpdateKind::PackageUpdated,
+                        });
+                    }
+                    package_dir_iter.next();
+                    prev_package_dir_iter.next();
+                }
+                (Some(dir), None) => {
+                    let files = Self::build_package_files(&dir.source_files, false);
+                    updates.push(workspace::PackageUpdate {
+                        source: dir.path.clone(),
+                        path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
+                        files, // may be empty
+                        update: workspace::PackageUpdateKind::PackageAdded,
+                    });
+                    package_dir_iter.next();
+                }
+                (None, Some(prev_dir)) => {
+                    updates.push(workspace::PackageUpdate {
+                        source: prev_dir.path.clone(),
+                        path: Self::pkg_import_path(mod_path, mod_dir, &prev_dir.path),
+                        files: Vec::new(),
+                        update: workspace::PackageUpdateKind::PackageRemoved,
+                    });
+                    prev_package_dir_iter.next();
+                }
+                _ => unreachable!("at least one package must be set"),
+            };
+        }
+        updates
+    }
+
+    fn build_package_files(source_files: &[File], only_changed: bool) -> Vec<workspace::File> {
+        source_files
             .iter()
-            .map(|ix| &prev_tree[*ix])
-            .peekable(); // TODO: filter deleted?
-        todo!()
+            .filter(|f| {
+                !(f.deleted
+                    || f.file_name() == MODULE_MANIFEST_FILENAME
+                    || (only_changed && !f.content_changed.expect("change marker must be set")))
+            })
+            .map(|f| workspace::File {
+                source: f.path.clone(),
+                content: f
+                    .content
+                    .as_ref()
+                    .expect("content must be set on all files in a package directory")
+                    .clone(),
+            })
+            .collect()
     }
 
     fn pkg_import_path(
@@ -664,11 +699,7 @@ impl Vfs {
                     dir_iter.next();
                 }
                 (None, Some(prev_dir)) => {
-                    let mut d = Directory::new_deleted(
-                        prev_dir.path.clone(),
-                        prev_dir.depth,
-                        prev_dir.manifest_info.clone(),
-                    );
+                    let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
                     d.set_files(Self::merge_hydrate_sorted_files(
                         Vec::new(),
                         &prev_dir.source_files,
