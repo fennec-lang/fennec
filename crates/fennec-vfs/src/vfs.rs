@@ -5,6 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
+use once_cell::sync::Lazy;
 use std::{
     cmp::Ordering,
     io::Read,
@@ -18,6 +19,7 @@ use std::{
 use crate::manifest;
 
 const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
+static EMPTY_CONTENT: Lazy<Arc<str>> = Lazy::new(|| Arc::from(""));
 
 #[derive(Default, Clone)]
 struct File {
@@ -25,7 +27,7 @@ struct File {
     modified: Option<SystemTime>,
     deleted: bool,
     content_changed: Option<bool>,
-    content: Option<Arc<str>>, // None initially or in case of read error
+    content: Option<Arc<str>>, // None initially or in case of read error, and also for deleted files
 }
 
 impl File {
@@ -539,7 +541,18 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(dir), Some(_)) => {
-                    let files = Self::build_package_files(&dir.source_files, true);
+                    let files: Vec<workspace::File> = dir
+                        .source_files
+                        .iter()
+                        .filter(|f| {
+                            f.file_name() != MODULE_MANIFEST_FILENAME
+                                && f.content_changed.expect("change marker must be set")
+                        })
+                        .map(|f| workspace::File {
+                            source: f.path.clone(),
+                            content: f.content.as_ref().unwrap_or(&EMPTY_CONTENT).clone(),
+                        })
+                        .collect();
                     if !files.is_empty() {
                         updates.push(workspace::PackageUpdate {
                             source: dir.path.clone(),
@@ -552,11 +565,22 @@ impl Vfs {
                     prev_package_dir_iter.next();
                 }
                 (Some(dir), None) => {
-                    let files = Self::build_package_files(&dir.source_files, false);
+                    let files = dir
+                        .source_files
+                        .iter()
+                        .filter(|f| f.file_name() != MODULE_MANIFEST_FILENAME && !f.deleted)
+                        .map(|f| workspace::File {
+                            source: f.path.clone(),
+                            content: f
+                                .content
+                                .as_ref()
+                                .expect("content must be set on all files in a package directory")
+                                .clone(),
+                        });
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
                         path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
-                        files, // may be empty
+                        files: files.collect(), // may be empty
                         update: workspace::PackageUpdateKind::PackageAdded,
                     });
                     package_dir_iter.next();
@@ -574,25 +598,6 @@ impl Vfs {
             };
         }
         updates
-    }
-
-    fn build_package_files(source_files: &[File], only_changed: bool) -> Vec<workspace::File> {
-        source_files
-            .iter()
-            .filter(|f| {
-                !(f.deleted
-                    || f.file_name() == MODULE_MANIFEST_FILENAME
-                    || (only_changed && !f.content_changed.expect("change marker must be set")))
-            })
-            .map(|f| workspace::File {
-                source: f.path.clone(),
-                content: f
-                    .content
-                    .as_ref()
-                    .expect("content must be set on all files in a package directory")
-                    .clone(),
-            })
-            .collect()
     }
 
     fn pkg_import_path(

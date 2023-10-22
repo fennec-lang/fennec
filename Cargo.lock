@@ -343,6 +343,7 @@ dependencies = [
  "anyhow",
  "fennec-common",
  "log",
+ "once_cell",
  "semver",
  "serde",
  "toml",

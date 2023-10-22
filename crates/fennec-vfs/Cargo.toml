@@ -12,6 +12,7 @@ readme = false
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
+once_cell.workspace = true
 semver.workspace = true
 serde.workspace = true
 toml.workspace = true
