@@ -325,7 +325,7 @@ impl Vfs {
             // In the future, we could consider reacting to the client-side watch notifications
             // in addition to periodic scanning here.
 
-            let mut should_scan = timed_out;
+            let mut should_scan = changes.force_scan || timed_out;
             for root in changes.scan_roots {
                 // We don't want to re-scan if we got notified about a root we are already watching.
                 should_scan |= self.add_root(root);
@@ -333,7 +333,9 @@ impl Vfs {
 
             if should_scan {
                 let updates = self.scan();
-                state.signal_vfs_updates(updates);
+                if !updates.is_empty() {
+                    state.signal_core_module_updates(updates);
+                }
             }
         }
     }

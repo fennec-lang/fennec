@@ -18,6 +18,7 @@ pub struct VfsChangeBuffer {
     pub exit: bool,
     // Scan roots usually correspond to directories with a manifest file, but they don't have to.
     pub scan_roots: Vec<PathBuf>,
+    pub force_scan: bool,
 }
 
 #[derive(Default)]
@@ -72,13 +73,19 @@ impl SyncState {
         }
     }
 
-    pub fn signal_new_roots(&self, roots: Vec<PathBuf>) {
+    pub fn signal_vfs_new_roots(&self, roots: Vec<PathBuf>) {
         let mut vfs = self.vfs_changes.lock();
         vfs.scan_roots.extend(roots);
         self.notify_vfs();
     }
 
-    pub fn signal_vfs_updates(&self, updates: Vec<workspace::ModuleUpdate>) {
+    pub fn signal_vfs_force_scan(&self) {
+        let mut vfs = self.vfs_changes.lock();
+        vfs.force_scan = true;
+        self.notify_vfs();
+    }
+
+    pub fn signal_core_module_updates(&self, updates: Vec<workspace::ModuleUpdate>) {
         let mut core = self.core_changes.lock();
         core.module_updates.extend(updates);
         self.notify_core();

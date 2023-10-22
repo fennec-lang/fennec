@@ -136,7 +136,7 @@ impl Server {
                         // where we would miss new roots that appeared after the walk is complete but
                         // before the watch is set up.
                         let roots = find_module_roots(&self.workspace_folders);
-                        state.signal_new_roots(roots);
+                        state.signal_vfs_new_roots(roots);
                     }
                 }
                 lsp_server::Message::Notification(note) => {
@@ -173,7 +173,7 @@ impl Server {
                                     );
                                 }
                             }
-                            state.signal_new_roots(roots);
+                            state.signal_vfs_new_roots(roots);
                         }
                         Err(err) => {
                             let method = lsp_types::notification::DidChangeWatchedFiles::METHOD;
