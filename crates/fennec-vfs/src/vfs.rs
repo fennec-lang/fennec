@@ -62,6 +62,11 @@ impl File {
             .expect("file name must be valid UTF-8")
     }
 
+    #[must_use]
+    fn is_manifest(&self) -> bool {
+        self.file_name() == MODULE_MANIFEST_FILENAME
+    }
+
     fn read_content(&mut self) -> bool {
         let res = Self::read_utf8_lossy(&self.path);
         self.content = match res {
@@ -97,7 +102,7 @@ struct Directory {
     depth: usize,
     deleted: bool,
     subdirectories: Vec<usize>, // sorted by directory name
-    source_files: Vec<File>,    // sorted by file name
+    source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
     manifest_info: Option<ManifestInfo>, // empty if manifest does not currently exist
 }
@@ -545,8 +550,8 @@ impl Vfs {
                         .source_files
                         .iter()
                         .filter(|f| {
-                            f.file_name() != MODULE_MANIFEST_FILENAME
-                                && f.content_changed.expect("change marker must be set")
+                            f.content_changed.expect("change marker must be set")
+                                && !f.is_manifest()
                         })
                         .map(|f| workspace::File {
                             source: f.path.clone(),
@@ -568,7 +573,7 @@ impl Vfs {
                     let files = dir
                         .source_files
                         .iter()
-                        .filter(|f| f.file_name() != MODULE_MANIFEST_FILENAME && !f.deleted)
+                        .filter(|f| !f.deleted && !f.is_manifest())
                         .map(|f| workspace::File {
                             source: f.path.clone(),
                             content: f
