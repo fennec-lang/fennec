@@ -174,6 +174,11 @@ module = "example.org/hello"
       implicits or dictionary-passing
 - mutexes
   - should be able to make them non-atomic for single-threaded components
+- variable lifetime
+  - default should be earliest possible drop, to avoid as many borrow problems as possible
+  - special guard (type? construct? trait?) would force the lifetime to extend to the entire scope
+    - rust doing this for anything that implements `Drop` is a mistake
+  - [Explicit separation between liveness scope and referential scope](https://haibane-tenshi.github.io/rust-reborrowing/), maybe?
 
 ### Synchronization
 

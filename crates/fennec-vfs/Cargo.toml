@@ -23,4 +23,5 @@ fennec-common.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 proptest-state-machine.workspace = true
+slotmap.workspace = true
 tempfile.workspace = true
