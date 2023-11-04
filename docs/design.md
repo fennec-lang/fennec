@@ -23,7 +23,7 @@
 - lightweight typing
 - built by induction to always be auto-testable
 - total determinism and purity, I/O only in the shell
-- instant feedback
+- instant feedback and total observability
 - fast interpreter/compiler for development, WASM/C/LLVM for production
 - aggressively cut anything non-essential to vision
 - aggressively minimize papercuts
@@ -179,6 +179,7 @@ module = "example.org/hello"
   - special guard (type? construct? trait?) would force the lifetime to extend to the entire scope
     - rust doing this for anything that implements `Drop` is a mistake
   - [Explicit separation between liveness scope and referential scope](https://haibane-tenshi.github.io/rust-reborrowing/), maybe?
+  - explicit re-borrow, including "shared that is guaranteed to be single, to exclusive"
 
 ### Synchronization
 
