@@ -22,7 +22,7 @@ license = "MPL-2.0"
 edition = "2021"
 
 [workspace.dependencies]
-ahash = "0.8.3"
+ahash = "0.8.6"
 anyhow = "1"
 clap = "4.4"
 env_logger = "0.10"
@@ -42,7 +42,7 @@ serde_json = "1"
 slotmap = "1"
 tempfile = "3"
 time = { version = "0.3.30", default-features = false }
-toml = "0.8.2"
+toml = "0.8.6"
 walkdir = "2"
 xflags = "0.3.1"
 xshell = "0.2.5"
