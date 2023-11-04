@@ -1,6 +1,7 @@
 extern crate proptest;
 extern crate proptest_state_machine;
 
+use fennec_common::util;
 use proptest::{prelude::*, sample, strategy};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
@@ -16,8 +17,8 @@ fn vfs_config() -> ProptestConfig {
 #[test]
 fn vfs_test() {
     let cfg = vfs_config();
-    proptest!(cfg.clone(), |((initial_state, transitions) in <VfsTest as StateMachineTest>::Reference::sequential_strategy(1..20))| {
-        VfsTest::test_sequential(cfg.clone(), initial_state, transitions)
+    proptest!(cfg.clone(), |((initial_state, transitions) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..20))| {
+        VfsMachine::test_sequential(cfg.clone(), initial_state, transitions)
     });
 }
 
@@ -26,6 +27,7 @@ enum Transition {
     AddNode {
         name: String,
         directory: bool,
+        file_content: Vec<u8>,
         parent: Option<NodeKey>,
     },
     RemoveNode {
@@ -39,12 +41,16 @@ fn node_name_strategy(valid_ident: bool) -> BoxedStrategy<String> {
     } else {
         "[A-Z][A-Z0-9_]*"
     };
-    expr.boxed()
+    expr.prop_filter("filename must not be reserved on windows", |name| {
+        !util::is_reserved_windows_filename(name)
+    })
+    .boxed()
 }
 
 fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let name_strategy = any::<bool>().prop_flat_map(node_name_strategy);
     let directory_strategy = any::<bool>();
+    let file_content_strategy = any::<Vec<u8>>();
     let maybe_parent_strategy = any::<bool>()
         .prop_flat_map(move |want_parent| {
             if want_parent && !parents.is_empty() {
@@ -57,12 +63,20 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
         })
         .boxed();
 
-    (name_strategy, directory_strategy, maybe_parent_strategy)
-        .prop_map(|(name, directory, parent)| Transition::AddNode {
-            name,
-            directory,
-            parent,
-        })
+    (
+        name_strategy,
+        directory_strategy,
+        file_content_strategy,
+        maybe_parent_strategy,
+    )
+        .prop_map(
+            |(name, directory, file_content, parent)| Transition::AddNode {
+                name,
+                directory,
+                file_content,
+                parent,
+            },
+        )
         .boxed()
 }
 
@@ -79,15 +93,17 @@ slotmap::new_key_type! { struct NodeKey; }
 struct Node {
     name: String,
     directory: bool,
+    _file_content: Vec<u8>,
     parent: Option<NodeKey>,
     children: Vec<NodeKey>,
 }
 
 impl Node {
-    fn new(name: String, directory: bool, parent: Option<NodeKey>) -> Node {
+    fn new(name: String, directory: bool, file_content: Vec<u8>, parent: Option<NodeKey>) -> Node {
         Node {
             name,
             directory,
+            _file_content: file_content,
             parent,
             children: Vec::new(),
         }
@@ -100,30 +116,28 @@ impl Node {
 }
 
 #[derive(Clone, Debug, Default)]
-struct VfsTestMachine {
+struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
     directories: Vec<NodeKey>,
 }
 
-impl VfsTestMachine {
-    fn add_node(&mut self, name: String, directory: bool, parent: Option<NodeKey>) {
-        let key = if let Some(parent_key) = parent {
-            let parent_node = &self.nodes[parent_key];
-            let ins = parent_node.find_child(&name, &self.nodes);
-            match ins {
-                Ok(_) => {
-                    return; // no-op, we tried to add a child that already exists
-                }
-                Err(ix) => {
-                    let key = self.nodes.insert(Node::new(name, directory, parent));
-                    let parent_node = &mut self.nodes[parent_key];
-                    parent_node.children.insert(ix, key);
-                    key
-                }
-            }
-        } else {
-            self.nodes.insert(Node::new(name, directory, parent))
-        };
+impl VfsReferenceMachine {
+    fn add_node(
+        &mut self,
+        name: String,
+        directory: bool,
+        file_content: Vec<u8>,
+        parent: Option<NodeKey>,
+    ) {
+        let key = self
+            .nodes
+            .insert(Node::new(name.clone(), directory, file_content, parent));
+        if let Some(parent_key) = parent {
+            let child_ix = (&self.nodes[parent_key])
+                .find_child(&name, &self.nodes)
+                .unwrap_err();
+            (&mut self.nodes[parent_key]).children.insert(child_ix, key);
+        }
         if directory {
             let dir_ix = self.directories.binary_search(&key).unwrap_err();
             self.directories.insert(dir_ix, key);
@@ -131,36 +145,37 @@ impl VfsTestMachine {
     }
 
     fn remove_node(&mut self, key: NodeKey, unlink_from_parent: bool) {
-        let node = self.eject(key, unlink_from_parent);
+        if unlink_from_parent {
+            let node = &self.nodes[key];
+            if let Some(parent_key) = node.parent {
+                let child_ix = (&self.nodes[parent_key])
+                    .find_child(&node.name, &self.nodes)
+                    .unwrap();
+                (&mut self.nodes[parent_key]).children.remove(child_ix);
+            }
+        }
+        let node = self.remove(key);
         for child in node.children {
             self.remove_node(child, false)
         }
     }
 
-    fn eject(&mut self, key: NodeKey, unlink_from_parent: bool) -> Node {
+    fn remove(&mut self, key: NodeKey) -> Node {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
             let dir_ix = self.directories.binary_search(&key).unwrap();
             self.directories.remove(dir_ix);
         }
-        if unlink_from_parent {
-            if let Some(parent_key) = node.parent {
-                let parent_node = &self.nodes[parent_key];
-                let child_ix = parent_node.find_child(&node.name, &self.nodes).unwrap();
-                let parent_node = &mut self.nodes[parent_key];
-                parent_node.children.remove(child_ix);
-            }
-        }
         node
     }
 }
 
-impl ReferenceStateMachine for VfsTestMachine {
+impl ReferenceStateMachine for VfsReferenceMachine {
     type State = Self;
     type Transition = Transition;
 
     fn init_state() -> BoxedStrategy<Self::State> {
-        Just(VfsTestMachine::default()).boxed()
+        Just(VfsReferenceMachine::default()).boxed()
     }
 
     fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
@@ -180,9 +195,10 @@ impl ReferenceStateMachine for VfsTestMachine {
             Transition::AddNode {
                 name,
                 directory,
+                file_content,
                 parent,
             } => {
-                state.add_node(name.clone(), *directory, *parent);
+                state.add_node(name.clone(), *directory, file_content.clone(), *parent);
             }
             Transition::RemoveNode { key } => {
                 state.remove_node(*key, true);
@@ -194,12 +210,16 @@ impl ReferenceStateMachine for VfsTestMachine {
     fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
         match transition {
             Transition::AddNode {
-                name: _,
+                name,
                 directory: _,
+                file_content: _,
                 parent,
             } => {
                 if let Some(parent_key) = parent {
                     state.directories.contains(parent_key)
+                        && (&state.nodes[*parent_key])
+                            .find_child(&name, &state.nodes)
+                            .is_err()
                 } else {
                     true
                 }
@@ -209,18 +229,18 @@ impl ReferenceStateMachine for VfsTestMachine {
     }
 }
 
-struct VfsTest {
+struct VfsMachine {
     _dir: TempDir,
 }
 
-impl StateMachineTest for VfsTest {
+impl StateMachineTest for VfsMachine {
     type SystemUnderTest = Self;
-    type Reference = VfsTestMachine;
+    type Reference = VfsReferenceMachine;
 
     fn init_test(
         _ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
-        VfsTest {
+        VfsMachine {
             _dir: TempDir::new().expect("it must be possible to create a temporary directory"),
         }
     }

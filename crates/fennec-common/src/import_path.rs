@@ -9,6 +9,8 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 
+use crate::util;
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct ImportPath {
     path: String,
@@ -155,12 +157,8 @@ impl ImportPath {
             return Err(anyhow!("import path element prefix must not match {re}"));
         }
 
-        for reserved in RESERVED_WINDOWS_NAMES {
-            if prefix.eq_ignore_ascii_case(reserved) {
-                return Err(anyhow!(
-                    "import path element must not have {reserved} prefix"
-                ));
-            }
+        if util::is_reserved_windows_filename(prefix) {
+            return Err(anyhow!("import path element must not have {prefix} prefix"));
         }
 
         Ok(())
@@ -218,13 +216,6 @@ impl fmt::Display for ImportPath {
         self.as_str().fmt(f)
     }
 }
-
-// https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
-pub(crate) const RESERVED_WINDOWS_NAMES: &[&str] = &[
-    "CON", "PRN", "AUX", "NUL", //
-    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", //
-    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-];
 
 #[cfg(test)]
 mod tests {

@@ -9,10 +9,21 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use crate::{
-    import_path::{PACKAGE_RE, RESERVED_WINDOWS_NAMES},
-    SOURCE_EXTENSION,
-};
+use crate::{import_path::PACKAGE_RE, SOURCE_EXTENSION};
+
+// https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
+const RESERVED_WINDOWS_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", //
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", //
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+#[must_use]
+pub fn is_reserved_windows_filename(file_name: &str) -> bool {
+    RESERVED_WINDOWS_NAMES
+        .iter()
+        .any(|r| file_name.eq_ignore_ascii_case(r))
+}
 
 #[must_use]
 pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
@@ -23,10 +34,7 @@ pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
 
 #[must_use]
 pub fn valid_package_name(file_name: &str) -> bool {
-    PACKAGE_RE.is_match(file_name)
-        && !RESERVED_WINDOWS_NAMES
-            .iter()
-            .any(|r| file_name.eq_ignore_ascii_case(r))
+    PACKAGE_RE.is_match(file_name) && !is_reserved_windows_filename(file_name)
 }
 
 #[must_use]
