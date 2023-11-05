@@ -4,6 +4,7 @@
     "description": "Fennec programming language support for Visual Studio Code",
     "version": "0.1.6",
     "preview": true,
+    "icon": "icon.png",
     "keywords": [
         "fennec"
     ],
