@@ -10,7 +10,19 @@ use crate::types;
 
 pub struct File {
     pub source: PathBuf,
-    pub content: Arc<str>, // empty in case of deleted file
+    pub content: Arc<str>, // for updates, empty in case of deleted file
+}
+
+pub struct Package {
+    pub source: PathBuf,
+    pub path: types::ImportPath,
+    pub files: Vec<File>,
+}
+
+pub struct Module {
+    pub source: PathBuf,
+    pub manifest: ModuleManifest,
+    pub packages: Vec<Package>,
 }
 
 pub struct PackageUpdate {

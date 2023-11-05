@@ -1,7 +1,7 @@
 extern crate proptest;
 extern crate proptest_state_machine;
 
-use fennec_common::util;
+use fennec_common::{util, workspace};
 use proptest::{prelude::*, sample, strategy};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
@@ -118,7 +118,18 @@ impl Node {
 #[derive(Clone, Debug, Default)]
 struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
+    toplevel: Vec<NodeKey>,
     directories: Vec<NodeKey>,
+}
+
+fn sorted_vec_insert<T: Ord>(v: &mut Vec<T>, elem: T) {
+    let ix = v.binary_search(&elem).unwrap_err();
+    v.insert(ix, elem);
+}
+
+fn sorted_vec_remove<T: Ord>(v: &mut Vec<T>, elem: &T) {
+    let ix = v.binary_search(elem).unwrap();
+    v.remove(ix);
 }
 
 impl VfsReferenceMachine {
@@ -137,10 +148,11 @@ impl VfsReferenceMachine {
                 .find_child(&name, &self.nodes)
                 .unwrap_err();
             (&mut self.nodes[parent_key]).children.insert(child_ix, key);
+        } else {
+            sorted_vec_insert(&mut self.toplevel, key);
         }
         if directory {
-            let dir_ix = self.directories.binary_search(&key).unwrap_err();
-            self.directories.insert(dir_ix, key);
+            sorted_vec_insert(&mut self.directories, key);
         }
     }
 
@@ -152,6 +164,8 @@ impl VfsReferenceMachine {
                     .find_child(&node.name, &self.nodes)
                     .unwrap();
                 (&mut self.nodes[parent_key]).children.remove(child_ix);
+            } else {
+                sorted_vec_remove(&mut self.toplevel, &key);
             }
         }
         let node = self.remove(key);
@@ -163,10 +177,13 @@ impl VfsReferenceMachine {
     fn remove(&mut self, key: NodeKey) -> Node {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
-            let dir_ix = self.directories.binary_search(&key).unwrap();
-            self.directories.remove(dir_ix);
+            sorted_vec_remove(&mut self.directories, &key);
         }
         node
+    }
+
+    fn _reconstruct(&self) -> Vec<workspace::Module> {
+        todo!()
     }
 }
 
