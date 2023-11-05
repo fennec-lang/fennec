@@ -75,9 +75,9 @@ fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrate
 
 fn import_path_strategy() -> BoxedStrategy<types::ImportPath> {
     let path_strategy = Union::new(vec![
-        "[a-z]+\\/[a-z][a-z0-9]*",
-        "[a-z]+\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*",
-        "[a-z]+\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*",
+        "[a-z]+\\/[a-z][a-z0-9_]*",
+        "[a-z]+\\/[a-z][a-z0-9_]*\\/[a-z][a-z0-9_]*",
+        "[a-z]+\\/[a-z][a-z0-9_]*\\/[a-z][a-z0-9_]*\\/[a-z][a-z0-9_]*",
     ]);
     path_strategy
         .prop_filter_map("import path must be valid", |path| {
