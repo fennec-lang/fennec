@@ -16,7 +16,7 @@ fn vfs_config() -> ProptestConfig {
 
 // Ensure that the VFS correctly reconstructs the workspace state.
 #[test]
-fn vfs_test() {
+fn vfs_workspace_reconstruct_test() {
     let cfg = vfs_config();
     proptest!(cfg.clone(), |((initial_state, transitions) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..20))| {
         VfsMachine::test_sequential(cfg.clone(), initial_state, transitions)
