@@ -285,7 +285,7 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
 name = "fennec"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "clap",
@@ -303,7 +303,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-common"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "ahash",
  "anyhow",
@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-core"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "fennec-common",
  "log",
@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-parser"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "lalrpop",
  "lalrpop-util",
@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-server"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "fennec-common",
@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "fennec-vfs"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "fennec-common",

@@ -13,7 +13,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.package]
-version = "0.1.7"
+version = "0.1.8"
 description = "Fennec Programming Language"
 authors = ["Gregory Petrosyan <pgregory@pgregory.net>"]
 homepage = "https://fennec-lang.org"
@@ -47,11 +47,11 @@ walkdir = "2"
 xflags = "0.3.1"
 xshell = "0.2.5"
 
-fennec-common = { path = "crates/fennec-common", version = "0.1.7" }
-fennec-core = { path = "crates/fennec-core", version = "0.1.7" }
-fennec-parser = { path = "crates/fennec-parser", version = "0.1.7" }
-fennec-server = { path = "crates/fennec-server", version = "0.1.7" }
-fennec-vfs = { path = "crates/fennec-vfs", version = "0.1.7" }
+fennec-common = { path = "crates/fennec-common", version = "0.1.8" }
+fennec-core = { path = "crates/fennec-core", version = "0.1.8" }
+fennec-parser = { path = "crates/fennec-parser", version = "0.1.8" }
+fennec-server = { path = "crates/fennec-server", version = "0.1.8" }
+fennec-vfs = { path = "crates/fennec-vfs", version = "0.1.8" }
 
 [workspace.metadata.release]
 allow-branch = ["master", "dev"]
