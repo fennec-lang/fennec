@@ -47,6 +47,9 @@ enum Transition {
         raw_content: Vec<u8>,
         manifest: Option<workspace::ModuleManifest>,
     },
+    MarkScanRoot {
+        key: NodeKey,
+    },
 }
 
 fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrategy<String> {
@@ -175,12 +178,20 @@ fn update_node_strategy(nodes: Vec<NodeKey>) -> BoxedStrategy<Transition> {
         .boxed()
 }
 
+fn mark_scan_root_strategy(directories: Vec<NodeKey>) -> BoxedStrategy<Transition> {
+    let dir_strategy = sample::select(directories);
+    dir_strategy
+        .prop_map(|key| Transition::MarkScanRoot { key })
+        .boxed()
+}
+
 slotmap::new_key_type! { struct NodeKey; }
 
 #[derive(Clone, Debug)]
 struct Node {
     name: String,
     directory: bool,
+    scan_root: bool,
     raw_content: Vec<u8>,
     manifest: Option<workspace::ModuleManifest>,
     parent: Option<NodeKey>,
@@ -198,6 +209,7 @@ impl Node {
         Node {
             name,
             directory,
+            scan_root: false,
             raw_content,
             manifest,
             parent,
@@ -286,6 +298,12 @@ impl VfsReferenceMachine {
         node.manifest = manifest;
     }
 
+    fn mark_scan_root(&mut self, key: NodeKey) {
+        let node = &mut self.nodes[key];
+        assert!(node.directory);
+        node.scan_root = true;
+    }
+
     fn remove(&mut self, key: NodeKey) -> Node {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
@@ -314,6 +332,9 @@ impl ReferenceStateMachine for VfsReferenceMachine {
         if !state.nodes.is_empty() {
             options.push(remove_node_strategy(state.nodes.keys().collect()));
             options.push(update_node_strategy(state.nodes.keys().collect()));
+        }
+        if !state.directories.is_empty() {
+            options.push(mark_scan_root_strategy(state.directories.clone()));
         }
 
         Union::new(options).boxed()
@@ -346,6 +367,9 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             } => {
                 state.update_node(*key, raw_content.clone(), manifest.clone());
             }
+            Transition::MarkScanRoot { key } => {
+                state.mark_scan_root(*key);
+            }
         };
         state
     }
@@ -364,6 +388,9 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             }
             Transition::RemoveNode { key } => state.nodes.contains_key(*key),
             Transition::UpdateNode { key, .. } => state.nodes.contains_key(*key),
+            Transition::MarkScanRoot { key } => {
+                state.nodes.contains_key(*key) && state.directories.contains(key)
+            }
         }
     }
 }
