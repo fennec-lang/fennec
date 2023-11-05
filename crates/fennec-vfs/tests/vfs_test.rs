@@ -14,6 +14,7 @@ fn vfs_config() -> ProptestConfig {
     }
 }
 
+// Ensure that the VFS correctly reconstructs the workspace state.
 #[test]
 fn vfs_test() {
     let cfg = vfs_config();
@@ -40,6 +41,11 @@ enum Transition {
     },
     RemoveNode {
         key: NodeKey,
+    },
+    UpdateNode {
+        key: NodeKey,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
     },
 }
 
@@ -90,6 +96,10 @@ fn fennec_version_strategy() -> BoxedStrategy<types::FennecVersion> {
         .boxed()
 }
 
+fn raw_content_strategy() -> BoxedStrategy<Vec<u8>> {
+    any::<Vec<u8>>().boxed()
+}
+
 fn manifest_strategy() -> BoxedStrategy<Option<workspace::ModuleManifest>> {
     Union::new(vec![
         Just(None).boxed(),
@@ -115,7 +125,6 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let name_strategy = (name_kind_strategy, valid_ident_strategy)
         .prop_flat_map(|(name_kind, valid_ident)| node_name_strategy(name_kind, valid_ident));
     let directory_strategy = any::<bool>();
-    let raw_content_strategy = any::<Vec<u8>>();
     let want_parent_strategy = any::<bool>();
     let maybe_parent_strategy = want_parent_strategy
         .prop_flat_map(move |want_parent| {
@@ -132,7 +141,7 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     (
         name_strategy,
         directory_strategy,
-        raw_content_strategy,
+        raw_content_strategy(),
         manifest_strategy(),
         maybe_parent_strategy,
     )
@@ -155,14 +164,25 @@ fn remove_node_strategy(nodes: Vec<NodeKey>) -> BoxedStrategy<Transition> {
         .boxed()
 }
 
+fn update_node_strategy(nodes: Vec<NodeKey>) -> BoxedStrategy<Transition> {
+    let key_strategy = sample::select(nodes);
+    (key_strategy, raw_content_strategy(), manifest_strategy())
+        .prop_map(|(key, raw_content, manifest)| Transition::UpdateNode {
+            key,
+            raw_content,
+            manifest,
+        })
+        .boxed()
+}
+
 slotmap::new_key_type! { struct NodeKey; }
 
 #[derive(Clone, Debug)]
 struct Node {
     name: String,
     directory: bool,
-    _raw_content: Vec<u8>,
-    _manifest: Option<workspace::ModuleManifest>,
+    raw_content: Vec<u8>,
+    manifest: Option<workspace::ModuleManifest>,
     parent: Option<NodeKey>,
     children: Vec<NodeKey>,
 }
@@ -178,8 +198,8 @@ impl Node {
         Node {
             name,
             directory,
-            _raw_content: raw_content,
-            _manifest: manifest,
+            raw_content,
+            manifest,
             parent,
             children: Vec::new(),
         }
@@ -255,6 +275,17 @@ impl VfsReferenceMachine {
         }
     }
 
+    fn update_node(
+        &mut self,
+        key: NodeKey,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
+    ) {
+        let node = &mut self.nodes[key];
+        node.raw_content = raw_content;
+        node.manifest = manifest;
+    }
+
     fn remove(&mut self, key: NodeKey) -> Node {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
@@ -281,8 +312,8 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
         options.push(add_node_strategy(state.directories.clone()));
         if !state.nodes.is_empty() {
-            let nodes_vec: Vec<NodeKey> = state.nodes.keys().collect();
-            options.push(remove_node_strategy(nodes_vec));
+            options.push(remove_node_strategy(state.nodes.keys().collect()));
+            options.push(update_node_strategy(state.nodes.keys().collect()));
         }
 
         Union::new(options).boxed()
@@ -308,7 +339,14 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::RemoveNode { key } => {
                 state.remove_node(*key, true);
             }
-        }
+            Transition::UpdateNode {
+                key,
+                raw_content,
+                manifest,
+            } => {
+                state.update_node(*key, raw_content.clone(), manifest.clone());
+            }
+        };
         state
     }
 
@@ -325,6 +363,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
                 }
             }
             Transition::RemoveNode { key } => state.nodes.contains_key(*key),
+            Transition::UpdateNode { key, .. } => state.nodes.contains_key(*key),
         }
     }
 }
