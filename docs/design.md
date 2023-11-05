@@ -399,5 +399,5 @@ TODO
 
 ### Miscellaneous
 
-- logo (project + github social previews + opengraph + vscode language icon + vscode extension icon)
+- add vscode language icon
 - look over old docs for interesting ideas for this document
