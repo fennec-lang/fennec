@@ -38,7 +38,7 @@ pub enum PackageUpdateKind {
     PackageUpdated,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct ModuleManifest {
     pub module: types::ImportPath,
     pub fennec: types::FennecVersion,

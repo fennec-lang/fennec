@@ -1,8 +1,8 @@
 extern crate proptest;
 extern crate proptest_state_machine;
 
-use fennec_common::{util, workspace};
-use proptest::{prelude::*, sample, strategy};
+use fennec_common::{types, util, workspace};
+use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
 use tempfile::TempDir;
@@ -22,12 +22,20 @@ fn vfs_test() {
     });
 }
 
+#[derive(Copy, Clone, Debug)]
+enum NodeNameKind {
+    SourceCode,
+    ModuleManifest,
+    Other,
+}
+
 #[derive(Clone, Debug)]
 enum Transition {
     AddNode {
         name: String,
         directory: bool,
-        file_content: Vec<u8>,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
         parent: Option<NodeKey>,
     },
     RemoveNode {
@@ -35,11 +43,23 @@ enum Transition {
     },
 }
 
-fn node_name_strategy(valid_ident: bool) -> BoxedStrategy<String> {
-    let expr = if valid_ident {
-        "[a-z][a-z0-9_]*"
-    } else {
-        "[A-Z][A-Z0-9_]*"
+fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrategy<String> {
+    let expr = match name_kind {
+        NodeNameKind::ModuleManifest => "fennec\\.toml",
+        NodeNameKind::SourceCode => {
+            if valid_ident {
+                "[a-z][a-z0-9_]*\\.fn"
+            } else {
+                "[A-Z][A-Z0-9_]*\\.fn"
+            }
+        }
+        NodeNameKind::Other => {
+            if valid_ident {
+                "[a-z][a-z0-9_]*"
+            } else {
+                "[A-Z][A-Z0-9_]*"
+            }
+        }
     };
     expr.prop_filter("filename must not be reserved on windows", |name| {
         !util::is_reserved_windows_filename(name)
@@ -47,11 +67,57 @@ fn node_name_strategy(valid_ident: bool) -> BoxedStrategy<String> {
     .boxed()
 }
 
+fn import_path_strategy() -> BoxedStrategy<types::ImportPath> {
+    let path_strategy = Union::new(vec![
+        "[a-z]+\\/[a-z][a-z0-9]*",
+        "[a-z]+\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*",
+        "[a-z]+\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*\\/[a-z][a-z0-9]*",
+    ]);
+    path_strategy
+        .prop_filter_map("import path must be valid", |path| {
+            types::ImportPath::parse(&path).ok()
+        })
+        .boxed()
+}
+
+fn fennec_version_strategy() -> BoxedStrategy<types::FennecVersion> {
+    ((0u64..=10u64), (0u64..=100u64), (0u64..=100u64))
+        .prop_map(|(major, minor, patch)| types::FennecVersion {
+            major,
+            minor,
+            patch,
+        })
+        .boxed()
+}
+
+fn manifest_strategy() -> BoxedStrategy<Option<workspace::ModuleManifest>> {
+    Union::new(vec![
+        Just(None).boxed(),
+        (import_path_strategy(), fennec_version_strategy())
+            .prop_map(|(path, version)| {
+                Some(workspace::ModuleManifest {
+                    module: path,
+                    fennec: version,
+                })
+            })
+            .boxed(),
+    ])
+    .boxed()
+}
+
 fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
-    let name_strategy = any::<bool>().prop_flat_map(node_name_strategy);
+    let name_kind_strategy = Union::new(vec![
+        Just(NodeNameKind::SourceCode),
+        Just(NodeNameKind::ModuleManifest),
+        Just(NodeNameKind::Other),
+    ]);
+    let valid_ident_strategy = any::<bool>();
+    let name_strategy = (name_kind_strategy, valid_ident_strategy)
+        .prop_flat_map(|(name_kind, valid_ident)| node_name_strategy(name_kind, valid_ident));
     let directory_strategy = any::<bool>();
-    let file_content_strategy = any::<Vec<u8>>();
-    let maybe_parent_strategy = any::<bool>()
+    let raw_content_strategy = any::<Vec<u8>>();
+    let want_parent_strategy = any::<bool>();
+    let maybe_parent_strategy = want_parent_strategy
         .prop_flat_map(move |want_parent| {
             if want_parent && !parents.is_empty() {
                 sample::select((&parents).clone()) // no idea why it can't be just `parents`
@@ -66,14 +132,16 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     (
         name_strategy,
         directory_strategy,
-        file_content_strategy,
+        raw_content_strategy,
+        manifest_strategy(),
         maybe_parent_strategy,
     )
         .prop_map(
-            |(name, directory, file_content, parent)| Transition::AddNode {
+            |(name, directory, raw_content, manifest, parent)| Transition::AddNode {
                 name,
                 directory,
-                file_content,
+                raw_content,
+                manifest,
                 parent,
             },
         )
@@ -93,17 +161,25 @@ slotmap::new_key_type! { struct NodeKey; }
 struct Node {
     name: String,
     directory: bool,
-    _file_content: Vec<u8>,
+    _raw_content: Vec<u8>,
+    _manifest: Option<workspace::ModuleManifest>,
     parent: Option<NodeKey>,
     children: Vec<NodeKey>,
 }
 
 impl Node {
-    fn new(name: String, directory: bool, file_content: Vec<u8>, parent: Option<NodeKey>) -> Node {
+    fn new(
+        name: String,
+        directory: bool,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
+        parent: Option<NodeKey>,
+    ) -> Node {
         Node {
             name,
             directory,
-            _file_content: file_content,
+            _raw_content: raw_content,
+            _manifest: manifest,
             parent,
             children: Vec::new(),
         }
@@ -137,12 +213,17 @@ impl VfsReferenceMachine {
         &mut self,
         name: String,
         directory: bool,
-        file_content: Vec<u8>,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
         parent: Option<NodeKey>,
     ) {
-        let key = self
-            .nodes
-            .insert(Node::new(name.clone(), directory, file_content, parent));
+        let key = self.nodes.insert(Node::new(
+            name.clone(),
+            directory,
+            raw_content,
+            manifest,
+            parent,
+        ));
         if let Some(parent_key) = parent {
             let child_ix = (&self.nodes[parent_key])
                 .find_child(&name, &self.nodes)
@@ -204,7 +285,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             options.push(remove_node_strategy(nodes_vec));
         }
 
-        strategy::Union::new(options).boxed()
+        Union::new(options).boxed()
     }
 
     fn apply(mut state: Self::State, transition: &Self::Transition) -> Self::State {
@@ -212,10 +293,17 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::AddNode {
                 name,
                 directory,
-                file_content,
+                raw_content,
+                manifest,
                 parent,
             } => {
-                state.add_node(name.clone(), *directory, file_content.clone(), *parent);
+                state.add_node(
+                    name.clone(),
+                    *directory,
+                    raw_content.clone(),
+                    manifest.clone(),
+                    *parent,
+                );
             }
             Transition::RemoveNode { key } => {
                 state.remove_node(*key, true);
@@ -226,12 +314,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
     fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
         match transition {
-            Transition::AddNode {
-                name,
-                directory: _,
-                file_content: _,
-                parent,
-            } => {
+            Transition::AddNode { name, parent, .. } => {
                 if let Some(parent_key) = parent {
                     state.directories.contains(parent_key)
                         && (&state.nodes[*parent_key])
