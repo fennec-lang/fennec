@@ -230,6 +230,10 @@ struct VfsReferenceMachine {
     directories: Vec<NodeKey>,
 }
 
+fn sorted_vec_contains<T: Ord>(v: &Vec<T>, elem: &T) -> bool {
+    v.binary_search(elem).is_ok()
+}
+
 fn sorted_vec_insert<T: Ord>(v: &mut Vec<T>, elem: T) {
     let ix = v.binary_search(&elem).unwrap_err();
     v.insert(ix, elem);
@@ -378,7 +382,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
         match transition {
             Transition::AddNode { name, parent, .. } => {
                 if let Some(parent_key) = parent {
-                    state.directories.contains(parent_key)
+                    sorted_vec_contains(&state.directories, parent_key)
                         && (&state.nodes[*parent_key])
                             .find_child(&name, &state.nodes)
                             .is_err()
@@ -389,7 +393,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::RemoveNode { key } => state.nodes.contains_key(*key),
             Transition::UpdateNode { key, .. } => state.nodes.contains_key(*key),
             Transition::MarkScanRoot { key } => {
-                state.nodes.contains_key(*key) && state.directories.contains(key)
+                state.nodes.contains_key(*key) && sorted_vec_contains(&state.directories, key)
             }
         }
     }
