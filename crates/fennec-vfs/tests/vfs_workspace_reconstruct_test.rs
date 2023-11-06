@@ -500,6 +500,36 @@ struct VfsMachine {
     _dir: TempDir,
 }
 
+impl VfsMachine {
+    fn add_node(
+        &mut self,
+        _name: String,
+        _directory: bool,
+        _raw_content: Vec<u8>,
+        _manifest: Option<workspace::ModuleManifest>,
+        _parent: Option<NodeKey>,
+    ) {
+        todo!();
+    }
+
+    fn remove_node(&mut self, _key: NodeKey) {
+        todo!();
+    }
+
+    fn update_node(
+        &mut self,
+        _key: NodeKey,
+        _raw_content: Vec<u8>,
+        _manifest: Option<workspace::ModuleManifest>,
+    ) {
+        todo!();
+    }
+
+    fn mark_scan_root(&mut self, _key: NodeKey) {
+        todo!();
+    }
+}
+
 impl StateMachineTest for VfsMachine {
     type SystemUnderTest = Self;
     type Reference = VfsReferenceMachine;
@@ -513,10 +543,34 @@ impl StateMachineTest for VfsMachine {
     }
 
     fn apply(
-        state: Self::SystemUnderTest,
+        mut state: Self::SystemUnderTest,
         _ref_state: &<Self::Reference as ReferenceStateMachine>::State,
-        _transition: <Self::Reference as ReferenceStateMachine>::Transition,
+        transition: <Self::Reference as ReferenceStateMachine>::Transition,
     ) -> Self::SystemUnderTest {
+        match transition {
+            Transition::AddNode {
+                name,
+                directory,
+                raw_content,
+                manifest,
+                parent,
+            } => {
+                state.add_node(name, directory, raw_content, manifest, parent);
+            }
+            Transition::RemoveNode { key } => {
+                state.remove_node(key);
+            }
+            Transition::UpdateNode {
+                key,
+                raw_content,
+                manifest,
+            } => {
+                state.update_node(key, raw_content, manifest);
+            }
+            Transition::MarkScanRoot { key } => {
+                state.mark_scan_root(key);
+            }
+        };
         state
     }
 
