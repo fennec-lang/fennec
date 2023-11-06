@@ -8,17 +8,20 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::types;
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct File {
     pub source: PathBuf,
     pub content: Arc<str>, // for updates, empty in case of deleted file
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Package {
     pub source: PathBuf,
     pub path: types::ImportPath,
     pub files: Vec<File>,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Module {
     pub source: PathBuf,
     pub manifest: ModuleManifest,

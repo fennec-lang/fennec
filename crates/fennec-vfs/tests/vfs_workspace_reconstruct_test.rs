@@ -53,6 +53,7 @@ enum Transition {
     MarkScanRoot {
         key: NodeKey,
     },
+    Scan {},
 }
 
 fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrategy<String> {
@@ -188,6 +189,10 @@ fn mark_scan_root_strategy(directories: Vec<NodeKey>) -> BoxedStrategy<Transitio
         .boxed()
 }
 
+fn scan_strategy() -> BoxedStrategy<Transition> {
+    Just(Transition::Scan {}).boxed()
+}
+
 slotmap::new_key_type! { struct NodeKey; }
 
 #[derive(Clone, Debug)]
@@ -231,6 +236,7 @@ struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
     toplevel: Vec<NodeKey>,
     directories: Vec<NodeKey>,
+    last_scan: Vec<workspace::Module>,
     // Kludges to simplify name resolution in real state machine.
     last_added_node_parent: Option<PathBuf>,
     last_removed_node_path: Option<PathBuf>,
@@ -324,6 +330,10 @@ impl VfsReferenceMachine {
         let node = &mut self.nodes[key];
         assert!(node.directory);
         node.scan_root = true;
+    }
+
+    fn scan(&mut self) {
+        self.last_scan = self.reconstruct();
     }
 
     fn remove(&mut self, key: NodeKey) -> Node {
@@ -461,6 +471,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
         if !state.directories.is_empty() {
             options.push(mark_scan_root_strategy(state.directories.clone()));
         }
+        options.push(scan_strategy());
 
         Union::new(options).boxed()
     }
@@ -495,6 +506,9 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::MarkScanRoot { key } => {
                 state.mark_scan_root(*key);
             }
+            Transition::Scan {} => {
+                state.scan();
+            }
         };
         state
     }
@@ -516,6 +530,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::MarkScanRoot { key } => {
                 state.nodes.contains_key(*key) && sorted_vec_contains(&state.directories, key)
             }
+            Transition::Scan {} => true,
         }
     }
 }
@@ -523,6 +538,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 struct VfsMachine {
     _dir: TempDir,
     _vfs: Vfs,
+    last_scan: Vec<workspace::Module>,
 }
 
 impl VfsMachine {
@@ -547,6 +563,8 @@ impl VfsMachine {
     }
 
     fn mark_scan_root(&mut self, _path: PathBuf) {}
+
+    fn scan(&mut self) {}
 }
 
 impl StateMachineTest for VfsMachine {
@@ -559,6 +577,7 @@ impl StateMachineTest for VfsMachine {
         VfsMachine {
             _dir: TempDir::new().expect("it must be possible to create a temporary directory"),
             _vfs: Vfs::new(true),
+            last_scan: Vec::new(),
         }
     }
 
@@ -594,15 +613,33 @@ impl StateMachineTest for VfsMachine {
                 let path = ref_state.node_path(key);
                 state.mark_scan_root(path);
             }
+            Transition::Scan {} => {
+                state.scan();
+            }
         };
         state
     }
 
     fn check_invariants(
-        _state: &Self::SystemUnderTest,
+        state: &Self::SystemUnderTest,
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) {
-        let modules = ref_state.reconstruct();
-        assert!(modules.is_empty() || modules.len() > 0);
+        if false {
+            let modules = canonicalize_modules(&state.last_scan);
+            let ref_modules = canonicalize_modules(&ref_state.last_scan);
+            assert!(modules == ref_modules);
+        }
     }
+}
+
+fn canonicalize_modules(modules: &Vec<workspace::Module>) -> Vec<workspace::Module> {
+    let mut modules = modules.clone();
+    for m in &mut modules {
+        for p in &mut m.packages {
+            p.files.sort_by(|a, b| a.source.cmp(&b.source));
+        }
+        m.packages.sort_by(|a, b| a.source.cmp(&b.source));
+    }
+    modules.sort_by(|a, b| a.source.cmp(&b.source));
+    modules
 }
