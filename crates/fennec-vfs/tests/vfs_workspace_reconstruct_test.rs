@@ -1,7 +1,9 @@
 extern crate proptest;
 extern crate proptest_state_machine;
 
-use fennec_common::{types, util, workspace};
+use std::{path::PathBuf, sync::Arc};
+
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
@@ -244,6 +246,12 @@ fn sorted_vec_remove<T: Ord>(v: &mut Vec<T>, elem: &T) {
     v.remove(ix);
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+struct ModuleLoc {
+    source: PathBuf,
+    module: types::ImportPath,
+}
+
 impl VfsReferenceMachine {
     fn add_node(
         &mut self,
@@ -316,8 +324,97 @@ impl VfsReferenceMachine {
         node
     }
 
-    fn _reconstruct(&self) -> Vec<workspace::Module> {
-        todo!()
+    fn reconstruct(&self) -> Vec<workspace::Module> {
+        let mut modules: Vec<workspace::Module> = Vec::new();
+        for top_key in &self.toplevel {
+            let node = &self.nodes[*top_key];
+            if node.directory {
+                let mut module_map: types::HashMap<ModuleLoc, workspace::Module> =
+                    types::HashMap::default();
+                self.reconstruct_subtree(&mut module_map, PathBuf::new(), None, node, None, false);
+                modules.extend(module_map.into_values());
+            }
+        }
+        modules
+    }
+
+    fn reconstruct_subtree(
+        &self,
+        modules: &mut types::HashMap<ModuleLoc, workspace::Module>,
+        parent_source: PathBuf,
+        parent_path: Option<types::ImportPath>,
+        node: &Node,
+        mut cur_module: Option<ModuleLoc>,
+        mut in_scan_root: bool,
+    ) {
+        let cur_dir_source = parent_source.join(&node.name);
+        let mut cur_pkg_path = parent_path.and_then(|p| p.join(&node.name).ok());
+        // Until we hit a scan root, do nothing.
+        in_scan_root = in_scan_root || node.scan_root;
+        if in_scan_root {
+            // Should we update the current module?
+            let manifest_loc = node.find_child(MODULE_MANIFEST_FILENAME, &self.nodes);
+            if let Ok(manifest_ix) = manifest_loc {
+                cur_module = None;
+                cur_pkg_path = None;
+                let manifest_key = node.children[manifest_ix];
+                let manifest_node = &self.nodes[manifest_key];
+                if let Some(manifest) = &manifest_node.manifest {
+                    let loc = ModuleLoc {
+                        source: cur_dir_source.clone(),
+                        module: manifest.module.clone(),
+                    };
+                    cur_module = Some(loc.clone());
+                    cur_pkg_path = Some(loc.module.clone());
+                    modules.insert(
+                        loc.clone(),
+                        workspace::Module {
+                            source: loc.source,
+                            manifest: manifest.clone(),
+                            packages: Vec::new(),
+                        },
+                    );
+                }
+            }
+            // If we are inside a module and have not hit an invalid package directory yet, add a package.
+            if let Some(loc) = &cur_module {
+                if cur_dir_source != loc.source && !util::valid_package_name(&node.name) {
+                    cur_module = None;
+                    cur_pkg_path = None;
+                } else {
+                    let pkg = workspace::Package {
+                        source: cur_dir_source.clone(),
+                        path: cur_pkg_path.clone().unwrap(),
+                        files: node
+                            .children
+                            .iter()
+                            .map(|key| &self.nodes[*key])
+                            .filter(|node| {
+                                !node.directory && util::valid_source_file_name(&node.name)
+                            })
+                            .map(|node| workspace::File {
+                                source: cur_dir_source.join(&node.name),
+                                content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
+                            })
+                            .collect(),
+                    };
+                    modules.get_mut(&loc).unwrap().packages.push(pkg);
+                }
+            }
+        }
+        for child_key in &node.children {
+            let child_node = &self.nodes[*child_key];
+            if child_node.directory {
+                self.reconstruct_subtree(
+                    modules,
+                    cur_dir_source.clone(),
+                    cur_pkg_path.clone(),
+                    child_node,
+                    cur_module.clone(),
+                    in_scan_root,
+                );
+            }
+        }
     }
 }
 
@@ -425,7 +522,9 @@ impl StateMachineTest for VfsMachine {
 
     fn check_invariants(
         _state: &Self::SystemUnderTest,
-        _ref_state: &<Self::Reference as ReferenceStateMachine>::State,
+        ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) {
+        let modules = ref_state.reconstruct();
+        assert!(modules.is_empty() || modules.len() > 0);
     }
 }
