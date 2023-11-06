@@ -230,6 +230,9 @@ struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
     toplevel: Vec<NodeKey>,
     directories: Vec<NodeKey>,
+    // Kludges to simplify name resolution in real state machine.
+    last_added_node_parent: Option<PathBuf>,
+    last_removed_node_path: Option<PathBuf>,
 }
 
 fn sorted_vec_contains<T: Ord>(v: &Vec<T>, elem: &T) -> bool {
@@ -261,6 +264,7 @@ impl VfsReferenceMachine {
         manifest: Option<workspace::ModuleManifest>,
         parent: Option<NodeKey>,
     ) {
+        self.last_added_node_parent = parent.map(|key| self.node_path(key));
         let key = self.nodes.insert(Node::new(
             name.clone(),
             directory,
@@ -281,8 +285,13 @@ impl VfsReferenceMachine {
         }
     }
 
-    fn remove_node(&mut self, key: NodeKey, unlink_from_parent: bool) {
+    fn remove_node(&mut self, key: NodeKey) {
+        self.do_remove_node(key, true);
+    }
+
+    fn do_remove_node(&mut self, key: NodeKey, unlink_from_parent: bool) {
         if unlink_from_parent {
+            self.last_removed_node_path = Some(self.node_path(key));
             let node = &self.nodes[key];
             if let Some(parent_key) = node.parent {
                 let child_ix = (&self.nodes[parent_key])
@@ -295,7 +304,7 @@ impl VfsReferenceMachine {
         }
         let node = self.remove(key);
         for child in node.children {
-            self.remove_node(child, false)
+            self.do_remove_node(child, false)
         }
     }
 
@@ -322,6 +331,20 @@ impl VfsReferenceMachine {
             sorted_vec_remove(&mut self.directories, &key);
         }
         node
+    }
+
+    fn node_path(&self, mut key: NodeKey) -> PathBuf {
+        let mut rev = PathBuf::new();
+        loop {
+            let node = &self.nodes[key];
+            rev.push(&node.name);
+            if let Some(parent_key) = node.parent {
+                key = parent_key;
+            } else {
+                break;
+            }
+        }
+        PathBuf::from_iter(rev.components().rev())
     }
 
     fn reconstruct(&self) -> Vec<workspace::Module> {
@@ -459,7 +482,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
                 );
             }
             Transition::RemoveNode { key } => {
-                state.remove_node(*key, true);
+                state.remove_node(*key);
             }
             Transition::UpdateNode {
                 key,
@@ -507,27 +530,21 @@ impl VfsMachine {
         _directory: bool,
         _raw_content: Vec<u8>,
         _manifest: Option<workspace::ModuleManifest>,
-        _parent: Option<NodeKey>,
+        _parent: Option<PathBuf>,
     ) {
-        todo!();
     }
 
-    fn remove_node(&mut self, _key: NodeKey) {
-        todo!();
-    }
+    fn remove_node(&mut self, _path: PathBuf) {}
 
     fn update_node(
         &mut self,
-        _key: NodeKey,
+        _path: PathBuf,
         _raw_content: Vec<u8>,
         _manifest: Option<workspace::ModuleManifest>,
     ) {
-        todo!();
     }
 
-    fn mark_scan_root(&mut self, _key: NodeKey) {
-        todo!();
-    }
+    fn mark_scan_root(&mut self, _path: PathBuf) {}
 }
 
 impl StateMachineTest for VfsMachine {
@@ -544,7 +561,7 @@ impl StateMachineTest for VfsMachine {
 
     fn apply(
         mut state: Self::SystemUnderTest,
-        _ref_state: &<Self::Reference as ReferenceStateMachine>::State,
+        ref_state: &<Self::Reference as ReferenceStateMachine>::State,
         transition: <Self::Reference as ReferenceStateMachine>::Transition,
     ) -> Self::SystemUnderTest {
         match transition {
@@ -553,22 +570,26 @@ impl StateMachineTest for VfsMachine {
                 directory,
                 raw_content,
                 manifest,
-                parent,
+                ..
             } => {
+                let parent = ref_state.last_added_node_parent.clone();
                 state.add_node(name, directory, raw_content, manifest, parent);
             }
-            Transition::RemoveNode { key } => {
-                state.remove_node(key);
+            Transition::RemoveNode { .. } => {
+                let path = ref_state.last_removed_node_path.clone().unwrap();
+                state.remove_node(path);
             }
             Transition::UpdateNode {
                 key,
                 raw_content,
                 manifest,
             } => {
-                state.update_node(key, raw_content, manifest);
+                let path = ref_state.node_path(key);
+                state.update_node(path, raw_content, manifest);
             }
             Transition::MarkScanRoot { key } => {
-                state.mark_scan_root(key);
+                let path = ref_state.node_path(key);
+                state.mark_scan_root(path);
             }
         };
         state
