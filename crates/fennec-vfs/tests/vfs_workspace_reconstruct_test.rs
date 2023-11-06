@@ -4,6 +4,7 @@ extern crate proptest_state_machine;
 use std::{path::PathBuf, sync::Arc};
 
 use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
+use fennec_vfs::Vfs;
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
@@ -521,6 +522,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
 struct VfsMachine {
     _dir: TempDir,
+    _vfs: Vfs,
 }
 
 impl VfsMachine {
@@ -556,6 +558,7 @@ impl StateMachineTest for VfsMachine {
     ) -> Self::SystemUnderTest {
         VfsMachine {
             _dir: TempDir::new().expect("it must be possible to create a temporary directory"),
+            _vfs: Vfs::new(true),
         }
     }
 
