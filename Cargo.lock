@@ -348,6 +348,7 @@ name = "fennec-vfs"
 version = "0.1.8"
 dependencies = [
  "anyhow",
+ "env_logger",
  "fennec-common",
  "log",
  "once_cell",

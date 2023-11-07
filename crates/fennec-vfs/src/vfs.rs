@@ -18,7 +18,7 @@ use std::{
 
 use crate::manifest;
 
-const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(991);
+pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
 static EMPTY_CONTENT: Lazy<Arc<str>> = Lazy::new(|| Arc::from(""));
 
 #[derive(Default, Clone)]
@@ -307,9 +307,9 @@ pub struct Vfs {
 
 impl Vfs {
     #[must_use]
-    pub fn new(cleanup_stale_roots: bool) -> Vfs {
+    pub fn new(cleanup_stale_roots: bool, poll_interval: Duration) -> Vfs {
         Vfs {
-            poll_interval: DEFAULT_POLL_INTERVAL,
+            poll_interval,
             cleanup_stale_roots,
             scan_state: Vec::default(),
         }
@@ -325,7 +325,7 @@ impl Vfs {
             // In the future, we could consider reacting to the client-side watch notifications
             // in addition to periodic scanning here.
 
-            let mut should_scan = changes.force_scan || timed_out;
+            let mut should_scan = changes.force_scan_id.is_some() || timed_out;
             for root in changes.scan_roots {
                 // We don't want to re-scan if we got notified about a root we are already watching.
                 should_scan |= self.add_root(root);
@@ -333,11 +333,15 @@ impl Vfs {
 
             if should_scan {
                 let updates = self.scan();
-                if !updates.is_empty() {
-                    state.signal_core_module_updates(updates);
+                if !updates.is_empty() || changes.force_scan_id.is_some() {
+                    state.signal_core_module_updates(updates, changes.force_scan_id);
                 }
             }
         }
+    }
+
+    pub fn __test_scan(&mut self) -> Vec<workspace::ModuleUpdate> {
+        self.scan()
     }
 
     fn add_root(&mut self, root: PathBuf) -> bool {
@@ -345,10 +349,12 @@ impl Vfs {
         match ins {
             Ok(_) => false,
             Err(ix) => {
-                if let Some(prev_state) = self.scan_state.get(ix - 1) {
-                    if root.strip_prefix(&prev_state.root).is_ok() {
-                        // Trying to add subdirectory of an existing root; do nothing.
-                        return false;
+                if ix > 0 {
+                    if let Some(prev_state) = self.scan_state.get(ix - 1) {
+                        if root.strip_prefix(&prev_state.root).is_ok() {
+                            // Trying to add subdirectory of an existing root; do nothing.
+                            return false;
+                        }
                     }
                 }
                 self.scan_state.insert(ix, ScanState::new(root));

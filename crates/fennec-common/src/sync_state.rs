@@ -6,6 +6,7 @@
 
 use parking_lot::{Condvar, Mutex};
 use std::{
+    mem::take,
     path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
     time::Duration,
@@ -18,13 +19,14 @@ pub struct VfsChangeBuffer {
     pub exit: bool,
     // Scan roots usually correspond to directories with a manifest file, but they don't have to.
     pub scan_roots: Vec<PathBuf>,
-    pub force_scan: bool,
+    pub force_scan_id: Option<u64>,
 }
 
 #[derive(Default)]
 pub struct CoreChangeBuffer {
     pub exit: bool,
     pub module_updates: Vec<workspace::ModuleUpdate>,
+    pub last_force_scan_id: Option<u64>,
 }
 
 pub struct SyncState {
@@ -79,28 +81,35 @@ impl SyncState {
         self.notify_vfs();
     }
 
-    pub fn signal_vfs_force_scan(&self) {
+    pub fn signal_vfs_force_scan(&self, id: u64) {
         let mut vfs = self.vfs_changes.lock();
-        vfs.force_scan = true;
+        vfs.force_scan_id = Some(id);
         self.notify_vfs();
     }
 
-    pub fn signal_core_module_updates(&self, updates: Vec<workspace::ModuleUpdate>) {
+    pub fn signal_core_module_updates(
+        &self,
+        updates: Vec<workspace::ModuleUpdate>,
+        force_scan_id: Option<u64>,
+    ) {
         let mut core = self.core_changes.lock();
         core.module_updates.extend(updates);
+        if force_scan_id.is_some() {
+            core.last_force_scan_id = force_scan_id;
+        }
         self.notify_core();
     }
 
     pub fn wait_vfs(&self, timeout: Duration) -> (VfsChangeBuffer, bool) {
         let mut vfs = self.vfs_changes.lock();
         let res = self.vfs_condvar.wait_for(&mut vfs, timeout);
-        (std::mem::take(&mut vfs), res.timed_out())
+        (take(&mut vfs), res.timed_out())
     }
 
     pub fn wait_core(&self) -> CoreChangeBuffer {
         let mut core = self.core_changes.lock();
         self.core_condvar.wait(&mut core);
-        std::mem::take(&mut core)
+        take(&mut core)
     }
 }
 

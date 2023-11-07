@@ -1,9 +1,17 @@
 extern crate proptest;
 extern crate proptest_state_machine;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    fs::{self},
+    io::Write,
+    mem::take,
+    path::PathBuf,
+    sync::Arc,
+    thread,
+    time::Duration,
+};
 
-use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
 use fennec_vfs::Vfs;
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
@@ -20,8 +28,12 @@ fn vfs_config() -> ProptestConfig {
 // Ensure that the VFS correctly reconstructs the workspace state.
 #[test]
 fn vfs_workspace_reconstruct_test() {
+    env_logger::builder()
+        .is_test(true)
+        .try_init()
+        .expect("logging must be initialized successfully");
     let cfg = vfs_config();
-    proptest!(cfg.clone(), |((initial_state, transitions) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..20))| {
+    proptest!(cfg.clone(), |((initial_state, transitions) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..30))| {
         VfsMachine::test_sequential(cfg.clone(), initial_state, transitions)
     });
 }
@@ -226,8 +238,7 @@ impl Node {
     }
 
     fn find_child(&self, name: &str, nodes: &SlotMap<NodeKey, Node>) -> Result<usize, usize> {
-        self.children
-            .binary_search_by_key(&name, |k| &nodes[*k].name)
+        find_sorted_by_name(&self.children, name, nodes)
     }
 }
 
@@ -235,11 +246,22 @@ impl Node {
 struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
     toplevel: Vec<NodeKey>,
+    files: Vec<NodeKey>,
     directories: Vec<NodeKey>,
     last_scan: Vec<workspace::Module>,
     // Kludges to simplify name resolution in real state machine.
     last_added_node_parent: Option<PathBuf>,
     last_removed_node_path: Option<PathBuf>,
+    // Hack to vary initialization of the SUT.
+    async_vfs: bool,
+}
+
+fn find_sorted_by_name(
+    v: &Vec<NodeKey>,
+    name: &str,
+    nodes: &SlotMap<NodeKey, Node>,
+) -> Result<usize, usize> {
+    v.binary_search_by_key(&name, |k| &nodes[*k].name)
 }
 
 fn sorted_vec_contains<T: Ord>(v: &Vec<T>, elem: &T) -> bool {
@@ -263,6 +285,13 @@ struct ModuleLoc {
 }
 
 impl VfsReferenceMachine {
+    fn new(async_vfs: bool) -> VfsReferenceMachine {
+        VfsReferenceMachine {
+            async_vfs,
+            ..Default::default()
+        }
+    }
+
     fn add_node(
         &mut self,
         name: String,
@@ -280,15 +309,18 @@ impl VfsReferenceMachine {
             parent,
         ));
         if let Some(parent_key) = parent {
-            let child_ix = (&self.nodes[parent_key])
-                .find_child(&name, &self.nodes)
-                .unwrap_err();
+            let child_ix =
+                find_sorted_by_name(&self.nodes[parent_key].children, &name, &self.nodes)
+                    .unwrap_err();
             (&mut self.nodes[parent_key]).children.insert(child_ix, key);
         } else {
-            sorted_vec_insert(&mut self.toplevel, key);
+            let child_ix = find_sorted_by_name(&self.toplevel, &name, &self.nodes).unwrap_err();
+            self.toplevel.insert(child_ix, key);
         }
         if directory {
             sorted_vec_insert(&mut self.directories, key);
+        } else {
+            sorted_vec_insert(&mut self.files, key);
         }
     }
 
@@ -301,12 +333,14 @@ impl VfsReferenceMachine {
             self.last_removed_node_path = Some(self.node_path(key));
             let node = &self.nodes[key];
             if let Some(parent_key) = node.parent {
-                let child_ix = (&self.nodes[parent_key])
-                    .find_child(&node.name, &self.nodes)
-                    .unwrap();
+                let child_ix =
+                    find_sorted_by_name(&self.nodes[parent_key].children, &node.name, &self.nodes)
+                        .unwrap();
                 (&mut self.nodes[parent_key]).children.remove(child_ix);
             } else {
-                sorted_vec_remove(&mut self.toplevel, &key);
+                let child_ix =
+                    find_sorted_by_name(&self.toplevel, &node.name, &self.nodes).unwrap();
+                self.toplevel.remove(child_ix);
             }
         }
         let node = self.remove(key);
@@ -322,6 +356,7 @@ impl VfsReferenceMachine {
         manifest: Option<workspace::ModuleManifest>,
     ) {
         let node = &mut self.nodes[key];
+        assert!(!node.directory);
         node.raw_content = raw_content;
         node.manifest = manifest;
     }
@@ -340,6 +375,8 @@ impl VfsReferenceMachine {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
             sorted_vec_remove(&mut self.directories, &key);
+        } else {
+            sorted_vec_remove(&mut self.files, &key);
         }
         node
     }
@@ -457,7 +494,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
     type Transition = Transition;
 
     fn init_state() -> BoxedStrategy<Self::State> {
-        Just(VfsReferenceMachine::default()).boxed()
+        Just(VfsReferenceMachine::new(false)).boxed()
     }
 
     fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
@@ -466,7 +503,9 @@ impl ReferenceStateMachine for VfsReferenceMachine {
         options.push(add_node_strategy(state.directories.clone()));
         if !state.nodes.is_empty() {
             options.push(remove_node_strategy(state.nodes.keys().collect()));
-            options.push(update_node_strategy(state.nodes.keys().collect()));
+        }
+        if !state.files.is_empty() {
+            options.push(update_node_strategy(state.files.clone()));
         }
         if !state.directories.is_empty() {
             options.push(mark_scan_root_strategy(state.directories.clone()));
@@ -522,11 +561,13 @@ impl ReferenceStateMachine for VfsReferenceMachine {
                             .find_child(&name, &state.nodes)
                             .is_err()
                 } else {
-                    true
+                    find_sorted_by_name(&state.toplevel, &name, &state.nodes).is_err()
                 }
             }
             Transition::RemoveNode { key } => state.nodes.contains_key(*key),
-            Transition::UpdateNode { key, .. } => state.nodes.contains_key(*key),
+            Transition::UpdateNode { key, .. } => {
+                state.nodes.contains_key(*key) && sorted_vec_contains(&state.files, key)
+            }
             Transition::MarkScanRoot { key } => {
                 state.nodes.contains_key(*key) && sorted_vec_contains(&state.directories, key)
             }
@@ -536,35 +577,149 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 }
 
 struct VfsMachine {
-    _dir: TempDir,
-    _vfs: Vfs,
+    dir: TempDir,
+    state: Arc<types::SyncState>,
+    vfs: Option<Vfs>,
+    vfs_join_handle: Option<thread::JoinHandle<()>>,
+    last_scan_id: u64,
     last_scan: Vec<workspace::Module>,
 }
 
+impl Drop for VfsMachine {
+    fn drop(&mut self) {
+        if self.vfs_join_handle.is_some() {
+            self.state.signal_exit();
+            take(&mut self.vfs_join_handle)
+                .unwrap()
+                .join()
+                .expect("vfs run must finish successfully");
+        }
+    }
+}
+
 impl VfsMachine {
-    fn add_node(
-        &mut self,
-        _name: String,
-        _directory: bool,
-        _raw_content: Vec<u8>,
-        _manifest: Option<workspace::ModuleManifest>,
-        _parent: Option<PathBuf>,
-    ) {
+    fn new(async_vfs: bool) -> VfsMachine {
+        let state = Arc::new(types::SyncState::new());
+        let (vfs, handle) = if async_vfs {
+            let state_clone = state.clone();
+            let h = thread::Builder::new()
+                .name("VFS".to_owned())
+                .spawn(move || {
+                    let mut vfs = Vfs::new(true, Duration::from_secs(86400));
+                    vfs.run(&state_clone);
+                })
+                .unwrap();
+            (None, Some(h))
+        } else {
+            let vfs = Vfs::new(true, Duration::from_secs(0));
+            (Some(vfs), None)
+        };
+        VfsMachine {
+            dir: TempDir::new().expect("it must be possible to create a temporary directory"),
+            state: state.clone(),
+            vfs,
+            vfs_join_handle: handle,
+            last_scan_id: 0,
+            last_scan: Vec::new(),
+        }
     }
 
-    fn remove_node(&mut self, _path: PathBuf) {}
+    fn full_path(&self, path: PathBuf) -> PathBuf {
+        self.dir.path().join(path)
+    }
+
+    fn add_node(
+        &mut self,
+        name: String,
+        directory: bool,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
+        parent: PathBuf,
+    ) {
+        let path = parent.join(name);
+        if directory {
+            fs::create_dir(path).unwrap();
+        } else {
+            let mut file = fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(path)
+                .unwrap();
+            Self::write_content(&mut file, raw_content, manifest);
+        }
+    }
+
+    fn remove_node(&mut self, path: PathBuf) {
+        let md = fs::metadata(&path).unwrap();
+        if md.is_dir() {
+            fs::remove_dir_all(path).unwrap();
+        } else {
+            fs::remove_file(path).unwrap();
+        }
+    }
 
     fn update_node(
         &mut self,
-        _path: PathBuf,
-        _raw_content: Vec<u8>,
-        _manifest: Option<workspace::ModuleManifest>,
+        path: PathBuf,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
     ) {
+        let mut file = fs::OpenOptions::new()
+            .create_new(false)
+            .write(true)
+            .open(path)
+            .unwrap();
+        Self::write_content(&mut file, raw_content, manifest);
     }
 
-    fn mark_scan_root(&mut self, _path: PathBuf) {}
+    fn mark_scan_root(&mut self, path: PathBuf) {
+        self.state.signal_vfs_new_roots(vec![path]);
+    }
 
-    fn scan(&mut self) {}
+    fn write_content(
+        file: &mut fs::File,
+        raw_content: Vec<u8>,
+        manifest: Option<workspace::ModuleManifest>,
+    ) {
+        if let Some(manifest) = manifest {
+            let types::FennecVersion {
+                major,
+                minor,
+                patch,
+            } = manifest.fennec;
+            let mod_path = manifest.module;
+            write!(
+                file,
+                "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
+            )
+            .unwrap();
+        } else {
+            file.write_all(&raw_content).unwrap();
+        }
+    }
+
+    fn scan(&mut self) {
+        let updates = if let Some(vfs) = &mut self.vfs {
+            vfs.__test_scan()
+        } else {
+            self.last_scan_id += 1;
+            self.state.signal_vfs_force_scan(self.last_scan_id);
+            let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
+            loop {
+                let buf = self.state.wait_core();
+                updates.extend(buf.module_updates);
+                if let Some(id) = buf.last_force_scan_id {
+                    if id == self.last_scan_id {
+                        break;
+                    }
+                }
+            }
+            updates
+        };
+        self.apply(updates);
+    }
+
+    fn apply(&mut self, _updates: Vec<workspace::ModuleUpdate>) {}
 }
 
 impl StateMachineTest for VfsMachine {
@@ -572,13 +727,9 @@ impl StateMachineTest for VfsMachine {
     type Reference = VfsReferenceMachine;
 
     fn init_test(
-        _ref_state: &<Self::Reference as ReferenceStateMachine>::State,
+        ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
-        VfsMachine {
-            _dir: TempDir::new().expect("it must be possible to create a temporary directory"),
-            _vfs: Vfs::new(true),
-            last_scan: Vec::new(),
-        }
+        VfsMachine::new(ref_state.async_vfs)
     }
 
     fn apply(
@@ -594,11 +745,12 @@ impl StateMachineTest for VfsMachine {
                 manifest,
                 ..
             } => {
-                let parent = ref_state.last_added_node_parent.clone();
+                let parent =
+                    state.full_path(ref_state.last_added_node_parent.clone().unwrap_or_default());
                 state.add_node(name, directory, raw_content, manifest, parent);
             }
             Transition::RemoveNode { .. } => {
-                let path = ref_state.last_removed_node_path.clone().unwrap();
+                let path = state.full_path(ref_state.last_removed_node_path.clone().unwrap());
                 state.remove_node(path);
             }
             Transition::UpdateNode {
@@ -606,11 +758,11 @@ impl StateMachineTest for VfsMachine {
                 raw_content,
                 manifest,
             } => {
-                let path = ref_state.node_path(key);
+                let path = state.full_path(ref_state.node_path(key));
                 state.update_node(path, raw_content, manifest);
             }
             Transition::MarkScanRoot { key } => {
-                let path = ref_state.node_path(key);
+                let path = state.full_path(ref_state.node_path(key));
                 state.mark_scan_root(path);
             }
             Transition::Scan {} => {
