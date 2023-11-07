@@ -340,6 +340,10 @@ impl Vfs {
         }
     }
 
+    pub fn __test_add_root(&mut self, root: PathBuf) {
+        self.add_root(root);
+    }
+
     pub fn __test_scan(&mut self) -> Vec<workspace::ModuleUpdate> {
         self.scan()
     }

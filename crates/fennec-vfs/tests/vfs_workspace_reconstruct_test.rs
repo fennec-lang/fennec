@@ -578,8 +578,8 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
 struct VfsMachine {
     dir: TempDir,
-    state: Arc<types::SyncState>,
     vfs: Option<Vfs>,
+    state: Option<Arc<types::SyncState>>,
     vfs_join_handle: Option<thread::JoinHandle<()>>,
     last_scan_id: u64,
     last_scan: Vec<workspace::Module>,
@@ -588,7 +588,7 @@ struct VfsMachine {
 impl Drop for VfsMachine {
     fn drop(&mut self) {
         if self.vfs_join_handle.is_some() {
-            self.state.signal_exit();
+            self.state.as_ref().unwrap().signal_exit();
             take(&mut self.vfs_join_handle)
                 .unwrap()
                 .join()
@@ -599,8 +599,8 @@ impl Drop for VfsMachine {
 
 impl VfsMachine {
     fn new(async_vfs: bool) -> VfsMachine {
-        let state = Arc::new(types::SyncState::new());
-        let (vfs, handle) = if async_vfs {
+        let (vfs, state, handle) = if async_vfs {
+            let state = Arc::new(types::SyncState::new());
             let state_clone = state.clone();
             let h = thread::Builder::new()
                 .name("VFS".to_owned())
@@ -609,15 +609,15 @@ impl VfsMachine {
                     vfs.run(&state_clone);
                 })
                 .unwrap();
-            (None, Some(h))
+            (None, Some(state.clone()), Some(h))
         } else {
             let vfs = Vfs::new(true, Duration::from_secs(0));
-            (Some(vfs), None)
+            (Some(vfs), None, None)
         };
         VfsMachine {
             dir: TempDir::new().expect("it must be possible to create a temporary directory"),
-            state: state.clone(),
             vfs,
+            state,
             vfs_join_handle: handle,
             last_scan_id: 0,
             last_scan: Vec::new(),
@@ -673,7 +673,14 @@ impl VfsMachine {
     }
 
     fn mark_scan_root(&mut self, path: PathBuf) {
-        self.state.signal_vfs_new_roots(vec![path]);
+        if let Some(vfs) = &mut self.vfs {
+            vfs.__test_add_root(path);
+        } else {
+            self.state
+                .as_ref()
+                .unwrap()
+                .signal_vfs_new_roots(vec![path]);
+        }
     }
 
     fn write_content(
@@ -702,11 +709,12 @@ impl VfsMachine {
         let updates = if let Some(vfs) = &mut self.vfs {
             vfs.__test_scan()
         } else {
+            let state = self.state.as_ref().unwrap().as_ref();
             self.last_scan_id += 1;
-            self.state.signal_vfs_force_scan(self.last_scan_id);
+            state.signal_vfs_force_scan(self.last_scan_id);
             let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
             loop {
-                let buf = self.state.wait_core();
+                let buf = state.wait_core();
                 updates.extend(buf.module_updates);
                 if let Some(id) = buf.last_force_scan_id {
                     if id == self.last_scan_id {
