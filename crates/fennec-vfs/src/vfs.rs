@@ -133,11 +133,9 @@ impl Directory {
     }
 
     fn name(&self) -> &str {
-        self.path
-            .file_name()
-            .expect("directory must have a valid file name")
-            .to_str()
-            .expect("directory name must be valid UTF-8")
+        self.path.file_name().map_or("" /* root entry */, |s| {
+            s.to_str().expect("directory name must be valid UTF-8")
+        })
     }
 
     fn set_files(&mut self, files: Vec<File>) {
@@ -162,12 +160,9 @@ impl Directory {
                     return None;
                 }
                 let changed = m.content_changed.expect("change indicator must be set");
-                let prev_manifest = prev_info
-                    .expect("previous manifest info must exist")
-                    .manifest;
                 if !changed {
-                    return Some(ManifestInfo {
-                        manifest: prev_manifest,
+                    return prev_info.map(|prev| ManifestInfo {
+                        manifest: prev.manifest,
                         manifest_changed: false,
                     });
                 }
@@ -179,14 +174,14 @@ impl Directory {
                 let res = manifest::parse(content);
                 match res {
                     Ok(manifest) => Some(ManifestInfo {
-                        manifest_changed: manifest != prev_manifest,
+                        manifest_changed: prev_info.map_or(true, |prev| manifest != prev.manifest),
                         manifest,
                     }),
                     Err(err) => {
                         let disp = m.path.display();
                         log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
-                        Some(ManifestInfo {
-                            manifest: prev_manifest,
+                        prev_info.map(|prev| ManifestInfo {
+                            manifest: prev.manifest,
                             manifest_changed: false,
                         })
                     }
@@ -200,7 +195,7 @@ impl Directory {
 struct DirTreeBuildState {
     tree: Vec<Directory>,
     cur_depth: usize,
-    cur_dir_ix: usize,
+    cur_parent_ix: usize,
     parents: Vec<Option<usize>>,   // parent index of i'th directory
     subdirectories_at: Vec<usize>, // next index to visit in subdirectories of i'th directory
 }
@@ -212,43 +207,47 @@ impl DirTreeBuildState {
         DirTreeBuildState {
             tree: vec![Directory::new(PathBuf::new(), 0)], // root entry
             cur_depth: 0,
-            cur_dir_ix: 0,
+            cur_parent_ix: 0,
             parents: vec![None],
             subdirectories_at: vec![0],
         }
     }
 
     fn navigate(&mut self, depth: usize) {
-        if depth == self.cur_depth {
-            return;
+        match depth.cmp(&self.cur_depth) {
+            Ordering::Equal => {
+                // Traversing the current layer, no need to adjust parent.
+            }
+            Ordering::Greater => {
+                let cur_parent = &self.tree[self.cur_parent_ix];
+                if depth == cur_parent.depth + 2 {
+                    // Need to move parent one layer down, to the next subdirectory.
+                    let subdir_at = self.subdirectories_at[self.cur_parent_ix];
+                    self.subdirectories_at[self.cur_parent_ix] += 1;
+                    self.cur_parent_ix = cur_parent.subdirectories[subdir_at];
+                }
+            }
+            Ordering::Less => {
+                // Need to navigate up.
+                while self.tree[self.cur_parent_ix].depth >= depth {
+                    self.cur_parent_ix = self.parents[self.cur_parent_ix]
+                        .expect("must not traverse outside the root");
+                }
+            }
         }
-
-        // Traverse up if necessary.
-        while self.cur_depth >= depth {
-            self.cur_dir_ix =
-                self.parents[self.cur_dir_ix].expect("must not traverse outside the root");
-            self.cur_depth -= 1;
-        }
-        assert!(depth == self.cur_depth + 1);
-
-        // Navigate to the next subdirectory.
-        let parent = &mut self.tree[self.cur_dir_ix];
-        let subdir_at = self.subdirectories_at[self.cur_dir_ix];
-        self.subdirectories_at[self.cur_dir_ix] += 1;
-        self.cur_dir_ix = parent.subdirectories[subdir_at];
         self.cur_depth = depth;
-        // Next entry will be an immediate child of the current directory.
     }
 
     fn add_dir(&mut self, dir: Directory) {
         let dir_ix = self.tree.len();
         self.tree.push(dir);
-        self.tree[self.cur_dir_ix].subdirectories.push(dir_ix);
-        self.parents.push(Some(self.cur_dir_ix));
+        self.tree[self.cur_parent_ix].subdirectories.push(dir_ix);
+        self.parents.push(Some(self.cur_parent_ix));
+        self.subdirectories_at.push(0);
     }
 
     fn add_file(&mut self, file: File) {
-        self.tree[self.cur_dir_ix].source_files.push(file);
+        self.tree[self.cur_parent_ix].source_files.push(file);
     }
 
     fn take_tree(&mut self) -> Vec<Directory> {
@@ -627,8 +626,12 @@ impl Vfs {
             .expect("package must be a module subdirectory")
             .to_str()
             .expect("package relative path must be valid UTF-8");
-        path.join(rel)
-            .expect("join of package relative path to module import path must succeed")
+        if rel.is_empty() {
+            path.clone() // root package of the module
+        } else {
+            path.join(rel)
+                .expect("join of package relative path to module import path must succeed")
+        }
     }
 
     fn scan_root(root: &PathBuf) -> Vec<Directory> {
@@ -699,6 +702,8 @@ impl Vfs {
             };
             state.navigate(depth);
             if depth == 0 {
+                dir_iter.next();
+                prev_dir_iter.next();
                 continue;
             }
             match (cur, prev) {
