@@ -582,7 +582,7 @@ struct VfsMachine {
     state: Option<Arc<types::SyncState>>,
     vfs_join_handle: Option<thread::JoinHandle<()>>,
     last_scan_id: u64,
-    last_scan: Vec<workspace::Module>,
+    modules: types::HashMap<ModuleLoc, workspace::Module>,
 }
 
 impl Drop for VfsMachine {
@@ -620,7 +620,7 @@ impl VfsMachine {
             state,
             vfs_join_handle: handle,
             last_scan_id: 0,
-            last_scan: Vec::new(),
+            modules: types::HashMap::default(),
         }
     }
 
@@ -727,7 +727,93 @@ impl VfsMachine {
         self.apply(updates);
     }
 
-    fn apply(&mut self, _updates: Vec<workspace::ModuleUpdate>) {}
+    fn apply(&mut self, updates: Vec<workspace::ModuleUpdate>) {
+        for m_upd in updates {
+            match m_upd.update {
+                workspace::ModuleUpdateKind::ModuleAdded => {
+                    let prev = self.modules.insert(
+                        ModuleLoc {
+                            source: m_upd.source.clone(),
+                            module: m_upd.module,
+                        },
+                        workspace::Module {
+                            source: m_upd.source,
+                            manifest: m_upd.manifest.unwrap(),
+                            packages: m_upd
+                                .packages
+                                .into_iter()
+                                .map(|p_upd| workspace::Package {
+                                    source: p_upd.source,
+                                    path: p_upd.path,
+                                    files: p_upd.files,
+                                })
+                                .collect(),
+                        },
+                    );
+                    assert!(prev.is_none());
+                }
+                workspace::ModuleUpdateKind::ModuleRemoved => {
+                    let prev = self.modules.remove(&ModuleLoc {
+                        source: m_upd.source,
+                        module: m_upd.module,
+                    });
+                    assert!(prev.is_some());
+                }
+                workspace::ModuleUpdateKind::ModuleUpdated => {
+                    let m = self
+                        .modules
+                        .get_mut(&ModuleLoc {
+                            source: m_upd.source,
+                            module: m_upd.module,
+                        })
+                        .unwrap();
+                    if let Some(manifest) = m_upd.manifest {
+                        m.manifest = manifest;
+                    }
+                    for p_upd in m_upd.packages {
+                        match p_upd.update {
+                            workspace::PackageUpdateKind::PackageAdded => {
+                                m.packages.push(workspace::Package {
+                                    source: p_upd.source,
+                                    path: p_upd.path,
+                                    files: p_upd.files,
+                                });
+                            }
+                            workspace::PackageUpdateKind::PackageRemoved => {
+                                let ix = m
+                                    .packages
+                                    .iter()
+                                    .position(|p| p.source == p_upd.source && p.path == p_upd.path)
+                                    .unwrap();
+                                m.packages.swap_remove(ix);
+                            }
+                            workspace::PackageUpdateKind::PackageUpdated => {
+                                // Yup, O(N^2).
+                                let p = m
+                                    .packages
+                                    .iter_mut()
+                                    .find(|p| p.source == p_upd.source && p.path == p_upd.path)
+                                    .unwrap();
+                                for f_upd in p_upd.files {
+                                    let ix = p.files.iter().position(|f| f.source == f_upd.source);
+                                    if let Some(ix) = ix {
+                                        if f_upd.content.is_empty() {
+                                            p.files.swap_remove(ix);
+                                        } else {
+                                            p.files[ix].content = f_upd.content;
+                                        }
+                                    } else {
+                                        assert!(!f_upd.content.is_empty());
+                                        p.files.push(f_upd);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl StateMachineTest for VfsMachine {
@@ -784,16 +870,13 @@ impl StateMachineTest for VfsMachine {
         state: &Self::SystemUnderTest,
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) {
-        if false {
-            let modules = canonicalize_modules(&state.last_scan);
-            let ref_modules = canonicalize_modules(&ref_state.last_scan);
-            assert!(modules == ref_modules);
-        }
+        let modules = canonicalize_modules(state.modules.values().cloned().collect());
+        let ref_modules = canonicalize_modules(ref_state.last_scan.clone());
+        assert_eq!(modules, ref_modules, "modules (left) does not match reference modules (right)");
     }
 }
 
-fn canonicalize_modules(modules: &Vec<workspace::Module>) -> Vec<workspace::Module> {
-    let mut modules = modules.clone();
+fn canonicalize_modules(mut modules: Vec<workspace::Module>) -> Vec<workspace::Module> {
     for m in &mut modules {
         for p in &mut m.packages {
             p.files.sort_by(|a, b| a.source.cmp(&b.source));
