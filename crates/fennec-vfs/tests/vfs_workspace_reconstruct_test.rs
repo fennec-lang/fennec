@@ -116,7 +116,10 @@ fn fennec_version_strategy() -> BoxedStrategy<types::FennecVersion> {
 }
 
 fn raw_content_strategy() -> BoxedStrategy<Vec<u8>> {
-    any::<Vec<u8>>().boxed()
+    // Proptest is having much easier time with minimization when limiting content to 1 byte.
+    any::<Option<u8>>()
+        .prop_map(|v| v.into_iter().collect::<Vec<u8>>())
+        .boxed()
 }
 
 fn manifest_strategy() -> BoxedStrategy<Option<workspace::ModuleManifest>> {
@@ -136,9 +139,9 @@ fn manifest_strategy() -> BoxedStrategy<Option<workspace::ModuleManifest>> {
 
 fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let name_kind_strategy = Union::new(vec![
+        Just(NodeNameKind::Other),
         Just(NodeNameKind::SourceCode),
         Just(NodeNameKind::ModuleManifest),
-        Just(NodeNameKind::Other),
     ]);
     let valid_ident_strategy = any::<bool>();
     let name_strategy = (name_kind_strategy, valid_ident_strategy)
@@ -426,25 +429,27 @@ impl VfsReferenceMachine {
             // Should we update the current module?
             let manifest_loc = node.find_child(MODULE_MANIFEST_FILENAME, &self.nodes);
             if let Ok(manifest_ix) = manifest_loc {
-                cur_module = None;
-                cur_pkg_path = None;
                 let manifest_key = node.children[manifest_ix];
                 let manifest_node = &self.nodes[manifest_key];
-                if let Some(manifest) = &manifest_node.manifest {
-                    let loc = ModuleLoc {
-                        source: cur_dir_source.clone(),
-                        module: manifest.module.clone(),
-                    };
-                    cur_module = Some(loc.clone());
-                    cur_pkg_path = Some(loc.module.clone());
-                    modules.insert(
-                        loc.clone(),
-                        workspace::Module {
-                            source: loc.source,
-                            manifest: manifest.clone(),
-                            packages: Vec::new(),
-                        },
-                    );
+                if !manifest_node.directory {
+                    cur_module = None;
+                    cur_pkg_path = None;
+                    if let Some(manifest) = &manifest_node.manifest {
+                        let loc = ModuleLoc {
+                            source: cur_dir_source.clone(),
+                            module: manifest.module.clone(),
+                        };
+                        cur_module = Some(loc.clone());
+                        cur_pkg_path = Some(loc.module.clone());
+                        modules.insert(
+                            loc.clone(),
+                            workspace::Module {
+                                source: loc.source,
+                                manifest: manifest.clone(),
+                                packages: Vec::new(),
+                            },
+                        );
+                    }
                 }
             }
             // If we are inside a module and have not hit an invalid package directory yet, add a package.
@@ -668,6 +673,7 @@ impl VfsMachine {
         let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
         let mut file = fs::OpenOptions::new()
             .create_new(false)
+            .truncate(true)
             .write(true)
             .open(path)
             .unwrap();

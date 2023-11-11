@@ -140,14 +140,13 @@ impl Directory {
         })
     }
 
-    fn set_files(&mut self, files: Vec<File>) {
+    fn set_files(&mut self, files: Vec<File>, prev_info: Option<ManifestInfo>) {
         self.source_files = files;
         self.content_changed = Some(
             self.source_files
                 .iter()
                 .any(|f| f.content_changed.expect("change marker must be set")),
         );
-        let prev_info = take(&mut self.manifest_info);
         self.manifest_info = self.get_manifest(prev_info);
     }
 
@@ -215,7 +214,7 @@ impl DirTreeBuildState {
         }
     }
 
-    fn navigate(&mut self, depth: isize) {
+    fn navigate(&mut self, depth: isize, parent: Option<&str>) {
         match depth.cmp(&self.cur_depth) {
             Ordering::Equal => {
                 // Traversing the current layer, no need to adjust parent.
@@ -223,10 +222,17 @@ impl DirTreeBuildState {
             Ordering::Greater => {
                 let cur_parent = &self.tree[self.cur_parent_ix];
                 if depth == cur_parent.depth + 2 {
-                    // Need to move parent one layer down, to the next subdirectory.
-                    let subdir_at = self.subdirectories_at[self.cur_parent_ix];
-                    self.subdirectories_at[self.cur_parent_ix] += 1;
-                    self.cur_parent_ix = cur_parent.subdirectories[subdir_at];
+                    // Need to move parent one layer down, to the next matching subdirectory.
+                    let next_parent_ix = loop {
+                        let candidate_subdir_ix = self.subdirectories_at[self.cur_parent_ix];
+                        self.subdirectories_at[self.cur_parent_ix] += 1;
+                        let parent_candidate_ix = cur_parent.subdirectories[candidate_subdir_ix];
+                        let candidate = &self.tree[parent_candidate_ix];
+                        if Some(candidate.name()) == parent {
+                            break parent_candidate_ix;
+                        }
+                    };
+                    self.cur_parent_ix = next_parent_ix;
                 }
             }
             Ordering::Less => {
@@ -643,14 +649,15 @@ impl Vfs {
 
     fn scan_root(root: &PathBuf) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
-        let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
+        let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter(); // depth-first traversal
         for entry in
             walker.filter_entry(|e| e.depth() == 0 || util::is_valid_utf8_visible(e.file_name()))
         {
             match entry {
                 Ok(entry) => {
                     let depth = entry.depth() as isize;
-                    state.navigate(depth);
+                    let parent = path_parent_filename(entry.path());
+                    state.navigate(depth, parent);
                     let typ = entry.file_type();
                     if typ.is_dir() {
                         let dir = Directory::new(entry.into_path(), state.cur_depth);
@@ -681,8 +688,8 @@ impl Vfs {
         prev_dirs: &[Directory],
     ) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
-        let mut dir_iter = dirs.into_iter().peekable();
-        let mut prev_dir_iter = prev_dirs.iter().filter(|d| !d.deleted).peekable();
+        let mut dir_iter = dirs.into_iter().skip(1).peekable();
+        let mut prev_dir_iter = prev_dirs.iter().skip(1).filter(|d| !d.deleted).peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching (by depth and name) directories.
             // Loop invariant: parents of both cur and prev have already been visited (preorder traversal).
@@ -701,20 +708,20 @@ impl Vfs {
                 },
                 only_one => only_one,
             };
-            let depth = match (&cur, &prev) {
-                (Some(dir), _) => dir.depth,
-                (_, Some(prev_dir)) => prev_dir.depth,
+            let (depth, parent) = match (&cur, &prev) {
+                (Some(dir), _) => (dir.depth, path_parent_filename(&dir.path)),
+                (_, Some(prev_dir)) => (prev_dir.depth, path_parent_filename(&prev_dir.path)),
                 _ => unreachable!("at least one directory must be set"),
             };
-            state.navigate(depth);
+            state.navigate(depth, parent);
             match (cur, prev) {
                 (Some(dir), Some(prev_dir)) => {
                     let mut d = Directory::new_from_existing(take(dir));
                     let files = take(&mut d.source_files);
-                    d.set_files(Self::merge_hydrate_sorted_files(
-                        files,
-                        &prev_dir.source_files,
-                    ));
+                    d.set_files(
+                        Self::merge_hydrate_sorted_files(files, &prev_dir.source_files),
+                        prev_dir.manifest_info.clone(),
+                    );
                     state.add_dir(d);
                     dir_iter.next();
                     prev_dir_iter.next();
@@ -722,16 +729,16 @@ impl Vfs {
                 (Some(dir), None) => {
                     let mut d = Directory::new_from_existing(take(dir));
                     let files = take(&mut d.source_files);
-                    d.set_files(Self::merge_hydrate_sorted_files(files, &[]));
+                    d.set_files(Self::merge_hydrate_sorted_files(files, &[]), None);
                     state.add_dir(d);
                     dir_iter.next();
                 }
                 (None, Some(prev_dir)) => {
                     let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
-                    d.set_files(Self::merge_hydrate_sorted_files(
-                        Vec::new(),
-                        &prev_dir.source_files,
-                    ));
+                    d.set_files(
+                        Self::merge_hydrate_sorted_files(Vec::new(), &prev_dir.source_files),
+                        prev_dir.manifest_info.clone(),
+                    );
                     state.add_dir(d);
                     prev_dir_iter.next();
                 }
@@ -788,4 +795,8 @@ impl Vfs {
         }
         merged_files // sorted by file name
     }
+}
+
+fn path_parent_filename(p: &Path) -> Option<&str> {
+    Some(p.parent()?.file_name()?.to_str()?)
 }
