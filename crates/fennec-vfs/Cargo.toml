@@ -11,6 +11,7 @@ readme = false
 
 [dependencies]
 anyhow.workspace = true
+debug-ignore.workspace = true
 log.workspace = true
 semver.workspace = true
 serde = { workspace = true, features = ["serde_derive"] }

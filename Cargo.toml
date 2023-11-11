@@ -25,6 +25,7 @@ edition = "2021"
 ahash = "0.8.6"
 anyhow = "1"
 clap = "4.4"
+debug-ignore = "1"
 env_logger = "0.10"
 lalrpop = { version = "0.20", default-features = false }
 lalrpop-util = { version = "0.20", default-features = false }

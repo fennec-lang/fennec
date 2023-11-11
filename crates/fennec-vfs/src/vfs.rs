@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use debug_ignore::DebugIgnore;
 use fennec_common::{
     types, util,
     workspace::{self, FileUpdate},
@@ -26,7 +27,7 @@ pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
 #[derive(Default, Clone, Debug)]
 struct File {
     path: PathBuf,
-    meta: Option<std::fs::Metadata>,
+    meta: Option<DebugIgnore<std::fs::Metadata>>,
     deleted: bool,
     content_changed: Option<bool>,
     content: Option<Arc<str>>, // None initially or in case of read error, and also for deleted files
@@ -36,7 +37,7 @@ impl File {
     fn new(path: PathBuf, meta: Option<std::fs::Metadata>) -> File {
         File {
             path,
-            meta,
+            meta: meta.map(|m| m.into()),
             ..Default::default()
         }
     }
