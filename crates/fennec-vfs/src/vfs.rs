@@ -107,7 +107,7 @@ struct Directory {
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
-    manifest_info: Option<ManifestInfo>, // empty if manifest does not currently exist
+    manifest_info: Option<ManifestInfo>, // empty if valid manifest does not currently exist
 }
 
 impl Directory {
@@ -181,11 +181,11 @@ impl Directory {
                     }),
                     Err(err) => {
                         let disp = m.path.display();
-                        log::warn!(r#"failed to parse module manifest "{disp}", ignoring: {err}"#);
-                        prev_info.map(|prev| ManifestInfo {
-                            manifest: prev.manifest,
-                            manifest_changed: false,
-                        })
+                        log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
+                        // We might go back to pretending that the manifest has not changed instead,
+                        // as this avoids the module removal. However, that breaks the invariant that
+                        // the VFS state is equal to the fresh re-scan, so let's not do that.
+                        None
                     }
                 }
             }
