@@ -270,6 +270,13 @@ module = "example.org/hello"
 
 - each enum variant must be a separate type (for flow-dependent typing and more)
 - for pattern matching, swift-like syntax to refer to variants must be implemented
+- fields must have rich metadata that specifies the relationship (part/helper/link/...)
+  - we should be able to almost always derive `Eq`, `Debug` etc. consistent with the intended meaning
+    - e.g. omit all caches, links
+    - we should be able to show meaningful diff as well by default
+  - we should be able to derive complex data generation as well?
+    - type-based generation is a bad idea, but maybe if we have a rich "alias"/"layer" feature,
+      we can create new lightweight interoperable views with desired semantics?
 
 ## Random ideas
 
@@ -358,6 +365,7 @@ module = "example.org/hello"
 - consider treating `ctx` (zig-like) as fundamental building block
   - reification of lexical scoping
   - build scoped (structured) arena allocations, scoped (structured) concurrency around it
+- `assert(x.is_some())` should change the type of `x` afterwards
 
 ### UI
 
