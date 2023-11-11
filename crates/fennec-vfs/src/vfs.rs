@@ -15,7 +15,7 @@ use std::{
     mem::take,
     path::{Path, PathBuf},
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::Duration,
     vec,
 };
 
@@ -26,17 +26,17 @@ pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
 #[derive(Default, Clone, Debug)]
 struct File {
     path: PathBuf,
-    modified: Option<SystemTime>,
+    meta: Option<std::fs::Metadata>,
     deleted: bool,
     content_changed: Option<bool>,
     content: Option<Arc<str>>, // None initially or in case of read error, and also for deleted files
 }
 
 impl File {
-    fn new(path: PathBuf, modified: Option<SystemTime>) -> File {
+    fn new(path: PathBuf, meta: Option<std::fs::Metadata>) -> File {
         File {
             path,
-            modified,
+            meta,
             ..Default::default()
         }
     }
@@ -668,9 +668,8 @@ impl Vfs {
                             .to_str()
                             .expect("is_valid_utf8_visible() must ensure UTF-8");
                         if name == MODULE_MANIFEST_FILENAME || util::valid_source_file_name(name) {
-                            let modified =
-                                entry.metadata().ok().and_then(|meta| meta.modified().ok());
-                            let file = File::new(entry.into_path(), modified);
+                            let meta = entry.metadata().ok();
+                            let file = File::new(entry.into_path(), meta);
                             state.add_file(file);
                         }
                     }
@@ -767,8 +766,8 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(file), Some(prev_file)) => {
-                    let modified = match (file.modified, prev_file.modified) {
-                        (Some(t), Some(prev_t)) => t != prev_t,
+                    let modified = match (&file.meta, &prev_file.meta) {
+                        (Some(a), Some(b)) => compare_meta(a, b),
                         _ => true, // conservative
                     };
                     if modified && file.read_content() {
@@ -795,6 +794,18 @@ impl Vfs {
         }
         merged_files // sorted by file name
     }
+}
+
+#[cfg(unix)]
+fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
+    use std::os::unix::prelude::MetadataExt;
+    (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
+        != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
+}
+
+#[cfg(not(unix))]
+fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
+    (a.modified().ok(), a.permissions(), a.len()) != (b.modified().ok(), b.permissions(), b.len())
 }
 
 fn path_parent_filename(p: &Path) -> Option<&str> {
