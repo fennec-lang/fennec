@@ -11,7 +11,7 @@ use crate::types;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct File {
     pub source: PathBuf,
-    pub content: Arc<str>, // for updates, empty in case of deleted file
+    pub content: Arc<str>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -28,13 +28,21 @@ pub struct Module {
     pub packages: Vec<Package>,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FileUpdate {
+    pub source: PathBuf,
+    pub content: Option<Arc<str>>, // empty in case file was removed
+}
+
+#[derive(Clone, Debug)]
 pub struct PackageUpdate {
     pub source: PathBuf,
     pub path: types::ImportPath,
-    pub files: Vec<File>,
+    pub files: Vec<FileUpdate>,
     pub update: PackageUpdateKind,
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum PackageUpdateKind {
     PackageAdded,
     PackageRemoved,
@@ -47,6 +55,7 @@ pub struct ModuleManifest {
     pub fennec: types::FennecVersion,
 }
 
+#[derive(Clone, Debug)]
 pub struct ModuleUpdate {
     pub source: PathBuf,
     pub module: types::ImportPath,        // same as manifest.module
@@ -55,6 +64,7 @@ pub struct ModuleUpdate {
     pub update: ModuleUpdateKind,
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum ModuleUpdateKind {
     ModuleAdded,
     ModuleRemoved,

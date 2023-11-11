@@ -5,7 +5,7 @@ use std::{
     fs::{self},
     io::Write,
     mem::take,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     thread,
     time::Duration,
@@ -636,6 +636,7 @@ impl VfsMachine {
         manifest: Option<workspace::ModuleManifest>,
         parent: PathBuf,
     ) {
+        let is_manifest = name == MODULE_MANIFEST_FILENAME;
         let path = parent.join(name);
         if directory {
             fs::create_dir(path).unwrap();
@@ -645,7 +646,7 @@ impl VfsMachine {
                 .write(true)
                 .open(path)
                 .unwrap();
-            Self::write_content(&mut file, raw_content, manifest);
+            Self::write_content(&mut file, is_manifest, raw_content, manifest);
         }
     }
 
@@ -664,12 +665,13 @@ impl VfsMachine {
         raw_content: Vec<u8>,
         manifest: Option<workspace::ModuleManifest>,
     ) {
+        let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
         let mut file = fs::OpenOptions::new()
             .create_new(false)
             .write(true)
             .open(path)
             .unwrap();
-        Self::write_content(&mut file, raw_content, manifest);
+        Self::write_content(&mut file, is_manifest, raw_content, manifest);
     }
 
     fn mark_scan_root(&mut self, path: PathBuf) {
@@ -685,21 +687,26 @@ impl VfsMachine {
 
     fn write_content(
         file: &mut fs::File,
+        write_manifest: bool,
         raw_content: Vec<u8>,
         manifest: Option<workspace::ModuleManifest>,
     ) {
-        if let Some(manifest) = manifest {
-            let types::FennecVersion {
-                major,
-                minor,
-                patch,
-            } = manifest.fennec;
-            let mod_path = manifest.module;
-            write!(
-                file,
-                "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
-            )
-            .unwrap();
+        if write_manifest {
+            if let Some(manifest) = manifest {
+                let types::FennecVersion {
+                    major,
+                    minor,
+                    patch,
+                } = manifest.fennec;
+                let mod_path = manifest.module;
+                write!(
+                    file,
+                    "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
+                )
+                .unwrap();
+            } else {
+                file.write_all(&[]).unwrap();
+            }
         } else {
             file.write_all(&raw_content).unwrap();
         }
@@ -745,7 +752,14 @@ impl VfsMachine {
                                 .map(|p_upd| workspace::Package {
                                     source: p_upd.source,
                                     path: p_upd.path,
-                                    files: p_upd.files,
+                                    files: p_upd
+                                        .files
+                                        .into_iter()
+                                        .map(|f| workspace::File {
+                                            source: f.source,
+                                            content: f.content.unwrap(),
+                                        })
+                                        .collect(),
                                 })
                                 .collect(),
                         },
@@ -776,7 +790,14 @@ impl VfsMachine {
                                 m.packages.push(workspace::Package {
                                     source: p_upd.source,
                                     path: p_upd.path,
-                                    files: p_upd.files,
+                                    files: p_upd
+                                        .files
+                                        .into_iter()
+                                        .map(|f| workspace::File {
+                                            source: f.source,
+                                            content: f.content.unwrap(),
+                                        })
+                                        .collect(),
                                 });
                             }
                             workspace::PackageUpdateKind::PackageRemoved => {
@@ -797,14 +818,17 @@ impl VfsMachine {
                                 for f_upd in p_upd.files {
                                     let ix = p.files.iter().position(|f| f.source == f_upd.source);
                                     if let Some(ix) = ix {
-                                        if f_upd.content.is_empty() {
-                                            p.files.swap_remove(ix);
+                                        if let Some(content) = f_upd.content {
+                                            p.files[ix].content = content;
                                         } else {
-                                            p.files[ix].content = f_upd.content;
+                                            p.files.swap_remove(ix);
                                         }
                                     } else {
-                                        assert!(!f_upd.content.is_empty());
-                                        p.files.push(f_upd);
+                                        let content = f_upd.content.unwrap();
+                                        p.files.push(workspace::File {
+                                            source: f_upd.source,
+                                            content,
+                                        });
                                     }
                                 }
                             }
@@ -870,18 +894,39 @@ impl StateMachineTest for VfsMachine {
         state: &Self::SystemUnderTest,
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) {
-        let modules = canonicalize_modules(state.modules.values().cloned().collect());
-        let ref_modules = canonicalize_modules(ref_state.last_scan.clone());
-        assert_eq!(modules, ref_modules, "modules (left) does not match reference modules (right)");
+        let modules = canonicalize_modules(
+            state.modules.values().cloned().collect(),
+            Some(state.dir.path()),
+        );
+        let ref_modules = canonicalize_modules(ref_state.last_scan.clone(), None);
+        pretty_assertions::assert_eq!(
+            modules,
+            ref_modules,
+            "modules (left) does not match reference modules (right)"
+        );
     }
 }
 
-fn canonicalize_modules(mut modules: Vec<workspace::Module>) -> Vec<workspace::Module> {
+fn fix_source(source: &mut PathBuf, root: Option<&Path>) {
+    if let Some(root) = root {
+        *source = source.strip_prefix(root).unwrap().to_owned();
+    }
+}
+
+fn canonicalize_modules(
+    mut modules: Vec<workspace::Module>,
+    root: Option<&Path>,
+) -> Vec<workspace::Module> {
     for m in &mut modules {
         for p in &mut m.packages {
+            for f in &mut p.files {
+                fix_source(&mut f.source, root);
+            }
             p.files.sort_by(|a, b| a.source.cmp(&b.source));
+            fix_source(&mut p.source, root);
         }
         m.packages.sort_by(|a, b| a.source.cmp(&b.source));
+        fix_source(&mut m.source, root);
     }
     modules.sort_by(|a, b| a.source.cmp(&b.source));
     modules

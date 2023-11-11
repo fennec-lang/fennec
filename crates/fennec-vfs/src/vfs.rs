@@ -4,8 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
-use once_cell::sync::Lazy;
+use fennec_common::{
+    types, util,
+    workspace::{self, FileUpdate},
+    MODULE_MANIFEST_FILENAME,
+};
 use std::{
     cmp::Ordering,
     io::Read,
@@ -19,9 +22,8 @@ use std::{
 use crate::manifest;
 
 pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
-static EMPTY_CONTENT: Lazy<Arc<str>> = Lazy::new(|| Arc::from(""));
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 struct File {
     path: PathBuf,
     modified: Option<SystemTime>,
@@ -90,16 +92,16 @@ impl File {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ManifestInfo {
     manifest: workspace::ModuleManifest,
     manifest_changed: bool,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 struct Directory {
     path: PathBuf,
-    depth: usize,
+    depth: isize,
     deleted: bool,
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
@@ -108,7 +110,7 @@ struct Directory {
 }
 
 impl Directory {
-    fn new(path: PathBuf, depth: usize) -> Directory {
+    fn new(path: PathBuf, depth: isize) -> Directory {
         Directory {
             path,
             depth,
@@ -123,7 +125,7 @@ impl Directory {
         dir
     }
 
-    fn new_deleted(path: PathBuf, depth: usize) -> Directory {
+    fn new_deleted(path: PathBuf, depth: isize) -> Directory {
         Directory {
             path,
             depth,
@@ -194,7 +196,7 @@ impl Directory {
 
 struct DirTreeBuildState {
     tree: Vec<Directory>,
-    cur_depth: usize,
+    cur_depth: isize,
     cur_parent_ix: usize,
     parents: Vec<Option<usize>>,   // parent index of i'th directory
     subdirectories_at: Vec<usize>, // next index to visit in subdirectories of i'th directory
@@ -205,15 +207,15 @@ impl DirTreeBuildState {
     // but let's avoid premature optimization for now.
     fn new() -> DirTreeBuildState {
         DirTreeBuildState {
-            tree: vec![Directory::new(PathBuf::new(), 0)], // root entry
-            cur_depth: 0,
+            tree: vec![Directory::new(PathBuf::new(), -1)], // root-of-root entry
+            cur_depth: -1,
             cur_parent_ix: 0,
             parents: vec![None],
             subdirectories_at: vec![0],
         }
     }
 
-    fn navigate(&mut self, depth: usize) {
+    fn navigate(&mut self, depth: isize) {
         match depth.cmp(&self.cur_depth) {
             Ordering::Equal => {
                 // Traversing the current layer, no need to adjust parent.
@@ -271,16 +273,16 @@ impl ScanState {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ModTraverse {
     root: usize,
     packages: Vec<usize>,
-    depth: usize,
-    cur_ignore_pkgs_depth: Option<usize>,
+    depth: isize,
+    cur_ignore_pkgs_depth: Option<isize>,
 }
 
 impl ModTraverse {
-    fn new(root: usize, depth: usize) -> ModTraverse {
+    fn new(root: usize, depth: isize) -> ModTraverse {
         ModTraverse {
             root,
             depth,
@@ -557,16 +559,16 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(dir), Some(_)) => {
-                    let files: Vec<workspace::File> = dir
+                    let files: Vec<workspace::FileUpdate> = dir
                         .source_files
                         .iter()
                         .filter(|f| {
                             f.content_changed.expect("change marker must be set")
                                 && !f.is_manifest()
                         })
-                        .map(|f| workspace::File {
+                        .map(|f| workspace::FileUpdate {
                             source: f.path.clone(),
-                            content: f.content.as_ref().unwrap_or(&EMPTY_CONTENT).clone(),
+                            content: f.content.clone(),
                         })
                         .collect();
                     if !files.is_empty() {
@@ -596,7 +598,12 @@ impl Vfs {
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
                         path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
-                        files: files.collect(), // may be empty
+                        files: files
+                            .map(|f| FileUpdate {
+                                source: f.source,
+                                content: Some(f.content),
+                            })
+                            .collect(), // may be empty
                         update: workspace::PackageUpdateKind::PackageAdded,
                     });
                     package_dir_iter.next();
@@ -637,14 +644,13 @@ impl Vfs {
     fn scan_root(root: &PathBuf) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
         let walker = walkdir::WalkDir::new(root).sort_by_file_name().into_iter();
-        for entry in walker.filter_entry(|e| util::is_valid_utf8_visible(e.file_name())) {
+        for entry in
+            walker.filter_entry(|e| e.depth() == 0 || util::is_valid_utf8_visible(e.file_name()))
+        {
             match entry {
                 Ok(entry) => {
-                    let depth = entry.depth();
+                    let depth = entry.depth() as isize;
                     state.navigate(depth);
-                    if depth == 0 {
-                        continue;
-                    }
                     let typ = entry.file_type();
                     if typ.is_dir() {
                         let dir = Directory::new(entry.into_path(), state.cur_depth);
@@ -701,11 +707,6 @@ impl Vfs {
                 _ => unreachable!("at least one directory must be set"),
             };
             state.navigate(depth);
-            if depth == 0 {
-                dir_iter.next();
-                prev_dir_iter.next();
-                continue;
-            }
             match (cur, prev) {
                 (Some(dir), Some(prev_dir)) => {
                     let mut d = Directory::new_from_existing(take(dir));

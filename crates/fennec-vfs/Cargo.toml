@@ -12,7 +12,6 @@ readme = false
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
-once_cell.workspace = true
 semver.workspace = true
 serde = { workspace = true, features = ["serde_derive"] }
 toml.workspace = true
@@ -22,6 +21,7 @@ fennec-common.workspace = true
 
 [dev-dependencies]
 env_logger.workspace = true
+pretty_assertions.workspace = true
 proptest-state-machine.workspace = true
 proptest.workspace = true
 slotmap.workspace = true
