@@ -343,7 +343,13 @@ struct ModuleLoc {
 }
 
 impl VfsReferenceMachine {
-    fn new(rng_seed: u64, async_vfs: bool, cleanup_stale_roots: bool) -> VfsReferenceMachine {
+    fn new(rng_seed: u64, async_vfs: bool, mut cleanup_stale_roots: bool) -> VfsReferenceMachine {
+        if async_vfs {
+            // When using async VFS, marking of scan roots can trigger an "extra" scan,
+            // which is absent in the reference machine. This scan can lead to removal
+            // of the scan root that reference machine still considers valid.
+            cleanup_stale_roots = false;
+        }
         VfsReferenceMachine {
             rng_seed,
             async_vfs,
