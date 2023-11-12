@@ -315,6 +315,9 @@ module = "example.org/hello"
     - imperative rapid-like `repeat` etc.
   - should we do the same for all constructor + method combinations?
     - probably yes, otherwise there is no incentive to write methods compared to functions
+  - we should never re-run manually when debugging; just add any required observability
+    and everything is happening automatically
+    - or simply time-travel back and expect any state without touching the code, that's the goal
 
 ### Fuzzing
 
@@ -350,6 +353,12 @@ module = "example.org/hello"
 - can use small object headers that will transform to big ones (side tables) lazily
 - can omit all atomic ops in a component if we know it is single-threaded
 - guarantee that you can always read a full word if the address is aligned for faster copying?
+- main thing for performance is transparency and predictability in what the compiler does
+  - have a tree-walking interpreter as a reference
+  - have a single destination-driven code generation pipeline, checked against the interpreter
+  - have a way to write a portable vector version that is guaranteed to be identical to the scalar one
+  - have a way to write a non-portable vector version that is guaranteed to be identical to the portable one
+  - that's it; all people need is a sufficiently nice to use macro assembler
 
 ### Ergonomics
 
@@ -366,6 +375,9 @@ module = "example.org/hello"
   - reification of lexical scoping
   - build scoped (structured) arena allocations, scoped (structured) concurrency around it
 - `assert(x.is_some())` should change the type of `x` afterwards
+- you don't debug a program, you debug a *problem*
+  - find a problem by auto-testing, then click on it to start debugging, that's the whole flow
+    - automatic problem finding (auto-test) + automatic problem debugging (auto-minify, auto-rerun, time travel)
 
 ### UI
 
