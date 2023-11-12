@@ -404,10 +404,14 @@ impl Vfs {
     fn scan(&mut self, updates: &mut Vec<workspace::ModuleUpdate>) {
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root);
+            log::debug!("scan tree {scan_tree:#?}");
             let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &state.tree);
+            log::debug!("tree {tree:#?}");
             let tree_modules = Self::build_modules(&tree);
+            log::debug!("modules {tree_modules:#?}");
             let tree_updates =
                 Self::build_module_updates(&tree, &tree_modules, &state.tree, &state.modules);
+            log::debug!("updates {tree_updates:#?}");
             updates.extend(tree_updates);
             state.tree = tree;
             state.modules = tree_modules;
@@ -438,16 +442,18 @@ impl Vfs {
             {
                 modules.push(stack.pop().expect("stack is not empty"));
             }
-            if dir.manifest_pos().is_some() {
-                let mut m = ModTraverse::new(ix, dir.depth);
-                if dir.manifest_info.is_some() {
-                    // Push new module on the stack, if we are visiting an existing module root.
-                    stack.push(m);
-                } else {
-                    // Manifest file exists, but the manifest is invalid. Ignore the whole subtree.
-                    m.cur_ignore_pkgs_depth = Some(dir.depth);
-                    stack.push(m);
-                    continue;
+            if let Some(m_ix) = dir.manifest_pos() {
+                if !dir.source_files[m_ix].deleted {
+                    let mut m = ModTraverse::new(ix, dir.depth);
+                    if dir.manifest_info.is_some() {
+                        // Push new module on the stack, if we are visiting an existing module root.
+                        stack.push(m);
+                    } else {
+                        // Manifest file exists, but the manifest is invalid. Ignore the whole subtree.
+                        m.cur_ignore_pkgs_depth = Some(dir.depth);
+                        stack.push(m);
+                        continue;
+                    }
                 }
             }
             // If we are not inside a module, do nothing.
@@ -834,9 +840,13 @@ impl Vfs {
 
 #[cfg(unix)]
 fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
-    use std::os::unix::prelude::MetadataExt;
-    (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
-        != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
+    if false {
+        use std::os::unix::prelude::MetadataExt;
+        (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
+            != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
+    } else {
+        true
+    }
 }
 
 #[cfg(not(unix))]

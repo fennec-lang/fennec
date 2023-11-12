@@ -45,7 +45,7 @@ enum NodeNameKind {
     Other,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 enum Transition {
     AddNode {
         name: String,
@@ -66,6 +66,57 @@ enum Transition {
         key: NodeKey,
     },
     Scan {},
+}
+
+impl std::fmt::Debug for Transition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Transition::AddNode {
+                name,
+                directory,
+                raw_content,
+                manifest,
+                parent,
+            } => {
+                if *directory {
+                    write!(f, "ADD DIR {name}, parent {parent:?}")
+                } else if name == MODULE_MANIFEST_FILENAME {
+                    let valid_manifest = manifest.is_some();
+                    write!(
+                        f,
+                        "Add MANIFEST {name}, parent {parent:?}, valid manifest {valid_manifest}"
+                    )
+                } else {
+                    let pretty_content = String::from_utf8_lossy(&raw_content);
+                    write!(
+                        f,
+                        "Add FILE {name}, parent {parent:?}, content {pretty_content}"
+                    )
+                }
+            }
+            Transition::RemoveNode { key } => {
+                write!(f, "REMOVE {key:?}")
+            }
+            Transition::UpdateNode {
+                key,
+                raw_content,
+                manifest,
+            } => {
+                let valid_manifest = manifest.is_some();
+                let pretty_content = String::from_utf8_lossy(&raw_content);
+                write!(
+                    f,
+                    "UPDATE {key:?}, valid manifest {valid_manifest}, content {pretty_content}"
+                )
+            }
+            Transition::MarkScanRoot { key } => {
+                write!(f, "MARK SCAN ROOT {key:?}")
+            }
+            Transition::Scan {} => {
+                write!(f, "SCAN")
+            }
+        }
+    }
 }
 
 fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrategy<String> {
@@ -618,19 +669,20 @@ impl Drop for VfsMachine {
 
 impl VfsMachine {
     fn new(async_vfs: bool) -> VfsMachine {
+        let cleanup_stale_roots = false;
         let (vfs, state, handle) = if async_vfs {
             let state = Arc::new(types::SyncState::new());
             let state_clone = state.clone();
             let h = thread::Builder::new()
                 .name("VFS".to_owned())
                 .spawn(move || {
-                    let mut vfs = Vfs::new(true, Duration::from_secs(86400));
+                    let mut vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(86400));
                     vfs.run(&state_clone);
                 })
                 .unwrap();
             (None, Some(state.clone()), Some(h))
         } else {
-            let vfs = Vfs::new(true, Duration::from_secs(0));
+            let vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(0));
             (Some(vfs), None, None)
         };
         VfsMachine {
@@ -874,6 +926,7 @@ impl StateMachineTest for VfsMachine {
     fn init_test(
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
+        log::debug!("[begin new VFS state machine run] ==========================================");
         VfsMachine::new(ref_state.async_vfs)
     }
 
