@@ -36,7 +36,7 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = <Cli as clap::Parser>::parse();
 
-    let default_level = if cli.verbose { "debug" } else { "info" };
+    let default_level = if cli.verbose { "info" } else { "warn" };
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
         .init();
 
