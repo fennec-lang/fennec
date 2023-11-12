@@ -25,6 +25,7 @@ edition = "2021"
 ahash = "0.8.6"
 anyhow = "1"
 clap = "4.4"
+clap-verbosity-flag = "2.1"
 debug-ignore = "1"
 env_logger = "0.10"
 fastrand = { version = "2", default-features = false }

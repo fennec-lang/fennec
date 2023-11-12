@@ -6,6 +6,8 @@
 
 #![forbid(unsafe_code)]
 
+use clap_verbosity_flag::{InfoLevel, Verbosity};
+
 mod new;
 mod server;
 mod version;
@@ -13,9 +15,8 @@ mod version;
 #[derive(clap::Parser)]
 #[command(author, about, long_about=None, disable_version_flag(true))]
 struct Cli {
-    /// Verbose output
-    #[arg(short, long, global = true)]
-    verbose: bool,
+    #[command(flatten)]
+    verbose: Verbosity<InfoLevel>,
 
     #[command(subcommand)]
     command: Commands,
@@ -36,15 +37,17 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = <Cli as clap::Parser>::parse();
 
-    let default_level = if cli.verbose { "info" } else { "warn" };
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
+    env_logger::Builder::new()
+        .filter_level(cli.verbose.log_level_filter())
         .init();
 
     match cli.command {
-        Commands::New(args) => new::cmd(&args, cli.verbose),
+        Commands::New(args) => new::cmd(&args),
         Commands::Server(args) => server::cmd(&args),
         Commands::Version => {
-            version::cmd(cli.verbose);
+            let level = cli.verbose.log_level().unwrap_or(log::Level::Info);
+            let verbose = level > log::Level::Info;
+            version::cmd(verbose);
             Ok(())
         }
     }

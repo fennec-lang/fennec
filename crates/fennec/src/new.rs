@@ -18,7 +18,7 @@ pub struct Args {
     dir: Option<String>,
 }
 
-pub fn cmd(args: &Args, _verbose: bool) -> anyhow::Result<()> {
+pub fn cmd(args: &Args) -> anyhow::Result<()> {
     let mod_path = &args.module_path;
     let mod_path = types::ImportPath::parse(mod_path)
         .with_context(|| format!(r#"invalid module path "{mod_path}""#))?;
