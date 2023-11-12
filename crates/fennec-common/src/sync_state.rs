@@ -14,7 +14,7 @@ use std::{
 
 use crate::workspace;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct VfsChangeBuffer {
     pub exit: bool,
     // Scan roots usually correspond to directories with a manifest file, but they don't have to.
@@ -22,11 +22,23 @@ pub struct VfsChangeBuffer {
     pub force_scan_id: Option<u64>,
 }
 
-#[derive(Default)]
+impl VfsChangeBuffer {
+    fn is_empty(&self) -> bool {
+        !self.exit && self.scan_roots.is_empty() && self.force_scan_id.is_none()
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct CoreChangeBuffer {
     pub exit: bool,
     pub module_updates: Vec<workspace::ModuleUpdate>,
     pub last_force_scan_id: Option<u64>,
+}
+
+impl CoreChangeBuffer {
+    fn is_empty(&self) -> bool {
+        !self.exit && self.module_updates.is_empty() && self.last_force_scan_id.is_none()
+    }
 }
 
 pub struct SyncState {
@@ -102,13 +114,20 @@ impl SyncState {
 
     pub fn wait_vfs(&self, timeout: Duration) -> (VfsChangeBuffer, bool) {
         let mut vfs = self.vfs_changes.lock();
-        let res = self.vfs_condvar.wait_for(&mut vfs, timeout);
-        (take(&mut vfs), res.timed_out())
+        let timed_out = if vfs.is_empty() {
+            let res = self.vfs_condvar.wait_for(&mut vfs, timeout);
+            res.timed_out()
+        } else {
+            false
+        };
+        (take(&mut vfs), timed_out)
     }
 
     pub fn wait_core(&self) -> CoreChangeBuffer {
         let mut core = self.core_changes.lock();
-        self.core_condvar.wait(&mut core);
+        if core.is_empty() {
+            self.core_condvar.wait(&mut core);
+        }
         take(&mut core)
     }
 }

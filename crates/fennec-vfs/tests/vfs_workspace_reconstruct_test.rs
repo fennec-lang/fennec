@@ -564,7 +564,10 @@ impl ReferenceStateMachine for VfsReferenceMachine {
     type Transition = Transition;
 
     fn init_state() -> BoxedStrategy<Self::State> {
-        Just(VfsReferenceMachine::new(false)).boxed()
+        let async_vfs_strategy = any::<bool>();
+        async_vfs_strategy
+            .prop_flat_map(|async_vfs| Just(VfsReferenceMachine::new(async_vfs)))
+            .boxed()
     }
 
     fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
@@ -682,7 +685,7 @@ impl VfsMachine {
                     vfs.run(&state_clone);
                 })
                 .unwrap();
-            (None, Some(state.clone()), Some(h))
+            (None, Some(state), Some(h))
         } else {
             let vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(0));
             (Some(vfs), None, None)
