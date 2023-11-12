@@ -345,9 +345,7 @@ impl Vfs {
 
             if should_scan {
                 self.scan(&mut updates);
-                if !updates.is_empty() || changes.force_scan_id.is_some() {
-                    state.signal_core_module_updates(updates, changes.force_scan_id);
-                }
+                state.signal_core_module_updates(updates, changes.force_scan_id);
             }
         }
     }

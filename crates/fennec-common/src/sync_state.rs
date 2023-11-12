@@ -88,9 +88,11 @@ impl SyncState {
     }
 
     pub fn signal_vfs_new_roots(&self, roots: Vec<PathBuf>) {
-        let mut vfs = self.vfs_changes.lock();
-        vfs.scan_roots.extend(roots);
-        self.notify_vfs();
+        if !roots.is_empty() {
+            let mut vfs = self.vfs_changes.lock();
+            vfs.scan_roots.extend(roots);
+            self.notify_vfs();
+        }
     }
 
     pub fn signal_vfs_force_scan(&self, id: u64) {
@@ -104,12 +106,14 @@ impl SyncState {
         updates: Vec<workspace::ModuleUpdate>,
         force_scan_id: Option<u64>,
     ) {
-        let mut core = self.core_changes.lock();
-        core.module_updates.extend(updates);
-        if force_scan_id.is_some() {
-            core.last_force_scan_id = force_scan_id;
+        if !updates.is_empty() || force_scan_id.is_some() {
+            let mut core = self.core_changes.lock();
+            core.module_updates.extend(updates);
+            if force_scan_id.is_some() {
+                core.last_force_scan_id = force_scan_id;
+            }
+            self.notify_core();
         }
-        self.notify_core();
     }
 
     pub fn wait_vfs(&self, timeout: Duration) -> (VfsChangeBuffer, bool) {
