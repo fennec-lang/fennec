@@ -567,21 +567,21 @@ impl ReferenceStateMachine for VfsReferenceMachine {
     }
 
     fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
-        let mut options: Vec<BoxedStrategy<Transition>> = Vec::new();
+        let mut options: Vec<(u32, BoxedStrategy<Transition>)> = Vec::new();
 
-        options.push(add_node_strategy(state.directories.clone()));
+        options.push((2, add_node_strategy(state.directories.clone())));
         if !state.nodes.is_empty() {
-            options.push(remove_node_strategy(state.nodes.keys().collect()));
+            options.push((1, remove_node_strategy(state.nodes.keys().collect())));
         }
         if !state.files.is_empty() {
-            options.push(update_node_strategy(state.files.clone()));
+            options.push((2, update_node_strategy(state.files.clone())));
         }
         if !state.directories.is_empty() {
-            options.push(mark_scan_root_strategy(state.directories.clone()));
+            options.push((1, mark_scan_root_strategy(state.directories.clone())));
         }
-        options.push(scan_strategy());
+        options.push((2, scan_strategy()));
 
-        Union::new(options).boxed()
+        Union::new_weighted(options).boxed()
     }
 
     fn apply(mut state: Self::State, transition: &Self::Transition) -> Self::State {
