@@ -311,6 +311,7 @@ struct VfsReferenceMachine {
     // Hack to vary initialization of the SUT.
     rng_seed: u64,
     async_vfs: bool,
+    cleanup_stale_roots: bool,
 }
 
 fn find_sorted_by_name(
@@ -342,10 +343,11 @@ struct ModuleLoc {
 }
 
 impl VfsReferenceMachine {
-    fn new(rng_seed: u64, async_vfs: bool) -> VfsReferenceMachine {
+    fn new(rng_seed: u64, async_vfs: bool, cleanup_stale_roots: bool) -> VfsReferenceMachine {
         VfsReferenceMachine {
             rng_seed,
             async_vfs,
+            cleanup_stale_roots,
             ..Default::default()
         }
     }
@@ -439,6 +441,15 @@ impl VfsReferenceMachine {
             node.scan_root = root_keys.binary_search(&key).is_ok();
         }
         self.last_scan = self.reconstruct();
+        if self.cleanup_stale_roots {
+            self.scan_roots.retain(|r| {
+                self.files.iter().any(|k| {
+                    Self::node_path_impl(&self.nodes, *k).file_name()
+                        == Some(MODULE_MANIFEST_FILENAME.as_ref())
+                        && util::has_prefix(&Self::node_path_impl(&self.nodes, *k), r)
+                })
+            });
+        }
     }
 
     fn remove(&mut self, key: NodeKey) -> Node {
@@ -451,10 +462,14 @@ impl VfsReferenceMachine {
         node
     }
 
-    fn node_path(&self, mut key: NodeKey) -> PathBuf {
+    fn node_path(&self, key: NodeKey) -> PathBuf {
+        Self::node_path_impl(&self.nodes, key)
+    }
+
+    fn node_path_impl(nodes: &SlotMap<NodeKey, Node>, mut key: NodeKey) -> PathBuf {
         let mut rev = PathBuf::new();
         loop {
-            let node = &self.nodes[key];
+            let node = &nodes[key];
             rev.push(&node.name);
             if let Some(parent_key) = node.parent {
                 key = parent_key;
@@ -568,9 +583,18 @@ impl ReferenceStateMachine for VfsReferenceMachine {
     fn init_state() -> BoxedStrategy<Self::State> {
         let rng_seed_strategy = any::<u64>();
         let async_vfs_strategy = any::<bool>();
-        (rng_seed_strategy, async_vfs_strategy)
-            .prop_flat_map(|(rng_seed, async_vfs)| {
-                Just(VfsReferenceMachine::new(rng_seed, async_vfs))
+        let cleanup_stale_roots_strategy = any::<bool>();
+        (
+            rng_seed_strategy,
+            async_vfs_strategy,
+            cleanup_stale_roots_strategy,
+        )
+            .prop_flat_map(|(rng_seed, async_vfs, cleanup_stale_roots)| {
+                Just(VfsReferenceMachine::new(
+                    rng_seed,
+                    async_vfs,
+                    cleanup_stale_roots,
+                ))
             })
             .boxed()
     }
@@ -679,8 +703,7 @@ impl Drop for VfsMachine {
 }
 
 impl VfsMachine {
-    fn new(rng_seed: u64, async_vfs: bool) -> VfsMachine {
-        let cleanup_stale_roots = false;
+    fn new(rng_seed: u64, async_vfs: bool, cleanup_stale_roots: bool) -> VfsMachine {
         let (vfs, state, handle) = if async_vfs {
             let state = Arc::new(types::SyncState::new());
             let state_clone = state.clone();
@@ -944,7 +967,11 @@ impl StateMachineTest for VfsMachine {
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
         log::debug!("[begin new VFS state machine run] ==========================================");
-        VfsMachine::new(ref_state.rng_seed, ref_state.async_vfs)
+        VfsMachine::new(
+            ref_state.rng_seed,
+            ref_state.async_vfs,
+            ref_state.cleanup_stale_roots,
+        )
     }
 
     fn apply(

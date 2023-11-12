@@ -415,11 +415,11 @@ impl Vfs {
             state.modules = tree_modules;
         }
         if self.cleanup_stale_roots {
-            // Since we only clean up after all manifests are in the None state,
+            // Since we only clean up after all manifest entries are removed from the tree,
             // by that time we have already reported that the modules are deleted;
             // no need to special-case scan root removal in module diff calculation.
-            self.scan_state.retain_mut(|s| {
-                let any_manifest = s.tree.iter().any(|dir| dir.manifest_info.is_some());
+            self.scan_state.retain(|s| {
+                let any_manifest = s.tree.iter().any(|dir| dir.manifest_pos().is_some());
                 assert!(any_manifest || s.modules.is_empty());
                 any_manifest
             });
