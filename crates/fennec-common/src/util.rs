@@ -75,3 +75,8 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 
     ret
 }
+
+#[must_use]
+pub fn has_prefix(path: &Path, prefix: &Path) -> bool {
+    path.strip_prefix(prefix).is_ok()
+}

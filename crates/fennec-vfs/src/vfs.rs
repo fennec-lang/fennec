@@ -371,14 +371,14 @@ impl Vfs {
             Err(ix) => {
                 if ix > 0 {
                     if let Some(prev_state) = self.scan_state.get(ix - 1) {
-                        if root.strip_prefix(&prev_state.root).is_ok() {
+                        if util::has_prefix(&root, &prev_state.root) {
                             // Trying to add subdirectory of an existing root; do nothing.
                             return false;
                         }
                     }
                 }
                 while let Some(next_state) = self.scan_state.get(ix) {
-                    if next_state.root.strip_prefix(&root).is_ok() {
+                    if util::has_prefix(&next_state.root, &root) {
                         // Trying to add parent of an existing root; remove old one instead.
                         let state = self.scan_state.remove(ix);
                         for module in state.modules {
