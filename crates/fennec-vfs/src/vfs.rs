@@ -419,7 +419,13 @@ impl Vfs {
             // by that time we have already reported that the modules are deleted;
             // no need to special-case scan root removal in module diff calculation.
             self.scan_state.retain(|s| {
-                let any_manifest = s.tree.iter().any(|dir| dir.manifest_pos().is_some());
+                let any_manifest = s.tree.iter().any(|dir| {
+                    if let Some(ix) = dir.manifest_pos() {
+                        !dir.source_files[ix].deleted
+                    } else {
+                        false
+                    }
+                });
                 assert!(any_manifest || s.modules.is_empty());
                 any_manifest
             });
