@@ -686,9 +686,12 @@ impl VfsMachine {
         manifest: Option<workspace::ModuleManifest>,
     ) {
         let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
+        // We remove and re-add the file to guarantee the metadata change (at least on Linux,
+        // the inode number should be different). Otherwise, we can miss updates
+        // due to the filesystem using the cached timestamps.
+        fs::remove_file(&path).unwrap();
         let mut file = fs::OpenOptions::new()
-            .create_new(false)
-            .truncate(true)
+            .create_new(true)
             .write(true)
             .open(path)
             .unwrap();
