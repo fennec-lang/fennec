@@ -333,14 +333,15 @@ impl Vfs {
             // In the future, we could consider reacting to the client-side watch notifications
             // in addition to periodic scanning here.
 
+            let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
             let mut should_scan = changes.force_scan_id.is_some() || timed_out;
             for root in changes.scan_roots {
                 // We don't want to re-scan if we got notified about a root we are already watching.
-                should_scan |= self.add_root(root);
+                should_scan |= self.add_root(root, &mut updates);
             }
 
             if should_scan {
-                let updates = self.scan();
+                self.scan(&mut updates);
                 if !updates.is_empty() || changes.force_scan_id.is_some() {
                     state.signal_core_module_updates(updates, changes.force_scan_id);
                 }
@@ -348,15 +349,19 @@ impl Vfs {
         }
     }
 
-    pub fn __test_add_root(&mut self, root: PathBuf) {
-        self.add_root(root);
+    pub fn __test_add_root(&mut self, root: PathBuf) -> Vec<workspace::ModuleUpdate> {
+        let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
+        self.add_root(root, &mut updates);
+        updates
     }
 
     pub fn __test_scan(&mut self) -> Vec<workspace::ModuleUpdate> {
-        self.scan()
+        let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
+        self.scan(&mut updates);
+        updates
     }
 
-    fn add_root(&mut self, root: PathBuf) -> bool {
+    fn add_root(&mut self, root: PathBuf, updates: &mut Vec<workspace::ModuleUpdate>) -> bool {
         let ins = self.scan_state.binary_search_by_key(&&root, |s| &s.root);
         match ins {
             Ok(_) => false,
@@ -369,25 +374,43 @@ impl Vfs {
                         }
                     }
                 }
+                while let Some(next_state) = self.scan_state.get(ix) {
+                    if next_state.root.strip_prefix(&root).is_ok() {
+                        // Trying to add parent of an existing root; remove old one instead.
+                        let state = self.scan_state.remove(ix);
+                        for module in state.modules {
+                            let (info, dir) = module.index_root(&state.tree);
+                            updates.push(workspace::ModuleUpdate {
+                                source: dir.path.clone(),
+                                module: info.manifest.module.clone(),
+                                manifest: None,
+                                packages: Vec::new(),
+                                update: workspace::ModuleUpdateKind::ModuleRemoved,
+                            });
+                        }
+                    } else {
+                        break;
+                    }
+                }
                 self.scan_state.insert(ix, ScanState::new(root));
                 true
             }
         }
     }
 
-    fn scan(&mut self) -> Vec<workspace::ModuleUpdate> {
-        let mut all_updates: Vec<workspace::ModuleUpdate> = Vec::new();
+    fn scan(&mut self, updates: &mut Vec<workspace::ModuleUpdate>) {
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root);
             let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &state.tree);
-            let modules = Self::build_modules(&tree);
-            let updates = Self::build_module_updates(&tree, &modules, &state.tree, &state.modules);
-            all_updates.extend(updates);
+            let tree_modules = Self::build_modules(&tree);
+            let tree_updates =
+                Self::build_module_updates(&tree, &tree_modules, &state.tree, &state.modules);
+            updates.extend(tree_updates);
             state.tree = tree;
-            state.modules = modules;
+            state.modules = tree_modules;
         }
         if self.cleanup_stale_roots {
-            // Since we only clean up after manifest all manifests are in the None state,
+            // Since we only clean up after all manifests are in the None state,
             // by that time we have already reported that the modules are deleted;
             // no need to special-case scan root removal in module diff calculation.
             self.scan_state.retain_mut(|s| {
@@ -396,7 +419,6 @@ impl Vfs {
                 any_manifest
             });
         }
-        all_updates
     }
 
     fn build_modules(tree: &[Directory]) -> Vec<ModTraverse> {

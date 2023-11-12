@@ -251,6 +251,7 @@ struct VfsReferenceMachine {
     toplevel: Vec<NodeKey>,
     files: Vec<NodeKey>,
     directories: Vec<NodeKey>,
+    scan_roots: types::HashSet<PathBuf>,
     last_scan: Vec<workspace::Module>,
     // Kludges to simplify name resolution in real state machine.
     last_added_node_parent: Option<PathBuf>,
@@ -365,12 +366,24 @@ impl VfsReferenceMachine {
     }
 
     fn mark_scan_root(&mut self, key: NodeKey) {
-        let node = &mut self.nodes[key];
-        assert!(node.directory);
-        node.scan_root = true;
+        assert!(self.nodes[key].directory);
+        self.scan_roots.insert(self.node_path(key));
     }
 
     fn scan(&mut self) {
+        let mut root_keys: Vec<NodeKey> = self
+            .directories
+            .iter()
+            .copied()
+            .filter(|key| {
+                let path = self.node_path(*key);
+                self.scan_roots.contains(&path)
+            })
+            .collect();
+        root_keys.sort();
+        for (key, node) in &mut self.nodes {
+            node.scan_root = root_keys.binary_search(&key).is_ok();
+        }
         self.last_scan = self.reconstruct();
     }
 
@@ -587,6 +600,7 @@ struct VfsMachine {
     state: Option<Arc<types::SyncState>>,
     vfs_join_handle: Option<thread::JoinHandle<()>>,
     last_scan_id: u64,
+    pending_updates: Vec<workspace::ModuleUpdate>,
     modules: types::HashMap<ModuleLoc, workspace::Module>,
 }
 
@@ -626,6 +640,7 @@ impl VfsMachine {
             vfs_join_handle: handle,
             last_scan_id: 0,
             modules: types::HashMap::default(),
+            pending_updates: Vec::new(),
         }
     }
 
@@ -682,7 +697,8 @@ impl VfsMachine {
 
     fn mark_scan_root(&mut self, path: PathBuf) {
         if let Some(vfs) = &mut self.vfs {
-            vfs.__test_add_root(path);
+            let updates = vfs.__test_add_root(path);
+            self.pending_updates.extend(updates);
         } else {
             self.state
                 .as_ref()
@@ -719,6 +735,8 @@ impl VfsMachine {
     }
 
     fn scan(&mut self) {
+        let pending = take(&mut self.pending_updates);
+        self.apply(pending);
         let updates = if let Some(vfs) = &mut self.vfs {
             vfs.__test_scan()
         } else {
