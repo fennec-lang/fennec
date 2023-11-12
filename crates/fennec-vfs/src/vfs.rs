@@ -473,7 +473,9 @@ impl Vfs {
                     Some(depth) => dir.depth <= depth,
                     None => true,
                 };
-                if !ignore_finished {
+                if ignore_finished {
+                    m.cur_ignore_pkgs_depth = None;
+                } else {
                     // We are still processing an ignored subtree where we are only interested in new module roots.
                     continue;
                 }
