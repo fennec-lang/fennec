@@ -37,7 +37,7 @@ impl File {
     fn new(path: PathBuf, meta: Option<std::fs::Metadata>) -> File {
         File {
             path,
-            meta: meta.map(|m| m.into()),
+            meta: meta.map(std::convert::Into::into),
             ..Default::default()
         }
     }
@@ -699,7 +699,7 @@ impl Vfs {
         {
             match entry {
                 Ok(entry) => {
-                    let depth = entry.depth() as isize;
+                    let depth: isize = entry.depth().try_into().expect("depth must be valid isize");
                     let parent = path_parent_filename(entry.path());
                     state.navigate(depth, parent);
                     let typ = entry.file_type();
@@ -857,5 +857,5 @@ fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
 }
 
 fn path_parent_filename(p: &Path) -> Option<&str> {
-    Some(p.parent()?.file_name()?.to_str()?)
+    p.parent()?.file_name()?.to_str()
 }
