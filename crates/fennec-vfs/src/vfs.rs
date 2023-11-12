@@ -842,13 +842,9 @@ impl Vfs {
 
 #[cfg(unix)]
 fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
-    if false {
-        use std::os::unix::prelude::MetadataExt;
-        (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
-            != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
-    } else {
-        true
-    }
+    use std::os::unix::prelude::MetadataExt;
+    (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
+        != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
 }
 
 #[cfg(not(unix))]

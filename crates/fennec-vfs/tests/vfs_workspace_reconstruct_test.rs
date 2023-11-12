@@ -16,7 +16,6 @@ use fennec_vfs::Vfs;
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
 use slotmap::SlotMap;
-use tempfile::TempDir;
 
 fn vfs_config() -> ProptestConfig {
     ProptestConfig {
@@ -87,10 +86,11 @@ impl std::fmt::Debug for Transition {
                         "Add MANIFEST {name}, parent {parent:?}, valid manifest {valid_manifest}"
                     )
                 } else {
+                    let n = raw_content.len();
                     let pretty_content = String::from_utf8_lossy(&raw_content);
                     write!(
                         f,
-                        "Add FILE {name}, parent {parent:?}, content {pretty_content}"
+                        "Add FILE {name}, parent {parent:?}, content ({n}) {pretty_content}"
                     )
                 }
             }
@@ -103,10 +103,11 @@ impl std::fmt::Debug for Transition {
                 manifest,
             } => {
                 let valid_manifest = manifest.is_some();
+                let n = raw_content.len();
                 let pretty_content = String::from_utf8_lossy(&raw_content);
                 write!(
                     f,
-                    "UPDATE {key:?}, valid manifest {valid_manifest}, content {pretty_content}"
+                    "UPDATE {key:?}, valid manifest {valid_manifest}, content ({n}) {pretty_content}"
                 )
             }
             Transition::MarkScanRoot { key } => {
@@ -646,7 +647,8 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 }
 
 struct VfsMachine {
-    dir: TempDir,
+    dir: tempfile::TempDir,
+    inode_holders: Vec<fs::File>,
     vfs: Option<Vfs>,
     state: Option<Arc<types::SyncState>>,
     vfs_join_handle: Option<thread::JoinHandle<()>>,
@@ -686,7 +688,9 @@ impl VfsMachine {
             (Some(vfs), None, None)
         };
         VfsMachine {
-            dir: TempDir::new().expect("it must be possible to create a temporary directory"),
+            dir: tempfile::TempDir::new()
+                .expect("it must be possible to create a temporary directory"),
+            inode_holders: Vec::new(),
             vfs,
             state,
             vfs_join_handle: handle,
@@ -742,6 +746,9 @@ impl VfsMachine {
         // the inode number should be different). Otherwise, we can miss updates
         // due to the filesystem using the cached timestamps.
         fs::remove_file(&path).unwrap();
+        // We hope dearly that new temporary file can avoid inode reuse problem.
+        let tmp = tempfile::tempfile().unwrap();
+        self.inode_holders.push(tmp);
         let mut file = fs::OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -935,6 +942,7 @@ impl StateMachineTest for VfsMachine {
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
         transition: <Self::Reference as ReferenceStateMachine>::Transition,
     ) -> Self::SystemUnderTest {
+        log::debug!("EXECUTING {transition:?} ===================================================");
         match transition {
             Transition::AddNode {
                 name,
