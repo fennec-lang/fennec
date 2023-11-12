@@ -151,45 +151,48 @@ impl Directory {
         self.manifest_info = self.get_manifest(prev_info);
     }
 
+    fn manifest_pos(&self) -> Option<usize> {
+        self.source_files
+            .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name())
+            .ok()
+    }
+
     fn get_manifest(&self, prev_info: Option<ManifestInfo>) -> Option<ManifestInfo> {
-        let ins = self
-            .source_files
-            .binary_search_by_key(&MODULE_MANIFEST_FILENAME, |f| f.file_name());
-        match ins {
-            Ok(ix) => {
-                let m = &self.source_files[ix];
-                if m.deleted {
-                    return None;
-                }
-                let changed = m.content_changed.expect("change indicator must be set");
-                if !changed {
-                    return prev_info.map(|prev| ManifestInfo {
-                        manifest: prev.manifest,
-                        manifest_changed: false,
-                    });
-                }
-                let content = m
-                    .content
-                    .as_ref()
-                    .expect("changed file must contain content")
-                    .as_ref();
-                let res = manifest::parse(content);
-                match res {
-                    Ok(manifest) => Some(ManifestInfo {
-                        manifest_changed: prev_info.map_or(true, |prev| manifest != prev.manifest),
-                        manifest,
-                    }),
-                    Err(err) => {
-                        let disp = m.path.display();
-                        log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
-                        // We might go back to pretending that the manifest has not changed instead,
-                        // as this avoids the module removal. However, that breaks the invariant that
-                        // the VFS state is equal to the fresh re-scan, so let's not do that.
-                        None
-                    }
+        let ix = self.manifest_pos();
+        if let Some(ix) = ix {
+            let m = &self.source_files[ix];
+            if m.deleted {
+                return None;
+            }
+            let changed = m.content_changed.expect("change indicator must be set");
+            if !changed {
+                return prev_info.map(|prev| ManifestInfo {
+                    manifest: prev.manifest,
+                    manifest_changed: false,
+                });
+            }
+            let content = m
+                .content
+                .as_ref()
+                .expect("changed file must contain content")
+                .as_ref();
+            let res = manifest::parse(content);
+            match res {
+                Ok(manifest) => Some(ManifestInfo {
+                    manifest_changed: prev_info.map_or(true, |prev| manifest != prev.manifest),
+                    manifest,
+                }),
+                Err(err) => {
+                    let disp = m.path.display();
+                    log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
+                    // We might go back to pretending that the manifest has not changed instead,
+                    // as this avoids the module removal. However, that breaks the invariant that
+                    // the VFS state is equal to the fresh re-scan, so let's not do that.
+                    None
                 }
             }
-            Err(_) => None,
+        } else {
+            None
         }
     }
 }
@@ -435,9 +438,17 @@ impl Vfs {
             {
                 modules.push(stack.pop().expect("stack is not empty"));
             }
-            // Push new module on the stack, if we are visiting an existing module root.
-            if dir.manifest_info.is_some() {
-                stack.push(ModTraverse::new(ix, dir.depth));
+            if dir.manifest_pos().is_some() {
+                let mut m = ModTraverse::new(ix, dir.depth);
+                if dir.manifest_info.is_some() {
+                    // Push new module on the stack, if we are visiting an existing module root.
+                    stack.push(m);
+                } else {
+                    // Manifest file exists, but the manifest is invalid. Ignore the whole subtree.
+                    m.cur_ignore_pkgs_depth = Some(dir.depth);
+                    stack.push(m);
+                    continue;
+                }
             }
             // If we are not inside a module, do nothing.
             if stack.is_empty() {
@@ -470,6 +481,8 @@ impl Vfs {
             m.packages.push(ix);
         }
         modules.extend(stack.into_iter().rev());
+        // Forget about modules with invalid manifests.
+        modules.retain(|m| m.cur_ignore_pkgs_depth != Some(m.depth));
         // Sort modules so that we can later merge them.
         modules.sort_unstable_by(|a, b| {
             let (a_info, a_dir) = a.index_root(tree);
