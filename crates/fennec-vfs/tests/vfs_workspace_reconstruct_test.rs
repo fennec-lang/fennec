@@ -927,9 +927,9 @@ impl StateMachineTest for VfsMachine {
         );
         let ref_modules = canonicalize_modules(ref_state.last_scan.clone(), None);
         pretty_assertions::assert_eq!(
-            modules,
             ref_modules,
-            "modules (left) does not match reference modules (right)"
+            modules,
+            "modules (right) does not match reference modules (left)"
         );
     }
 }
