@@ -27,6 +27,7 @@ anyhow = "1"
 clap = "4.4"
 debug-ignore = "1"
 env_logger = "0.10"
+fastrand = { version = "2", default-features = false }
 lalrpop = { version = "0.20", default-features = false }
 lalrpop-util = { version = "0.20", default-features = false }
 log = { version = "0.4", features = ["std"] }

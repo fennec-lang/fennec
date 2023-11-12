@@ -28,6 +28,7 @@
         "disp",
         "dotgraphs",
         "ecow",
+        "fastrand",
         "fbvector",
         "fuzzer",
         "gopkg",

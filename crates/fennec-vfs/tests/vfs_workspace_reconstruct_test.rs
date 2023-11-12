@@ -309,6 +309,7 @@ struct VfsReferenceMachine {
     last_added_node_parent: Option<PathBuf>,
     last_removed_node_path: Option<PathBuf>,
     // Hack to vary initialization of the SUT.
+    rng_seed: u64,
     async_vfs: bool,
 }
 
@@ -341,8 +342,9 @@ struct ModuleLoc {
 }
 
 impl VfsReferenceMachine {
-    fn new(async_vfs: bool) -> VfsReferenceMachine {
+    fn new(rng_seed: u64, async_vfs: bool) -> VfsReferenceMachine {
         VfsReferenceMachine {
+            rng_seed,
             async_vfs,
             ..Default::default()
         }
@@ -564,9 +566,12 @@ impl ReferenceStateMachine for VfsReferenceMachine {
     type Transition = Transition;
 
     fn init_state() -> BoxedStrategy<Self::State> {
+        let rng_seed_strategy = any::<u64>();
         let async_vfs_strategy = any::<bool>();
-        async_vfs_strategy
-            .prop_flat_map(|async_vfs| Just(VfsReferenceMachine::new(async_vfs)))
+        (rng_seed_strategy, async_vfs_strategy)
+            .prop_flat_map(|(rng_seed, async_vfs)| {
+                Just(VfsReferenceMachine::new(rng_seed, async_vfs))
+            })
             .boxed()
     }
 
@@ -650,6 +655,7 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 }
 
 struct VfsMachine {
+    rng: fastrand::Rng,
     dir: tempfile::TempDir,
     inode_holders: Vec<fs::File>,
     vfs: Option<Vfs>,
@@ -673,7 +679,7 @@ impl Drop for VfsMachine {
 }
 
 impl VfsMachine {
-    fn new(async_vfs: bool) -> VfsMachine {
+    fn new(rng_seed: u64, async_vfs: bool) -> VfsMachine {
         let cleanup_stale_roots = false;
         let (vfs, state, handle) = if async_vfs {
             let state = Arc::new(types::SyncState::new());
@@ -691,6 +697,7 @@ impl VfsMachine {
             (Some(vfs), None, None)
         };
         VfsMachine {
+            rng: fastrand::Rng::with_seed(rng_seed),
             dir: tempfile::TempDir::new()
                 .expect("it must be possible to create a temporary directory"),
             inode_holders: Vec::new(),
@@ -730,12 +737,12 @@ impl VfsMachine {
     }
 
     fn remove_node(&mut self, path: PathBuf) {
-        let md = fs::metadata(&path).unwrap();
-        if md.is_dir() {
-            fs::remove_dir_all(path).unwrap();
-        } else {
-            fs::remove_file(path).unwrap();
-        }
+        // Instead of removing, make the files hidden to avoid inode reuse.
+        let hidden = path
+            .parent()
+            .unwrap()
+            .join(String::from(".") + &self.rng.u128(0..u128::MAX).to_string());
+        fs::rename(path, hidden).unwrap();
     }
 
     fn update_node(
@@ -937,7 +944,7 @@ impl StateMachineTest for VfsMachine {
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
         log::debug!("[begin new VFS state machine run] ==========================================");
-        VfsMachine::new(ref_state.async_vfs)
+        VfsMachine::new(ref_state.rng_seed, ref_state.async_vfs)
     }
 
     fn apply(
