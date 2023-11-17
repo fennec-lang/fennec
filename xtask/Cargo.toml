@@ -6,6 +6,9 @@ edition.workspace = true
 readme = false
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 anyhow.workspace = true
 env_logger.workspace = true

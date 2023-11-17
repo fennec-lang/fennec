@@ -21,6 +21,16 @@ repository = "https://github.com/fennec-lang/fennec"
 license = "MPL-2.0"
 edition = "2021"
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+warnings = "deny"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "deny"
+unwrap_used = "deny"
+missing_errors_doc = "allow"
+
 [workspace.dependencies]
 ahash = "0.8.6"
 anyhow = "1"

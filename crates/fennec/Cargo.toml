@@ -10,6 +10,9 @@ edition.workspace = true
 readme = "../../README.md"
 default-run = "fennec"
 
+[lints]
+workspace = true
+
 [dependencies]
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

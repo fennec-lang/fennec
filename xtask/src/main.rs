@@ -4,8 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#![forbid(unsafe_code)]
-
 mod flags;
 
 use env_logger::Env;
@@ -61,7 +59,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run_lint(sh: &Shell) -> anyhow::Result<()> {
-    cmd!(sh, "cargo clippy -- -W clippy::all -W clippy::pedantic -W clippy::unwrap_used -A clippy::missing_errors_doc -D warnings").run()?;
+    cmd!(sh, "cargo clippy").run()?;
     Ok(())
 }
 
