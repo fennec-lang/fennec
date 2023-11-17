@@ -402,14 +402,14 @@ impl Vfs {
     fn scan(&mut self, updates: &mut Vec<workspace::ModuleUpdate>) {
         for state in &mut self.scan_state {
             let scan_tree = Self::scan_root(&state.root);
-            log::debug!("scan tree {scan_tree:#?}");
+            log::trace!("scan tree {scan_tree:#?}");
             let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &state.tree);
-            log::debug!("tree {tree:#?}");
+            log::trace!("tree {tree:#?}");
             let tree_modules = Self::build_modules(&tree);
-            log::debug!("modules {tree_modules:#?}");
+            log::trace!("modules {tree_modules:#?}");
             let tree_updates =
                 Self::build_module_updates(&tree, &tree_modules, &state.tree, &state.modules);
-            log::debug!("updates {tree_updates:#?}");
+            log::trace!("updates {tree_updates:#?}");
             updates.extend(tree_updates);
             state.tree = tree;
             state.modules = tree_modules;
