@@ -6,10 +6,10 @@
 
 use anyhow::{anyhow, Context};
 use fennec_common::{types, util, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
-use lsp_types::{notification::Notification, request::Request};
+use lsp_types::notification::{self, Notification as _};
 use std::path::{Path, PathBuf};
 
-const FILE_SCHEME: &str = "file";
+use crate::handshake;
 
 pub struct Server {
     conn: lsp_server::Connection,
@@ -36,23 +36,14 @@ impl Server {
             log::debug!("InitializeParams: {init_pretty}");
         }
 
-        let dyn_watch = cap_fs_watch_dynamic(&init_params);
+        let dyn_watch = handshake::fs_watch_dynamic(&init_params.capabilities);
         if !dyn_watch {
             return Err(anyhow!("Fennec LSP server requires client to support dynamic registration in DidChangeWatchedFilesClientCapabilities"));
         }
 
-        let utf8_pos = cap_utf8_positions(&init_params);
-        let folders = workspace_roots(&init_params);
-
+        let utf8_pos = handshake::utf8_positions(&init_params.capabilities);
         let init_result = lsp_types::InitializeResult {
-            capabilities: lsp_types::ServerCapabilities {
-                position_encoding: if utf8_pos {
-                    Some(lsp_types::PositionEncodingKind::UTF8)
-                } else {
-                    None
-                },
-                ..Default::default()
-            },
+            capabilities: handshake::server_capabilities(utf8_pos),
             server_info: Some(lsp_types::ServerInfo {
                 name: PROJECT_NAME.to_owned(),
                 version: Some(version.to_owned()),
@@ -74,7 +65,7 @@ impl Server {
             io_threads,
             request_id: 0,
             _utf8_pos: utf8_pos,
-            workspace_folders: folders,
+            workspace_folders: handshake::workspace_roots(&init_params),
         })
     }
 
@@ -97,9 +88,9 @@ impl Server {
     pub fn run(&mut self, state: &types::SyncState) -> Result<(), anyhow::Error> {
         let reg_id = self.next_id();
         let mut registered_manifest_watchers = false;
-        register_module_manifest_watchers(&self.conn, reg_id.clone()).context(format!(
-            "failed to register {MODULE_MANIFEST_FILENAME} watchers"
-        ))?;
+        handshake::register_module_manifest_watchers(&self.conn, reg_id.clone()).context(
+            format!("failed to register {MODULE_MANIFEST_FILENAME} watchers"),
+        )?;
 
         // TODO: server must wait for responses from the core (and be able to cancel them)
 
@@ -124,6 +115,7 @@ impl Server {
                             .into(),
                         );
                     }
+                    // TODO: process request
                 }
                 lsp_server::Message::Response(resp) => {
                     if resp.id == reg_id {
@@ -138,6 +130,7 @@ impl Server {
                         let roots = find_module_roots(&self.workspace_folders);
                         state.signal_vfs_new_roots(roots);
                     }
+                    // TODO: process response
                 }
                 lsp_server::Message::Notification(note) => {
                     if !registered_manifest_watchers {
@@ -148,38 +141,38 @@ impl Server {
                         continue;
                     }
 
-                    match extract_note::<lsp_types::notification::DidChangeWatchedFiles>(note) {
-                        Ok(params) => {
-                            let mut roots: Vec<PathBuf> = vec![];
-                            for change in params.changes {
-                                if change.typ != lsp_types::FileChangeType::CREATED {
-                                    // We react to create events only because we expect to get change/delete events from our VFS.
-                                    // Note that VSCode seems to miss e.g. delete events for module manifests
-                                    // when module manifest parent folder is deleted.
-                                    continue;
-                                }
-                                let uri = change.uri;
-                                if uri.scheme() != FILE_SCHEME {
-                                    log::warn!(
-                                        r#"ignoring non-file-scheme change event for "{uri}""#
-                                    );
-                                    continue;
-                                }
-                                if let Ok(manifest) = uri.to_file_path() {
-                                    roots.extend(module_manifest_parent(&manifest));
-                                } else {
-                                    log::warn!(
-                                        r#"ignoring change event with invalid file path "{uri}""#
-                                    );
-                                }
+                    match note.method.as_str() {
+                        notification::DidChangeWatchedFiles::METHOD => {
+                            let params =
+                                extract_note_params::<notification::DidChangeWatchedFiles>(note);
+                            if let Some(params) = params {
+                                Self::handle_did_change_watched_files(params, state);
                             }
-                            state.signal_vfs_new_roots(roots);
                         }
-                        Err(err) => {
-                            let method = lsp_types::notification::DidChangeWatchedFiles::METHOD;
-                            log::warn!(
-                                r#"failed to extract "{method}" notification params, ignoring: {err}"#
-                            );
+                        notification::DidOpenTextDocument::METHOD => {
+                            let params =
+                                extract_note_params::<notification::DidOpenTextDocument>(note);
+                            if let Some(params) = params {
+                                self.handle_did_open_text_document(params, state);
+                            }
+                        }
+                        notification::DidChangeTextDocument::METHOD => {
+                            let params =
+                                extract_note_params::<notification::DidChangeTextDocument>(note);
+                            if let Some(params) = params {
+                                self.handle_did_change_text_document(params, state);
+                            }
+                        }
+                        notification::DidCloseTextDocument::METHOD => {
+                            let params =
+                                extract_note_params::<notification::DidCloseTextDocument>(note);
+                            if let Some(params) = params {
+                                self.handle_did_close_text_document(params, state);
+                            }
+                        }
+                        other => {
+                            log::warn!(r#"got an unexpected "{other}" notification, ignoring"#);
+                            continue;
                         }
                     }
                 }
@@ -187,84 +180,71 @@ impl Server {
         }
         Ok(())
     }
+
+    fn handle_did_change_watched_files(
+        params: lsp_types::DidChangeWatchedFilesParams,
+        state: &types::SyncState,
+    ) {
+        let mut roots: Vec<PathBuf> = vec![];
+        for change in params.changes {
+            if change.typ != lsp_types::FileChangeType::CREATED {
+                // We react to create events only because we expect to get change/delete events from our VFS.
+                // Note that VSCode seems to miss e.g. delete events for module manifests
+                // when module manifest parent folder is deleted.
+                continue;
+            }
+            let uri = change.uri;
+            if uri.scheme() != handshake::FILE_SCHEME {
+                log::warn!(r#"ignoring non-file-scheme change event for "{uri}""#);
+                continue;
+            }
+            if let Ok(manifest) = uri.to_file_path() {
+                roots.extend(module_manifest_parent(&manifest));
+            } else {
+                log::warn!(r#"ignoring change event with invalid file path "{uri}""#);
+            }
+        }
+        state.signal_vfs_new_roots(roots);
+    }
+
+    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
+    fn handle_did_open_text_document(
+        &self,
+        _params: lsp_types::DidOpenTextDocumentParams,
+        _state: &types::SyncState,
+    ) {
+    }
+
+    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
+    fn handle_did_change_text_document(
+        &self,
+        _params: lsp_types::DidChangeTextDocumentParams,
+        _state: &types::SyncState,
+    ) {
+    }
+
+    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
+    fn handle_did_close_text_document(
+        &self,
+        _params: lsp_types::DidCloseTextDocumentParams,
+        _state: &types::SyncState,
+    ) {
+    }
 }
 
-fn extract_note<N>(
-    note: lsp_server::Notification,
-) -> Result<N::Params, lsp_server::ExtractError<lsp_server::Notification>>
+fn extract_note_params<N>(note: lsp_server::Notification) -> Option<N::Params>
 where
-    N: lsp_types::notification::Notification,
+    N: notification::Notification,
     N::Params: serde::de::DeserializeOwned,
 {
-    note.extract(N::METHOD)
-}
-
-fn cap_fs_watch_dynamic(init_params: &lsp_types::InitializeParams) -> bool {
-    if let Some(ref workspace_caps) = init_params.capabilities.workspace {
-        if let Some(ref change_watched) = workspace_caps.did_change_watched_files {
-            return change_watched.dynamic_registration.unwrap_or(false);
+    match note.extract(N::METHOD) {
+        Ok(params) => Some(params),
+        Err(err) => {
+            let method = N::METHOD;
+            log::warn!(r#"failed to extract "{method}" notification params, ignoring: {err}"#);
+            None
         }
     }
-    false
-}
-
-fn cap_utf8_positions(init_params: &lsp_types::InitializeParams) -> bool {
-    if let Some(ref general_caps) = init_params.capabilities.general {
-        if let Some(ref encodings) = general_caps.position_encodings {
-            return encodings.contains(&lsp_types::PositionEncodingKind::UTF8);
-        }
-    }
-    false
-}
-
-fn workspace_roots(init_params: &lsp_types::InitializeParams) -> Vec<PathBuf> {
-    if let Some(ref wf) = init_params.workspace_folders {
-        return wf
-            .iter()
-            .filter(|f| f.uri.scheme() == FILE_SCHEME)
-            .filter_map(|f| f.uri.to_file_path().ok())
-            .collect();
-    }
-    init_params
-        .root_uri
-        .iter()
-        .filter(|uri| uri.scheme() == FILE_SCHEME)
-        .filter_map(|uri| uri.to_file_path().ok())
-        .collect()
-}
-
-fn register_module_manifest_watchers(
-    conn: &lsp_server::Connection,
-    id: lsp_server::RequestId,
-) -> Result<(), anyhow::Error> {
-    let opts = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-        watchers: vec![lsp_types::FileSystemWatcher {
-            glob_pattern: lsp_types::GlobPattern::String(format!("**/{MODULE_MANIFEST_FILENAME}")),
-            kind: Some(lsp_types::WatchKind::Create),
-        }],
-    };
-    let opts = serde_json::to_value(opts)
-        .context("failed to serialize DidChangeWatchedFilesRegistrationOptions")?;
-
-    let params = lsp_types::RegistrationParams {
-        registrations: vec![lsp_types::Registration {
-            id: MODULE_MANIFEST_FILENAME.to_owned(),
-            method: lsp_types::notification::DidChangeWatchedFiles::METHOD.to_owned(),
-            register_options: Some(opts),
-        }],
-    };
-    let params = serde_json::to_value(params).context("failed to serialize RegistrationParams")?;
-
-    let req = lsp_server::Request {
-        id,
-        method: lsp_types::request::RegisterCapability::METHOD.to_owned(),
-        params,
-    };
-    conn.sender
-        .send(req.into())
-        .context("failed to send client/registerCapability request")?;
-
-    Ok(())
 }
 
 fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
