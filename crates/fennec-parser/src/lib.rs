@@ -4,8 +4,6 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#![forbid(unsafe_code)]
-
 use lalrpop_util::lalrpop_mod;
 
 mod ast;
@@ -16,7 +14,13 @@ pub enum Error {
 }
 
 lalrpop_mod!(
-    #[allow(dead_code, clippy::all, clippy::pedantic, clippy::unwrap_used)]
+    #[allow(
+        dead_code,
+        unused_imports,
+        clippy::all,
+        clippy::pedantic,
+        clippy::unwrap_used
+    )]
     fennec
 );
 
