@@ -98,12 +98,6 @@ impl File {
 }
 
 #[derive(Clone, Default, Debug)]
-struct ManifestInfo {
-    manifest: Option<workspace::ModuleManifest>, // empty if valid manifest does not currently exist
-    manifest_changed: bool,
-}
-
-#[derive(Clone, Default, Debug)]
 struct Directory {
     path: PathBuf,
     depth: isize,
@@ -111,7 +105,7 @@ struct Directory {
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
-    manifest_info: ManifestInfo,
+    module: Option<types::ImportPath>, // empty if semi-valid manifest does not currently exist
 }
 
 impl Directory {
@@ -145,18 +139,14 @@ impl Directory {
         })
     }
 
-    fn module(&self) -> Option<&types::ImportPath> {
-        self.manifest_info.manifest.as_ref().map(|m| &m.module)
-    }
-
-    fn set_files(&mut self, files: Vec<File>, prev_manifest: Option<workspace::ModuleManifest>) {
+    fn set_files(&mut self, files: Vec<File>, prev_module: Option<types::ImportPath>) {
         self.source_files = files;
         self.content_changed = Some(
             self.source_files
                 .iter()
                 .any(|f| f.content_changed.expect("change marker must be set")),
         );
-        self.manifest_info = self.get_manifest(prev_manifest);
+        self.module = self.get_module(prev_module);
     }
 
     fn manifest_pos(&self) -> Option<usize> {
@@ -165,31 +155,33 @@ impl Directory {
             .ok()
     }
 
-    fn manifest_source(&self) -> Option<Arc<str>> {
-        let ix = self.manifest_pos();
-        if let Some(ix) = ix {
-            self.source_files[ix].content.clone()
+    fn changed_module_manifest(&self) -> Option<Arc<str>> {
+        let ix = self
+            .manifest_pos()
+            .expect("directory must contain a manifest");
+        let m = &self.source_files[ix];
+        let m_changed = m.content_changed.expect("change marker must be set");
+        if m_changed {
+            let content = m
+                .content
+                .clone()
+                .expect("manifest source must be set in the module directory");
+            Some(content)
         } else {
             None
         }
     }
 
-    fn get_manifest(&self, prev_manifest: Option<workspace::ModuleManifest>) -> ManifestInfo {
+    fn get_module(&self, prev_module: Option<types::ImportPath>) -> Option<types::ImportPath> {
         let ix = self.manifest_pos();
         if let Some(ix) = ix {
             let m = &self.source_files[ix];
             if m.deleted {
-                return ManifestInfo {
-                    manifest: None,
-                    manifest_changed: prev_manifest.is_some(),
-                };
+                return None;
             }
             let changed = m.content_changed.expect("change indicator must be set");
             if !changed {
-                return ManifestInfo {
-                    manifest: prev_manifest,
-                    manifest_changed: false,
-                };
+                return prev_module;
             }
             let content = m
                 .content
@@ -198,27 +190,18 @@ impl Directory {
                 .as_ref();
             let res = manifest::parse(content);
             match res {
-                Ok(manifest) => ManifestInfo {
-                    manifest_changed: prev_manifest.map_or(true, |prev| manifest != prev),
-                    manifest: Some(manifest),
-                },
+                Ok(manifest) => Some(manifest.module),
                 Err(err) => {
                     let disp = m.path.display();
                     log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
                     // We might go back to pretending that the manifest has not changed instead,
                     // as this avoids the module removal. However, that breaks the invariant that
                     // the VFS state is equal to the fresh re-scan, so let's not do that.
-                    ManifestInfo {
-                        manifest: None,
-                        manifest_changed: prev_manifest.is_some(),
-                    }
+                    None
                 }
             }
         } else {
-            ManifestInfo {
-                manifest: None,
-                manifest_changed: false,
-            }
+            None
         }
     }
 }
@@ -404,7 +387,7 @@ impl Vfs {
                             let dir = module.index_root(&state.tree);
                             updates.push(workspace::ModuleUpdate {
                                 source: dir.path.clone(),
-                                module: dir.module().cloned(),
+                                module: dir.module.clone(),
                                 manifest: None,
                                 packages: Vec::new(),
                                 update: workspace::UpdateKind::Removed,
@@ -515,7 +498,7 @@ impl Vfs {
         modules.sort_unstable_by(|a, b| {
             let a_dir = a.index_root(tree);
             let b_dir = b.index_root(tree);
-            (a_dir.module(), &a_dir.path).cmp(&(b_dir.module(), &b_dir.path))
+            (&a_dir.module, &a_dir.path).cmp(&(&b_dir.module, &b_dir.path))
         });
         modules
     }
@@ -536,8 +519,8 @@ impl Vfs {
                 (Some(module), Some(prev_module)) => {
                     let mod_dir = module.index_root(tree);
                     let prev_mod_dir = prev_module.index_root(prev_tree);
-                    match (mod_dir.module(), &mod_dir.path)
-                        .cmp(&(prev_mod_dir.module(), &prev_mod_dir.path))
+                    match (&mod_dir.module, &mod_dir.path)
+                        .cmp(&(&prev_mod_dir.module, &prev_mod_dir.path))
                     {
                         Ordering::Equal => (Some(module), Some(prev_module)),
                         Ordering::Less => (Some(module), None),
@@ -550,22 +533,18 @@ impl Vfs {
                 (Some(module), Some(prev_module)) => {
                     let dir = module.index_root(tree);
                     let packages = Self::build_package_updates(
-                        dir.module(),
+                        dir.module.as_ref(),
                         &dir.path,
                         &module.packages,
                         tree,
                         &prev_module.packages,
                         prev_tree,
                     );
-                    if dir.manifest_info.manifest_changed || !packages.is_empty() {
-                        let manifest = if dir.manifest_info.manifest_changed {
-                            dir.manifest_source()
-                        } else {
-                            None
-                        };
+                    let manifest = dir.changed_module_manifest();
+                    if manifest.is_some() || !packages.is_empty() {
                         updates.push(workspace::ModuleUpdate {
                             source: dir.path.clone(),
-                            module: dir.module().cloned(),
+                            module: dir.module.clone(),
                             manifest,
                             packages, // may be empty
                             update: workspace::UpdateKind::Updated,
@@ -577,7 +556,7 @@ impl Vfs {
                 (Some(module), None) => {
                     let dir = module.index_root(tree);
                     let packages = Self::build_package_updates(
-                        dir.module(),
+                        dir.module.as_ref(),
                         &dir.path,
                         &module.packages,
                         tree,
@@ -586,8 +565,8 @@ impl Vfs {
                     );
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
-                        module: dir.module().cloned(),
-                        manifest: dir.manifest_source(),
+                        module: dir.module.clone(),
+                        manifest: dir.changed_module_manifest(),
                         packages,
                         update: workspace::UpdateKind::Added,
                     });
@@ -597,7 +576,7 @@ impl Vfs {
                     let dir = prev_module.index_root(prev_tree);
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
-                        module: dir.module().cloned(),
+                        module: dir.module.clone(),
                         manifest: None,
                         packages: Vec::new(),
                         update: workspace::UpdateKind::Removed,
@@ -803,7 +782,7 @@ impl Vfs {
                     let files = take(&mut d.source_files);
                     d.set_files(
                         Self::merge_hydrate_sorted_files(files, &prev_dir.source_files),
-                        prev_dir.manifest_info.manifest.clone(),
+                        prev_dir.module.clone(),
                     );
                     state.add_dir(d);
                     dir_iter.next();
@@ -820,7 +799,7 @@ impl Vfs {
                     let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
                     d.set_files(
                         Self::merge_hydrate_sorted_files(Vec::new(), &prev_dir.source_files),
-                        prev_dir.manifest_info.manifest.clone(),
+                        prev_dir.module.clone(),
                     );
                     state.add_dir(d);
                     prev_dir_iter.next();
