@@ -142,6 +142,12 @@ impl Server {
                     }
 
                     match note.method.as_str() {
+                        notification::SetTrace::METHOD => {
+                            let params = extract_note_params::<notification::SetTrace>(note);
+                            if let Some(params) = params {
+                                self.handle_set_trace(params);
+                            }
+                        }
                         notification::DidChangeWatchedFiles::METHOD => {
                             let params =
                                 extract_note_params::<notification::DidChangeWatchedFiles>(note);
@@ -179,6 +185,11 @@ impl Server {
             }
         }
         Ok(())
+    }
+
+    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
+    fn handle_set_trace(&self, _params: lsp_types::SetTraceParams) {
+        // We'll figure something useful later.
     }
 
     fn handle_did_change_watched_files(
