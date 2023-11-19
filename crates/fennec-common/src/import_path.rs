@@ -11,11 +11,17 @@ use std::fmt;
 
 use crate::util;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct ImportPath {
     path: String,
     package: String,
     has_domain: bool,
+}
+
+impl std::fmt::Debug for ImportPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.path.fmt(f)
+    }
 }
 
 pub(crate) static PACKAGE_RE: Lazy<Regex> =

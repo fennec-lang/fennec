@@ -165,6 +165,15 @@ impl Directory {
             .ok()
     }
 
+    fn manifest_source(&self) -> Option<Arc<str>> {
+        let ix = self.manifest_pos();
+        if let Some(ix) = ix {
+            self.source_files[ix].content.clone()
+        } else {
+            None
+        }
+    }
+
     fn get_manifest(&self, prev_manifest: Option<workspace::ModuleManifest>) -> ManifestInfo {
         let ix = self.manifest_pos();
         if let Some(ix) = ix {
@@ -396,7 +405,7 @@ impl Vfs {
                             updates.push(workspace::ModuleUpdate {
                                 source: dir.path.clone(),
                                 module: dir.module().cloned(),
-                                manifest: workspace::ModuleManifestUpdate::Unknown,
+                                manifest: None,
                                 packages: Vec::new(),
                                 update: workspace::UpdateKind::Removed,
                             });
@@ -550,11 +559,9 @@ impl Vfs {
                     );
                     if dir.manifest_info.manifest_changed || !packages.is_empty() {
                         let manifest = if dir.manifest_info.manifest_changed {
-                            workspace::ModuleManifestUpdate::Updated(
-                                dir.manifest_info.manifest.clone(),
-                            )
+                            dir.manifest_source()
                         } else {
-                            workspace::ModuleManifestUpdate::Unknown
+                            None
                         };
                         updates.push(workspace::ModuleUpdate {
                             source: dir.path.clone(),
@@ -580,9 +587,7 @@ impl Vfs {
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
                         module: dir.module().cloned(),
-                        manifest: workspace::ModuleManifestUpdate::Updated(
-                            dir.manifest_info.manifest.clone(),
-                        ),
+                        manifest: dir.manifest_source(),
                         packages,
                         update: workspace::UpdateKind::Added,
                     });
@@ -593,7 +598,7 @@ impl Vfs {
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
                         module: dir.module().cloned(),
-                        manifest: workspace::ModuleManifestUpdate::Unknown,
+                        manifest: None,
                         packages: Vec::new(),
                         update: workspace::UpdateKind::Removed,
                     });

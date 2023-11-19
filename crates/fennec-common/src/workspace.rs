@@ -25,7 +25,8 @@ pub struct Package {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Module {
     pub source: PathBuf,
-    pub manifest: Option<ModuleManifest>, // empty in case of detached module
+    pub path: Option<types::ImportPath>, // empty in case of detached module
+    pub manifest: Arc<str>,
     pub packages: Vec<Package>,
 }
 
@@ -58,16 +59,10 @@ pub struct ModuleManifest {
 }
 
 #[derive(Clone, Debug)]
-pub enum ModuleManifestUpdate {
-    Unknown,
-    Updated(Option<ModuleManifest>),
-}
-
-#[derive(Clone, Debug)]
 pub struct ModuleUpdate {
     pub source: PathBuf,
     pub module: Option<types::ImportPath>, // empty in case of detached module, otherwise same as manifest.module
-    pub manifest: ModuleManifestUpdate,
+    pub manifest: Option<Arc<str>>,
     pub packages: Vec<PackageUpdate>, // empty in case of no changes to the packages or module was removed
     pub update: UpdateKind,
 }

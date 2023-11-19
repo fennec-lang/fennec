@@ -297,6 +297,26 @@ impl Node {
     }
 }
 
+fn format_manifest(manifest: Option<workspace::ModuleManifest>) -> String {
+    if let Some(manifest) = manifest {
+        let mut buf = Vec::new();
+        let types::FennecVersion {
+            major,
+            minor,
+            patch,
+        } = manifest.fennec;
+        let mod_path = manifest.module;
+        write!(
+            buf,
+            "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
+        )
+        .unwrap();
+        String::from_utf8(buf).unwrap()
+    } else {
+        String::new()
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
@@ -530,7 +550,8 @@ impl VfsReferenceMachine {
                         loc.clone(),
                         workspace::Module {
                             source: loc.source,
-                            manifest: manifest_node.manifest.clone(),
+                            path: loc.module,
+                            manifest: Arc::from(format_manifest(manifest_node.manifest.clone())),
                             packages: Vec::new(),
                         },
                     );
@@ -808,21 +829,8 @@ impl VfsMachine {
         manifest: Option<workspace::ModuleManifest>,
     ) {
         if write_manifest {
-            if let Some(manifest) = manifest {
-                let types::FennecVersion {
-                    major,
-                    minor,
-                    patch,
-                } = manifest.fennec;
-                let mod_path = manifest.module;
-                write!(
-                    file,
-                    "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
-                )
-                .unwrap();
-            } else {
-                file.write_all(&[]).unwrap();
-            }
+            let content = format_manifest(manifest);
+            file.write_all(content.as_bytes()).unwrap();
         } else {
             file.write_all(&raw_content).unwrap();
         }
@@ -859,16 +867,12 @@ impl VfsMachine {
                     let prev = self.modules.insert(
                         ModuleLoc {
                             source: m_upd.source.clone(),
-                            module: m_upd.module,
+                            module: m_upd.module.clone(),
                         },
                         workspace::Module {
                             source: m_upd.source,
-                            manifest: match m_upd.manifest {
-                                workspace::ModuleManifestUpdate::Unknown => {
-                                    panic!("expected a module manifest")
-                                }
-                                workspace::ModuleManifestUpdate::Updated(manifest) => manifest,
-                            },
+                            path: m_upd.module,
+                            manifest: m_upd.manifest.unwrap(),
                             packages: m_upd
                                 .packages
                                 .into_iter()
@@ -905,7 +909,7 @@ impl VfsMachine {
                             module: m_upd.module,
                         })
                         .unwrap();
-                    if let workspace::ModuleManifestUpdate::Updated(manifest) = m_upd.manifest {
+                    if let Some(manifest) = m_upd.manifest {
                         m.manifest = manifest;
                     }
                     for p_upd in m_upd.packages {
