@@ -23,7 +23,6 @@ pub(crate) static PACKAGE_RE: Lazy<Regex> =
 static PATH_ELEM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._\-~]+$").expect(BAD_RE));
 static PATH_ELEM_DENY_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"~[0-9]+$").expect(BAD_RE));
 static DOMAIN_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9.-]+$").expect(BAD_RE));
-static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect(BAD_RE));
 const BAD_RE: &str = "invalid regex literal";
 
 impl ImportPath {
@@ -182,7 +181,7 @@ impl ImportPath {
     }
 
     fn check_version_suffix(elem: &str) -> Result<bool, anyhow::Error> {
-        if !VERSION_RE.is_match(elem) {
+        if !util::is_version_like(elem) {
             return Ok(false);
         }
 

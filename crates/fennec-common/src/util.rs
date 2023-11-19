@@ -4,6 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::{
     ffi::OsStr,
     path::{Component, Path, PathBuf},
@@ -18,11 +20,19 @@ const RESERVED_WINDOWS_NAMES: &[&str] = &[
     "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
+static VERSION_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect("invalid version regex literal"));
+
 #[must_use]
 pub fn is_reserved_windows_filename(file_name: &str) -> bool {
     RESERVED_WINDOWS_NAMES
         .iter()
         .any(|r| file_name.eq_ignore_ascii_case(r))
+}
+
+#[must_use]
+pub fn is_version_like(file_name: &str) -> bool {
+    VERSION_RE.is_match(file_name)
 }
 
 #[must_use]
@@ -33,14 +43,19 @@ pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
 }
 
 #[must_use]
-pub fn valid_package_name(file_name: &str) -> bool {
+fn valid_file_name(file_name: &str) -> bool {
     PACKAGE_RE.is_match(file_name) && !is_reserved_windows_filename(file_name)
+}
+
+#[must_use]
+pub fn valid_package_name(file_name: &str) -> bool {
+    valid_file_name(file_name) && !is_version_like(file_name)
 }
 
 #[must_use]
 pub fn valid_source_file_name(file_name: &str) -> bool {
     match file_name.rsplit_once('.') {
-        Some((name, SOURCE_EXTENSION)) => valid_package_name(name),
+        Some((name, SOURCE_EXTENSION)) => valid_file_name(name),
         _ => false,
     }
 }
