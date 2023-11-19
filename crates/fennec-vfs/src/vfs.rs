@@ -188,9 +188,9 @@ impl Directory {
                 .as_ref()
                 .expect("changed file must contain content")
                 .as_ref();
-            let res = manifest::parse(content);
+            let res = manifest::extract_module(content);
             match res {
-                Ok(manifest) => Some(manifest.module),
+                Ok(module) => Some(module),
                 Err(err) => {
                     let disp = m.path.display();
                     log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
