@@ -41,14 +41,14 @@ pub struct PackageUpdate {
     pub source: PathBuf,
     pub path: Option<types::ImportPath>, // empty in case of detached package
     pub files: Vec<FileUpdate>,
-    pub update: PackageUpdateKind,
+    pub update: UpdateKind,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum PackageUpdateKind {
-    PackageAdded,
-    PackageRemoved,
-    PackageUpdated,
+pub enum UpdateKind {
+    Added,
+    Removed,
+    Updated,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -69,12 +69,5 @@ pub struct ModuleUpdate {
     pub module: Option<types::ImportPath>, // empty in case of detached module, otherwise same as manifest.module
     pub manifest: ModuleManifestUpdate,
     pub packages: Vec<PackageUpdate>, // empty in case of no changes to the packages or module was removed
-    pub update: ModuleUpdateKind,
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum ModuleUpdateKind {
-    ModuleAdded,
-    ModuleRemoved,
-    ModuleUpdated,
+    pub update: UpdateKind,
 }

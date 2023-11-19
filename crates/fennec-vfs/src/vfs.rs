@@ -398,7 +398,7 @@ impl Vfs {
                                 module: dir.module().cloned(),
                                 manifest: workspace::ModuleManifestUpdate::Unknown,
                                 packages: Vec::new(),
-                                update: workspace::ModuleUpdateKind::ModuleRemoved,
+                                update: workspace::UpdateKind::Removed,
                             });
                         }
                     } else {
@@ -561,7 +561,7 @@ impl Vfs {
                             module: dir.module().cloned(),
                             manifest,
                             packages, // may be empty
-                            update: workspace::ModuleUpdateKind::ModuleUpdated,
+                            update: workspace::UpdateKind::Updated,
                         });
                     }
                     mod_iter.next();
@@ -584,7 +584,7 @@ impl Vfs {
                             dir.manifest_info.manifest.clone(),
                         ),
                         packages,
-                        update: workspace::ModuleUpdateKind::ModuleAdded,
+                        update: workspace::UpdateKind::Added,
                     });
                     mod_iter.next();
                 }
@@ -595,7 +595,7 @@ impl Vfs {
                         module: dir.module().cloned(),
                         manifest: workspace::ModuleManifestUpdate::Unknown,
                         packages: Vec::new(),
-                        update: workspace::ModuleUpdateKind::ModuleRemoved,
+                        update: workspace::UpdateKind::Removed,
                     });
                     prev_mod_iter.next();
                 }
@@ -653,7 +653,7 @@ impl Vfs {
                             source: dir.path.clone(),
                             path: Self::pkg_import_path(detached, mod_path, mod_dir, &dir.path),
                             files,
-                            update: workspace::PackageUpdateKind::PackageUpdated,
+                            update: workspace::UpdateKind::Updated,
                         });
                     }
                     package_dir_iter.next();
@@ -683,7 +683,7 @@ impl Vfs {
                                 detached: f.detached,
                             })
                             .collect(), // may be empty
-                        update: workspace::PackageUpdateKind::PackageAdded,
+                        update: workspace::UpdateKind::Added,
                     });
                     package_dir_iter.next();
                 }
@@ -692,7 +692,7 @@ impl Vfs {
                         source: prev_dir.path.clone(),
                         path: Self::pkg_import_path(detached, mod_path, mod_dir, &prev_dir.path),
                         files: Vec::new(),
-                        update: workspace::PackageUpdateKind::PackageRemoved,
+                        update: workspace::UpdateKind::Removed,
                     });
                     prev_package_dir_iter.next();
                 }

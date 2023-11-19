@@ -855,7 +855,7 @@ impl VfsMachine {
     fn apply(&mut self, updates: Vec<workspace::ModuleUpdate>) {
         for m_upd in updates {
             match m_upd.update {
-                workspace::ModuleUpdateKind::ModuleAdded => {
+                workspace::UpdateKind::Added => {
                     let prev = self.modules.insert(
                         ModuleLoc {
                             source: m_upd.source.clone(),
@@ -890,14 +890,14 @@ impl VfsMachine {
                     );
                     assert!(prev.is_none());
                 }
-                workspace::ModuleUpdateKind::ModuleRemoved => {
+                workspace::UpdateKind::Removed => {
                     let prev = self.modules.remove(&ModuleLoc {
                         source: m_upd.source,
                         module: m_upd.module,
                     });
                     assert!(prev.is_some());
                 }
-                workspace::ModuleUpdateKind::ModuleUpdated => {
+                workspace::UpdateKind::Updated => {
                     let m = self
                         .modules
                         .get_mut(&ModuleLoc {
@@ -910,7 +910,7 @@ impl VfsMachine {
                     }
                     for p_upd in m_upd.packages {
                         match p_upd.update {
-                            workspace::PackageUpdateKind::PackageAdded => {
+                            workspace::UpdateKind::Added => {
                                 m.packages.push(workspace::Package {
                                     source: p_upd.source,
                                     path: p_upd.path,
@@ -925,7 +925,7 @@ impl VfsMachine {
                                         .collect(),
                                 });
                             }
-                            workspace::PackageUpdateKind::PackageRemoved => {
+                            workspace::UpdateKind::Removed => {
                                 let ix = m
                                     .packages
                                     .iter()
@@ -933,7 +933,7 @@ impl VfsMachine {
                                     .unwrap();
                                 m.packages.swap_remove(ix);
                             }
-                            workspace::PackageUpdateKind::PackageUpdated => {
+                            workspace::UpdateKind::Updated => {
                                 // Yup, O(N^2).
                                 let p = m
                                     .packages
