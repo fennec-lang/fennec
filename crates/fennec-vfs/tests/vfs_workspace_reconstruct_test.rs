@@ -339,7 +339,7 @@ fn sorted_vec_remove<T: Ord>(v: &mut Vec<T>, elem: &T) {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 struct ModuleLoc {
     source: PathBuf,
-    module: types::ImportPath,
+    module: Option<types::ImportPath>,
 }
 
 impl VfsReferenceMachine {
@@ -520,24 +520,20 @@ impl VfsReferenceMachine {
                 let manifest_key = node.children[manifest_ix];
                 let manifest_node = &self.nodes[manifest_key];
                 if !manifest_node.directory {
-                    cur_module = None;
-                    cur_pkg_path = None;
-                    if let Some(manifest) = &manifest_node.manifest {
-                        let loc = ModuleLoc {
-                            source: cur_dir_source.clone(),
-                            module: manifest.module.clone(),
-                        };
-                        cur_module = Some(loc.clone());
-                        cur_pkg_path = Some(loc.module.clone());
-                        modules.insert(
-                            loc.clone(),
-                            workspace::Module {
-                                source: loc.source,
-                                manifest: manifest.clone(),
-                                packages: Vec::new(),
-                            },
-                        );
-                    }
+                    let loc = ModuleLoc {
+                        source: cur_dir_source.clone(),
+                        module: manifest_node.manifest.as_ref().map(|m| m.module.clone()),
+                    };
+                    cur_module = Some(loc.clone());
+                    cur_pkg_path = loc.module.clone();
+                    modules.insert(
+                        loc.clone(),
+                        workspace::Module {
+                            source: loc.source,
+                            manifest: manifest_node.manifest.clone(),
+                            packages: Vec::new(),
+                        },
+                    );
                 }
             }
             // If we are inside a module and have not hit an invalid package directory yet, add a package.
@@ -548,7 +544,7 @@ impl VfsReferenceMachine {
                 } else {
                     let pkg = workspace::Package {
                         source: cur_dir_source.clone(),
-                        path: cur_pkg_path.clone().unwrap(),
+                        path: cur_pkg_path.clone(),
                         files: node
                             .children
                             .iter()
@@ -870,7 +866,12 @@ impl VfsMachine {
                         },
                         workspace::Module {
                             source: m_upd.source,
-                            manifest: m_upd.manifest.unwrap(),
+                            manifest: match m_upd.manifest {
+                                workspace::ModuleManifestUpdate::Unknown => {
+                                    panic!("expected a module manifest")
+                                }
+                                workspace::ModuleManifestUpdate::Updated(manifest) => manifest,
+                            },
                             packages: m_upd
                                 .packages
                                 .into_iter()
@@ -906,7 +907,7 @@ impl VfsMachine {
                             module: m_upd.module,
                         })
                         .unwrap();
-                    if let Some(manifest) = m_upd.manifest {
+                    if let workspace::ModuleManifestUpdate::Updated(manifest) = m_upd.manifest {
                         m.manifest = manifest;
                     }
                     for p_upd in m_upd.packages {

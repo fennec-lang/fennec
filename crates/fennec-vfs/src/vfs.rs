@@ -93,9 +93,9 @@ impl File {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 struct ManifestInfo {
-    manifest: workspace::ModuleManifest,
+    manifest: Option<workspace::ModuleManifest>, // empty if valid manifest does not currently exist
     manifest_changed: bool,
 }
 
@@ -107,7 +107,7 @@ struct Directory {
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
-    manifest_info: Option<ManifestInfo>, // empty if valid manifest does not currently exist
+    manifest_info: ManifestInfo,
 }
 
 impl Directory {
@@ -141,14 +141,18 @@ impl Directory {
         })
     }
 
-    fn set_files(&mut self, files: Vec<File>, prev_info: Option<ManifestInfo>) {
+    fn module(&self) -> Option<&types::ImportPath> {
+        self.manifest_info.manifest.as_ref().map(|m| &m.module)
+    }
+
+    fn set_files(&mut self, files: Vec<File>, prev_manifest: Option<workspace::ModuleManifest>) {
         self.source_files = files;
         self.content_changed = Some(
             self.source_files
                 .iter()
                 .any(|f| f.content_changed.expect("change marker must be set")),
         );
-        self.manifest_info = self.get_manifest(prev_info);
+        self.manifest_info = self.get_manifest(prev_manifest);
     }
 
     fn manifest_pos(&self) -> Option<usize> {
@@ -157,19 +161,22 @@ impl Directory {
             .ok()
     }
 
-    fn get_manifest(&self, prev_info: Option<ManifestInfo>) -> Option<ManifestInfo> {
+    fn get_manifest(&self, prev_manifest: Option<workspace::ModuleManifest>) -> ManifestInfo {
         let ix = self.manifest_pos();
         if let Some(ix) = ix {
             let m = &self.source_files[ix];
             if m.deleted {
-                return None;
+                return ManifestInfo {
+                    manifest: None,
+                    manifest_changed: prev_manifest.is_some(),
+                };
             }
             let changed = m.content_changed.expect("change indicator must be set");
             if !changed {
-                return prev_info.map(|prev| ManifestInfo {
-                    manifest: prev.manifest,
+                return ManifestInfo {
+                    manifest: prev_manifest,
                     manifest_changed: false,
-                });
+                };
             }
             let content = m
                 .content
@@ -178,21 +185,27 @@ impl Directory {
                 .as_ref();
             let res = manifest::parse(content);
             match res {
-                Ok(manifest) => Some(ManifestInfo {
-                    manifest_changed: prev_info.map_or(true, |prev| manifest != prev.manifest),
-                    manifest,
-                }),
+                Ok(manifest) => ManifestInfo {
+                    manifest_changed: prev_manifest.map_or(true, |prev| manifest != prev),
+                    manifest: Some(manifest),
+                },
                 Err(err) => {
                     let disp = m.path.display();
                     log::warn!(r#"failed to parse module manifest "{disp}": {err}"#);
                     // We might go back to pretending that the manifest has not changed instead,
                     // as this avoids the module removal. However, that breaks the invariant that
                     // the VFS state is equal to the fresh re-scan, so let's not do that.
-                    None
+                    ManifestInfo {
+                        manifest: None,
+                        manifest_changed: prev_manifest.is_some(),
+                    }
                 }
             }
         } else {
-            None
+            ManifestInfo {
+                manifest: None,
+                manifest_changed: false,
+            }
         }
     }
 }
@@ -300,13 +313,8 @@ impl ModTraverse {
         }
     }
 
-    fn index_root<'a>(&self, tree: &'a [Directory]) -> (&'a ManifestInfo, &'a Directory) {
-        let mod_dir = &tree[self.root];
-        let info = mod_dir
-            .manifest_info
-            .as_ref()
-            .expect("manifest info must exist in module root");
-        (info, mod_dir)
+    fn index_root<'a>(&self, tree: &'a [Directory]) -> &'a Directory {
+        &tree[self.root]
     }
 }
 
@@ -380,11 +388,11 @@ impl Vfs {
                         // Trying to add parent of an existing root; remove old one instead.
                         let state = self.scan_state.remove(ix);
                         for module in state.modules {
-                            let (info, dir) = module.index_root(&state.tree);
+                            let dir = module.index_root(&state.tree);
                             updates.push(workspace::ModuleUpdate {
                                 source: dir.path.clone(),
-                                module: info.manifest.module.clone(),
-                                manifest: None,
+                                module: dir.module().cloned(),
+                                manifest: workspace::ModuleManifestUpdate::Unknown,
                                 packages: Vec::new(),
                                 update: workspace::ModuleUpdateKind::ModuleRemoved,
                             });
@@ -448,16 +456,9 @@ impl Vfs {
             }
             if let Some(m_ix) = dir.manifest_pos() {
                 if !dir.source_files[m_ix].deleted {
-                    let mut m = ModTraverse::new(ix, dir.depth);
-                    if dir.manifest_info.is_some() {
-                        // Push new module on the stack, if we are visiting an existing module root.
-                        stack.push(m);
-                    } else {
-                        // Manifest file exists, but the manifest is invalid. Ignore the whole subtree.
-                        m.cur_ignore_pkgs_depth = Some(dir.depth);
-                        stack.push(m);
-                        continue;
-                    }
+                    // Push new module on the stack, if we are visiting an existing module root.
+                    let m = ModTraverse::new(ix, dir.depth);
+                    stack.push(m);
                 }
             }
             // If we are not inside a module, do nothing.
@@ -493,13 +494,11 @@ impl Vfs {
             m.packages.push(ix);
         }
         modules.extend(stack.into_iter().rev());
-        // Forget about modules with invalid manifests.
-        modules.retain(|m| m.cur_ignore_pkgs_depth != Some(m.depth));
         // Sort modules so that we can later merge them.
         modules.sort_unstable_by(|a, b| {
-            let (a_info, a_dir) = a.index_root(tree);
-            let (b_info, b_dir) = b.index_root(tree);
-            (&a_info.manifest.module, &a_dir.path).cmp(&(&b_info.manifest.module, &b_dir.path))
+            let a_dir = a.index_root(tree);
+            let b_dir = b.index_root(tree);
+            (a_dir.module(), &a_dir.path).cmp(&(b_dir.module(), &b_dir.path))
         });
         modules
     }
@@ -518,10 +517,10 @@ impl Vfs {
             let (cur, prev) = match (mod_iter.peek(), prev_mod_iter.peek()) {
                 (None, None) => break,
                 (Some(module), Some(prev_module)) => {
-                    let (info, mod_dir) = module.index_root(tree);
-                    let (prev_info, prev_mod_dir) = prev_module.index_root(prev_tree);
-                    match (&info.manifest.module, &mod_dir.path)
-                        .cmp(&(&prev_info.manifest.module, &prev_mod_dir.path))
+                    let mod_dir = module.index_root(tree);
+                    let prev_mod_dir = prev_module.index_root(prev_tree);
+                    match (mod_dir.module(), &mod_dir.path)
+                        .cmp(&(prev_mod_dir.module(), &prev_mod_dir.path))
                     {
                         Ordering::Equal => (Some(module), Some(prev_module)),
                         Ordering::Less => (Some(module), None),
@@ -532,20 +531,27 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(module), Some(prev_module)) => {
-                    let (info, dir) = module.index_root(tree);
+                    let dir = module.index_root(tree);
                     let packages = Self::build_package_updates(
-                        &info.manifest.module,
+                        dir.module(),
                         &dir.path,
                         &module.packages,
                         tree,
                         &prev_module.packages,
                         prev_tree,
                     );
-                    if info.manifest_changed || !packages.is_empty() {
+                    if dir.manifest_info.manifest_changed || !packages.is_empty() {
+                        let manifest = if dir.manifest_info.manifest_changed {
+                            workspace::ModuleManifestUpdate::Updated(
+                                dir.manifest_info.manifest.clone(),
+                            )
+                        } else {
+                            workspace::ModuleManifestUpdate::Unknown
+                        };
                         updates.push(workspace::ModuleUpdate {
                             source: dir.path.clone(),
-                            module: info.manifest.module.clone(),
-                            manifest: info.manifest_changed.then(|| info.manifest.clone()),
+                            module: dir.module().cloned(),
+                            manifest,
                             packages, // may be empty
                             update: workspace::ModuleUpdateKind::ModuleUpdated,
                         });
@@ -554,9 +560,9 @@ impl Vfs {
                     prev_mod_iter.next();
                 }
                 (Some(module), None) => {
-                    let (info, dir) = module.index_root(tree);
+                    let dir = module.index_root(tree);
                     let packages = Self::build_package_updates(
-                        &info.manifest.module,
+                        dir.module(),
                         &dir.path,
                         &module.packages,
                         tree,
@@ -565,19 +571,21 @@ impl Vfs {
                     );
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
-                        module: info.manifest.module.clone(),
-                        manifest: Some(info.manifest.clone()),
+                        module: dir.module().cloned(),
+                        manifest: workspace::ModuleManifestUpdate::Updated(
+                            dir.manifest_info.manifest.clone(),
+                        ),
                         packages,
                         update: workspace::ModuleUpdateKind::ModuleAdded,
                     });
                     mod_iter.next();
                 }
                 (None, Some(prev_module)) => {
-                    let (info, dir) = prev_module.index_root(prev_tree);
+                    let dir = prev_module.index_root(prev_tree);
                     updates.push(workspace::ModuleUpdate {
                         source: dir.path.clone(),
-                        module: info.manifest.module.clone(),
-                        manifest: None,
+                        module: dir.module().cloned(),
+                        manifest: workspace::ModuleManifestUpdate::Unknown,
                         packages: Vec::new(),
                         update: workspace::ModuleUpdateKind::ModuleRemoved,
                     });
@@ -590,7 +598,7 @@ impl Vfs {
     }
 
     fn build_package_updates(
-        mod_path: &types::ImportPath,
+        mod_path: Option<&types::ImportPath>,
         mod_dir: &Path,
         packages: &[usize],
         tree: &[Directory],
@@ -678,21 +686,23 @@ impl Vfs {
     }
 
     fn pkg_import_path(
-        path: &types::ImportPath,
+        path: Option<&types::ImportPath>,
         mod_dir: &Path,
         pkg_dir: &Path,
-    ) -> types::ImportPath {
-        let rel = pkg_dir
-            .strip_prefix(mod_dir)
-            .expect("package must be a module subdirectory")
-            .to_str()
-            .expect("package relative path must be valid UTF-8");
-        if rel.is_empty() {
-            path.clone() // root package of the module
-        } else {
-            path.join(rel)
-                .expect("join of package relative path to module import path must succeed")
-        }
+    ) -> Option<types::ImportPath> {
+        path.map(|path| {
+            let rel = pkg_dir
+                .strip_prefix(mod_dir)
+                .expect("package must be a module subdirectory")
+                .to_str()
+                .expect("package relative path must be valid UTF-8");
+            if rel.is_empty() {
+                path.clone() // root package of the module
+            } else {
+                path.join(rel)
+                    .expect("join of package relative path to module import path must succeed")
+            }
+        })
     }
 
     fn scan_root(root: &PathBuf) -> Vec<Directory> {
@@ -767,7 +777,7 @@ impl Vfs {
                     let files = take(&mut d.source_files);
                     d.set_files(
                         Self::merge_hydrate_sorted_files(files, &prev_dir.source_files),
-                        prev_dir.manifest_info.clone(),
+                        prev_dir.manifest_info.manifest.clone(),
                     );
                     state.add_dir(d);
                     dir_iter.next();
@@ -784,7 +794,7 @@ impl Vfs {
                     let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
                     d.set_files(
                         Self::merge_hydrate_sorted_files(Vec::new(), &prev_dir.source_files),
-                        prev_dir.manifest_info.clone(),
+                        prev_dir.manifest_info.manifest.clone(),
                     );
                     state.add_dir(d);
                     prev_dir_iter.next();

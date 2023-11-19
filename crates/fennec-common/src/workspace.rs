@@ -17,14 +17,14 @@ pub struct File {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Package {
     pub source: PathBuf,
-    pub path: types::ImportPath,
+    pub path: Option<types::ImportPath>, // empty in case of detached package
     pub files: Vec<File>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Module {
     pub source: PathBuf,
-    pub manifest: ModuleManifest,
+    pub manifest: Option<ModuleManifest>, // empty in case of detached module
     pub packages: Vec<Package>,
 }
 
@@ -37,7 +37,7 @@ pub struct FileUpdate {
 #[derive(Clone, Debug)]
 pub struct PackageUpdate {
     pub source: PathBuf,
-    pub path: types::ImportPath,
+    pub path: Option<types::ImportPath>, // empty in case of detached package
     pub files: Vec<FileUpdate>,
     pub update: PackageUpdateKind,
 }
@@ -56,10 +56,16 @@ pub struct ModuleManifest {
 }
 
 #[derive(Clone, Debug)]
+pub enum ModuleManifestUpdate {
+    Unknown,
+    Updated(Option<ModuleManifest>),
+}
+
+#[derive(Clone, Debug)]
 pub struct ModuleUpdate {
     pub source: PathBuf,
-    pub module: types::ImportPath,        // same as manifest.module
-    pub manifest: Option<ModuleManifest>, // empty in case of no changes to the manifest or module was removed
+    pub module: Option<types::ImportPath>, // empty in case of detached module, otherwise same as manifest.module
+    pub manifest: ModuleManifestUpdate,
     pub packages: Vec<PackageUpdate>, // empty in case of no changes to the packages or module was removed
     pub update: ModuleUpdateKind,
 }
