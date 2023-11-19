@@ -338,6 +338,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fennec-module"
+version = "0.1.8"
+
+[[package]]
 name = "fennec-parser"
 version = "0.1.8"
 dependencies = [

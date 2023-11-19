@@ -63,6 +63,7 @@ xshell = "0.2.5"
 
 fennec-common = { path = "crates/fennec-common", version = "0.1.8" }
 fennec-core = { path = "crates/fennec-core", version = "0.1.8" }
+fennec-module = { path = "crates/fennec-module", version = "0.1.8" }
 fennec-parser = { path = "crates/fennec-parser", version = "0.1.8" }
 fennec-server = { path = "crates/fennec-server", version = "0.1.8" }
 fennec-vfs = { path = "crates/fennec-vfs", version = "0.1.8" }
