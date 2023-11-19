@@ -26,7 +26,7 @@ fn vfs_config() -> ProptestConfig {
 
 // Ensure that the VFS correctly reconstructs the workspace state.
 #[test]
-fn vfs_workspace_reconstruct_test() {
+fn vfs_workspace_reconstruct() {
     env_logger::builder()
         .is_test(true)
         .try_init()
