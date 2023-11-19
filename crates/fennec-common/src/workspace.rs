@@ -12,6 +12,7 @@ use crate::types;
 pub struct File {
     pub source: PathBuf,
     pub content: Arc<str>,
+    pub detached: bool, // invalid file name
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -32,6 +33,7 @@ pub struct Module {
 pub struct FileUpdate {
     pub source: PathBuf,
     pub content: Option<Arc<str>>, // empty in case file was removed
+    pub detached: bool,            // invalid file name
 }
 
 #[derive(Clone, Debug)]

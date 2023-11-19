@@ -65,6 +65,10 @@ impl File {
             .expect("file name must be valid UTF-8")
     }
 
+    fn detached(&self) -> bool {
+        !util::valid_source_file_name(self.file_name())
+    }
+
     #[must_use]
     fn is_manifest(&self) -> bool {
         self.file_name() == MODULE_MANIFEST_FILENAME
@@ -631,6 +635,7 @@ impl Vfs {
                         .map(|f| workspace::FileUpdate {
                             source: f.path.clone(),
                             content: f.content.clone(),
+                            detached: f.detached(),
                         })
                         .collect();
                     if !files.is_empty() {
@@ -656,6 +661,7 @@ impl Vfs {
                                 .as_ref()
                                 .expect("content must be set on all files in a package directory")
                                 .clone(),
+                            detached: f.detached(),
                         });
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
@@ -664,6 +670,7 @@ impl Vfs {
                             .map(|f| FileUpdate {
                                 source: f.source,
                                 content: Some(f.content),
+                                detached: f.detached,
                             })
                             .collect(), // may be empty
                         update: workspace::PackageUpdateKind::PackageAdded,
@@ -725,7 +732,7 @@ impl Vfs {
                             .file_name()
                             .to_str()
                             .expect("is_valid_utf8_visible() must ensure UTF-8");
-                        if name == MODULE_MANIFEST_FILENAME || util::valid_source_file_name(name) {
+                        if name == MODULE_MANIFEST_FILENAME || util::valid_source_extension(name) {
                             let meta = entry.metadata().ok();
                             let file = File::new(entry.into_path(), meta);
                             state.add_file(file);

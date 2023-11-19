@@ -550,11 +550,12 @@ impl VfsReferenceMachine {
                             .iter()
                             .map(|key| &self.nodes[*key])
                             .filter(|node| {
-                                !node.directory && util::valid_source_file_name(&node.name)
+                                !node.directory && util::valid_source_extension(&node.name)
                             })
                             .map(|node| workspace::File {
                                 source: cur_dir_source.join(&node.name),
                                 content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
+                                detached: !util::valid_source_file_name(&node.name),
                             })
                             .collect(),
                     };
@@ -884,6 +885,7 @@ impl VfsMachine {
                                         .map(|f| workspace::File {
                                             source: f.source,
                                             content: f.content.unwrap(),
+                                            detached: f.detached,
                                         })
                                         .collect(),
                                 })
@@ -922,6 +924,7 @@ impl VfsMachine {
                                         .map(|f| workspace::File {
                                             source: f.source,
                                             content: f.content.unwrap(),
+                                            detached: f.detached,
                                         })
                                         .collect(),
                                 });
@@ -954,6 +957,7 @@ impl VfsMachine {
                                         p.files.push(workspace::File {
                                             source: f_upd.source,
                                             content,
+                                            detached: f_upd.detached,
                                         });
                                     }
                                 }
@@ -1036,6 +1040,15 @@ impl StateMachineTest for VfsMachine {
             modules,
             "modules (right) does not match reference modules (left)"
         );
+
+        for m in &modules {
+            for p in &m.packages {
+                for f in &p.files {
+                    let file_name = f.source.file_name().unwrap().to_str().unwrap();
+                    assert!(f.detached || util::valid_source_file_name(file_name));
+                }
+            }
+        }
     }
 }
 

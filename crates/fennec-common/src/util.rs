@@ -53,6 +53,11 @@ pub fn valid_package_name(file_name: &str) -> bool {
 }
 
 #[must_use]
+pub fn valid_source_extension(file_name: &str) -> bool {
+    matches!(file_name.rsplit_once('.'), Some((_, SOURCE_EXTENSION)))
+}
+
+#[must_use]
 pub fn valid_source_file_name(file_name: &str) -> bool {
     match file_name.rsplit_once('.') {
         Some((name, SOURCE_EXTENSION)) => valid_file_name(name),
