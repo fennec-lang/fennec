@@ -303,9 +303,9 @@ impl ScanState {
 #[derive(Default, Debug)]
 struct ModTraverse {
     root: usize,
-    packages: Vec<usize>,
+    packages: Vec<(usize, bool)>,
     depth: isize,
-    cur_ignore_pkgs_depth: Option<isize>,
+    cur_detached_pkgs_depth: Option<isize>,
 }
 
 impl ModTraverse {
@@ -475,27 +475,31 @@ impl Vfs {
             // Ensure that we are either processing a root package
             // (where we don't care about the directory name
             // as we use the import path from the module manifest instead)
-            // or the directory name is a valid package name.
-            if !root_pkg {
+            // or the directory name is a valid package name (for non-detached packages).
+            let detached = if root_pkg {
+                false
+            } else {
                 // Maybe we have finished a subtree with an invalid path element?
-                let ignore_finished = match m.cur_ignore_pkgs_depth {
+                let detached_finished = match m.cur_detached_pkgs_depth {
                     Some(depth) => dir.depth <= depth,
                     None => true,
                 };
-                if ignore_finished {
-                    m.cur_ignore_pkgs_depth = None;
+                if detached_finished {
+                    m.cur_detached_pkgs_depth = None;
+                    // Maybe we have to start a new ignore subtree?
+                    let valid = util::valid_package_name(dir.name());
+                    if valid {
+                        false
+                    } else {
+                        m.cur_detached_pkgs_depth = Some(dir.depth);
+                        true
+                    }
                 } else {
-                    // We are still processing an ignored subtree where we are only interested in new module roots.
-                    continue;
+                    assert!(m.cur_detached_pkgs_depth.is_some());
+                    true
                 }
-                // Maybe we have to start a new ignore subtree?
-                let valid = util::valid_package_name(dir.name());
-                if !valid {
-                    m.cur_ignore_pkgs_depth = Some(dir.depth);
-                    continue;
-                }
-            }
-            m.packages.push(ix);
+            };
+            m.packages.push((ix, detached));
         }
         modules.extend(stack.into_iter().rev());
         // Sort modules so that we can later merge them.
@@ -604,27 +608,33 @@ impl Vfs {
     fn build_package_updates(
         mod_path: Option<&types::ImportPath>,
         mod_dir: &Path,
-        packages: &[usize],
+        packages: &[(usize, bool)],
         tree: &[Directory],
-        prev_packages: &[usize],
+        prev_packages: &[(usize, bool)],
         prev_tree: &[Directory],
     ) -> Vec<workspace::PackageUpdate> {
         let mut updates: Vec<workspace::PackageUpdate> = Vec::new();
-        let mut package_dir_iter = packages.iter().map(|ix| &tree[*ix]).peekable();
-        let mut prev_package_dir_iter = prev_packages.iter().map(|ix| &prev_tree[*ix]).peekable();
+        let mut package_dir_iter = packages
+            .iter()
+            .map(|(ix, detached)| (&tree[*ix], *detached))
+            .peekable();
+        let mut prev_package_dir_iter = prev_packages
+            .iter()
+            .map(|(ix, detached)| (&prev_tree[*ix], *detached))
+            .peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching package directories.
             let (cur, prev) = match (package_dir_iter.peek(), prev_package_dir_iter.peek()) {
                 (None, None) => break,
-                (Some(dir), Some(prev_dir)) => match dir.path.cmp(&prev_dir.path) {
-                    Ordering::Equal => (Some(dir), Some(prev_dir)),
-                    Ordering::Less => (Some(dir), None),
-                    Ordering::Greater => (None, Some(prev_dir)),
+                (Some(cur), Some(prev)) => match cur.0.path.cmp(&prev.0.path) {
+                    Ordering::Equal => (Some(cur), Some(prev)),
+                    Ordering::Less => (Some(cur), None),
+                    Ordering::Greater => (None, Some(prev)),
                 },
                 only_one => only_one,
             };
             match (cur, prev) {
-                (Some(dir), Some(_)) => {
+                (Some(&(dir, detached)), Some(_)) => {
                     let files: Vec<workspace::FileUpdate> = dir
                         .source_files
                         .iter()
@@ -641,7 +651,7 @@ impl Vfs {
                     if !files.is_empty() {
                         updates.push(workspace::PackageUpdate {
                             source: dir.path.clone(),
-                            path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
+                            path: Self::pkg_import_path(detached, mod_path, mod_dir, &dir.path),
                             files,
                             update: workspace::PackageUpdateKind::PackageUpdated,
                         });
@@ -649,7 +659,7 @@ impl Vfs {
                     package_dir_iter.next();
                     prev_package_dir_iter.next();
                 }
-                (Some(dir), None) => {
+                (Some(&(dir, detached)), None) => {
                     let files = dir
                         .source_files
                         .iter()
@@ -665,7 +675,7 @@ impl Vfs {
                         });
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
-                        path: Self::pkg_import_path(mod_path, mod_dir, &dir.path),
+                        path: Self::pkg_import_path(detached, mod_path, mod_dir, &dir.path),
                         files: files
                             .map(|f| FileUpdate {
                                 source: f.source,
@@ -677,10 +687,10 @@ impl Vfs {
                     });
                     package_dir_iter.next();
                 }
-                (None, Some(prev_dir)) => {
+                (None, Some(&(prev_dir, detached))) => {
                     updates.push(workspace::PackageUpdate {
                         source: prev_dir.path.clone(),
-                        path: Self::pkg_import_path(mod_path, mod_dir, &prev_dir.path),
+                        path: Self::pkg_import_path(detached, mod_path, mod_dir, &prev_dir.path),
                         files: Vec::new(),
                         update: workspace::PackageUpdateKind::PackageRemoved,
                     });
@@ -693,10 +703,14 @@ impl Vfs {
     }
 
     fn pkg_import_path(
+        detached: bool,
         path: Option<&types::ImportPath>,
         mod_dir: &Path,
         pkg_dir: &Path,
     ) -> Option<types::ImportPath> {
+        if detached {
+            return None;
+        }
         path.map(|path| {
             let rel = pkg_dir
                 .strip_prefix(mod_dir)

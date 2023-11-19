@@ -536,31 +536,27 @@ impl VfsReferenceMachine {
                     );
                 }
             }
-            // If we are inside a module and have not hit an invalid package directory yet, add a package.
+            // If we are inside a module and have hit an invalid package directory, reset the import path.
             if let Some(loc) = &cur_module {
                 if cur_dir_source != loc.source && !util::valid_package_name(&node.name) {
-                    cur_module = None;
                     cur_pkg_path = None;
-                } else {
-                    let pkg = workspace::Package {
-                        source: cur_dir_source.clone(),
-                        path: cur_pkg_path.clone(),
-                        files: node
-                            .children
-                            .iter()
-                            .map(|key| &self.nodes[*key])
-                            .filter(|node| {
-                                !node.directory && util::valid_source_extension(&node.name)
-                            })
-                            .map(|node| workspace::File {
-                                source: cur_dir_source.join(&node.name),
-                                content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
-                                detached: !util::valid_source_file_name(&node.name),
-                            })
-                            .collect(),
-                    };
-                    modules.get_mut(&loc).unwrap().packages.push(pkg);
                 }
+                let pkg = workspace::Package {
+                    source: cur_dir_source.clone(),
+                    path: cur_pkg_path.clone(),
+                    files: node
+                        .children
+                        .iter()
+                        .map(|key| &self.nodes[*key])
+                        .filter(|node| !node.directory && util::valid_source_extension(&node.name))
+                        .map(|node| workspace::File {
+                            source: cur_dir_source.join(&node.name),
+                            content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
+                            detached: !util::valid_source_file_name(&node.name),
+                        })
+                        .collect(),
+                };
+                modules.get_mut(&loc).unwrap().packages.push(pkg);
             }
         }
         for child_key in &node.children {
