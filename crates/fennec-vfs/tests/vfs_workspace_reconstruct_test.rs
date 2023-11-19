@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use fennec_vfs::Vfs;
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
@@ -44,19 +44,13 @@ enum NodeNameKind {
     Other,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct ModuleManifest {
-    pub module: types::ImportPath,
-    pub fennec: types::FennecVersion,
-}
-
 #[derive(Clone)]
 enum Transition {
     AddNode {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     },
     RemoveNode {
@@ -65,7 +59,7 @@ enum Transition {
     UpdateNode {
         key: NodeKey,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
     },
     MarkScanRoot {
         key: NodeKey,
@@ -163,16 +157,6 @@ fn import_path_strategy() -> BoxedStrategy<types::ImportPath> {
         .boxed()
 }
 
-fn fennec_version_strategy() -> BoxedStrategy<types::FennecVersion> {
-    ((0u64..=10u64), (0u64..=100u64), (0u64..=100u64))
-        .prop_map(|(major, minor, patch)| types::FennecVersion {
-            major,
-            minor,
-            patch,
-        })
-        .boxed()
-}
-
 fn raw_content_strategy() -> BoxedStrategy<Vec<u8>> {
     // Proptest is having much easier time with minimization when limiting content to 1 byte.
     any::<Option<u8>>()
@@ -180,17 +164,10 @@ fn raw_content_strategy() -> BoxedStrategy<Vec<u8>> {
         .boxed()
 }
 
-fn manifest_strategy() -> BoxedStrategy<Option<ModuleManifest>> {
+fn manifest_strategy() -> BoxedStrategy<Option<types::ImportPath>> {
     Union::new(vec![
         Just(None).boxed(),
-        (import_path_strategy(), fennec_version_strategy())
-            .prop_map(|(path, version)| {
-                Some(ModuleManifest {
-                    module: path,
-                    fennec: version,
-                })
-            })
-            .boxed(),
+        import_path_strategy().prop_map(|path| Some(path)).boxed(),
     ])
     .boxed()
 }
@@ -274,7 +251,7 @@ struct Node {
     directory: bool,
     scan_root: bool,
     raw_content: Vec<u8>,
-    manifest: Option<ModuleManifest>,
+    manifest: Option<types::ImportPath>,
     parent: Option<NodeKey>,
     children: Vec<NodeKey>,
 }
@@ -284,7 +261,7 @@ impl Node {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     ) -> Node {
         Node {
@@ -303,20 +280,10 @@ impl Node {
     }
 }
 
-fn format_manifest(manifest: Option<ModuleManifest>) -> String {
-    if let Some(manifest) = manifest {
+fn format_manifest(path: Option<types::ImportPath>) -> String {
+    if let Some(path) = path {
         let mut buf = Vec::new();
-        let types::FennecVersion {
-            major,
-            minor,
-            patch,
-        } = manifest.fennec;
-        let mod_path = manifest.module;
-        write!(
-            buf,
-            "{PROJECT_NAME} = \"{major}.{minor}.{patch}\"\nmodule = \"{mod_path}\"\n"
-        )
-        .unwrap();
+        fennec_module::write_with_current_version(&mut buf, &path).unwrap();
         String::from_utf8(buf).unwrap()
     } else {
         String::new()
@@ -389,7 +356,7 @@ impl VfsReferenceMachine {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     ) {
         self.last_added_node_parent = parent.map(|key| self.node_path(key));
@@ -445,7 +412,7 @@ impl VfsReferenceMachine {
         &mut self,
         key: NodeKey,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
     ) {
         let node = &mut self.nodes[key];
         assert!(!node.directory);
@@ -548,7 +515,7 @@ impl VfsReferenceMachine {
                 if !manifest_node.directory {
                     let loc = ModuleLoc {
                         source: cur_dir_source.clone(),
-                        module: manifest_node.manifest.as_ref().map(|m| m.module.clone()),
+                        module: manifest_node.manifest.as_ref().map(|m| m.clone()),
                     };
                     cur_module = Some(loc.clone());
                     cur_pkg_path = loc.module.clone();
@@ -768,7 +735,7 @@ impl VfsMachine {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
         parent: PathBuf,
     ) {
         let is_manifest = name == MODULE_MANIFEST_FILENAME;
@@ -798,7 +765,7 @@ impl VfsMachine {
         &mut self,
         path: PathBuf,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
     ) {
         let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
         // We remove and re-add the file to guarantee the metadata change (at least on Linux,
@@ -832,7 +799,7 @@ impl VfsMachine {
         file: &mut fs::File,
         write_manifest: bool,
         raw_content: Vec<u8>,
-        manifest: Option<ModuleManifest>,
+        manifest: Option<types::ImportPath>,
     ) {
         if write_manifest {
             let content = format_manifest(manifest);

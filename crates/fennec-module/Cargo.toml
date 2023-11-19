@@ -13,3 +13,8 @@ readme = false
 workspace = true
 
 [dependencies]
+anyhow.workspace = true
+serde = { workspace = true, features = ["serde_derive"] }
+toml.workspace = true
+
+fennec-common.workspace = true

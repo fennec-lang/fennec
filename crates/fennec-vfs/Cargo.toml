@@ -16,11 +16,10 @@ workspace = true
 anyhow.workspace = true
 debug-ignore.workspace = true
 log.workspace = true
-serde = { workspace = true, features = ["serde_derive"] }
-toml.workspace = true
 walkdir.workspace = true
 
 fennec-common.workspace = true
+fennec-module.workspace = true
 
 [dev-dependencies]
 env_logger.workspace = true

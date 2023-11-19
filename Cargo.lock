@@ -309,6 +309,7 @@ dependencies = [
  "env_logger",
  "fennec-common",
  "fennec-core",
+ "fennec-module",
  "fennec-server",
  "fennec-vfs",
  "log",
@@ -340,6 +341,12 @@ dependencies = [
 [[package]]
 name = "fennec-module"
 version = "0.1.8"
+dependencies = [
+ "anyhow",
+ "fennec-common",
+ "serde",
+ "toml",
+]
 
 [[package]]
 name = "fennec-parser"
@@ -373,14 +380,13 @@ dependencies = [
  "env_logger",
  "fastrand",
  "fennec-common",
+ "fennec-module",
  "log",
  "pretty_assertions",
  "proptest",
  "proptest-state-machine",
- "serde",
  "slotmap",
  "tempfile",
- "toml",
  "walkdir",
 ]
 

@@ -5,8 +5,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::Context;
-use fennec_common::{types, MODULE_MANIFEST_FILENAME, PROJECT_NAME, RELEASE_VERSION};
-use std::{fs, io::Write, path::Path};
+use fennec_common::{types, MODULE_MANIFEST_FILENAME};
+use std::{fs, path::Path};
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -35,11 +35,8 @@ pub fn cmd(args: &Args) -> anyhow::Result<()> {
         .open(&path)
         .with_context(|| format!(r#"failed to create "{disp}""#))?;
 
-    write!(
-        &mut file,
-        "{PROJECT_NAME} = \"{RELEASE_VERSION}\"\nmodule = \"{mod_path}\"\n"
-    )
-    .with_context(|| format!(r#"failed to write module declaration to "{disp}""#))?;
+    fennec_module::write_with_current_version(&mut file, &mod_path)
+        .with_context(|| format!(r#"failed to write module declaration to "{disp}""#))?;
 
     Ok(())
 }

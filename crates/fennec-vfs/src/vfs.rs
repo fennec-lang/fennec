@@ -20,8 +20,6 @@ use std::{
     vec,
 };
 
-use crate::manifest;
-
 pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
 
 #[derive(Default, Clone, Debug)]
@@ -188,7 +186,7 @@ impl Directory {
                 .as_ref()
                 .expect("changed file must contain content")
                 .as_ref();
-            let res = manifest::extract_module(content);
+            let res = fennec_module::extract(content);
             match res {
                 Ok(module) => Some(module),
                 Err(err) => {

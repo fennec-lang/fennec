@@ -24,6 +24,7 @@ regex.workspace = true
 
 fennec-common.workspace = true
 fennec-core.workspace = true
+fennec-module.workspace = true
 fennec-server.workspace = true
 fennec-vfs.workspace = true
 
