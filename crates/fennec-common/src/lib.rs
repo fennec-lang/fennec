@@ -13,5 +13,5 @@ mod sync_state;
 
 pub const PROJECT_NAME: &str = "fennec";
 pub const RELEASE_VERSION: &str = "0.1.8";
-pub const MODULE_MANIFEST_FILENAME: &str = "fennec.toml";
+pub const MODULE_MANIFEST_FILENAME: &str = "fennec.mod";
 pub const SOURCE_EXTENSION: &str = "fn";

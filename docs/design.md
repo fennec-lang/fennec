@@ -42,8 +42,10 @@
 - copy Go + simplify where possible
   - avoid central registry
   - don't spend too much time on a solved problem
-- `fennec.toml` instead of `go.mod`
-  - extensible config (external tools, publishing, ...), avoid NIH
+- `fennec.mod` (like `go.mod`)
+  - pro-TOML: extensible config (external tools, publishing, ...), avoid NIH
+  - custom extension: to be able to associate a language server with it and properly report errors
+  - probably migrate to custom file format in the future, we don't get much from using TOML?
 - make package name always match the "directory" name (except for `v2`)
   - don't require `package foo` on top of every file
 - `vendor` always exists, but can be ignored in source control (or not)
@@ -52,8 +54,8 @@
 - is including a `version` field to be independent of source control a bad idea?
 
 ```toml
-fennec = "1.0"
 module = "example.org/hello"
+fennec = "1.0.0"
 
 [require]
 "example.org/util" = "1.2.3"

@@ -1,2 +1,2 @@
-fennec = "0.1.0"
 module = "examples/hello"
+fennec = "0.1.0"

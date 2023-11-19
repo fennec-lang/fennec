@@ -33,7 +33,7 @@
         }
     },
     "activationEvents": [
-        "workspaceContains:**/fennec.toml"
+        "workspaceContains:**/fennec.mod"
     ],
     "main": "./dist/extension.js",
     "scripts": {
@@ -78,7 +78,7 @@
             {
                 "id": "fennec.mod",
                 "aliases": [
-                    "Fennec Module File"
+                    "Fennec Module"
                 ],
                 "filenames": [
                     "fennec.mod"

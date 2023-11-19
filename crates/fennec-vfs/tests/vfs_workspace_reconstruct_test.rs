@@ -128,7 +128,7 @@ impl std::fmt::Debug for Transition {
 
 fn node_name_strategy(name_kind: NodeNameKind, valid_ident: bool) -> BoxedStrategy<String> {
     let expr = match name_kind {
-        NodeNameKind::ModuleManifest => "fennec\\.toml",
+        NodeNameKind::ModuleManifest => "fennec\\.mod",
         NodeNameKind::SourceCode => {
             if valid_ident {
                 "[a-z][a-z0-9_]*\\.fn"
