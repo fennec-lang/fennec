@@ -73,8 +73,17 @@
                 "extensions": [
                     ".fn"
                 ],
-                "filenames": [],
-                "configuration": "./language-configuration.json"
+                "configuration": "./fennec.language-configuration.json"
+            },
+            {
+                "id": "fennec.mod",
+                "aliases": [
+                    "Fennec Module File"
+                ],
+                "filenames": [
+                    "fennec.mod"
+                ],
+                "configuration": "./fennec.mod.language-configuration.json"
             }
         ]
     },
