@@ -44,13 +44,19 @@ enum NodeNameKind {
     Other,
 }
 
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct ModuleManifest {
+    pub module: types::ImportPath,
+    pub fennec: types::FennecVersion,
+}
+
 #[derive(Clone)]
 enum Transition {
     AddNode {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
         parent: Option<NodeKey>,
     },
     RemoveNode {
@@ -59,7 +65,7 @@ enum Transition {
     UpdateNode {
         key: NodeKey,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
     },
     MarkScanRoot {
         key: NodeKey,
@@ -174,12 +180,12 @@ fn raw_content_strategy() -> BoxedStrategy<Vec<u8>> {
         .boxed()
 }
 
-fn manifest_strategy() -> BoxedStrategy<Option<workspace::ModuleManifest>> {
+fn manifest_strategy() -> BoxedStrategy<Option<ModuleManifest>> {
     Union::new(vec![
         Just(None).boxed(),
         (import_path_strategy(), fennec_version_strategy())
             .prop_map(|(path, version)| {
-                Some(workspace::ModuleManifest {
+                Some(ModuleManifest {
                     module: path,
                     fennec: version,
                 })
@@ -268,7 +274,7 @@ struct Node {
     directory: bool,
     scan_root: bool,
     raw_content: Vec<u8>,
-    manifest: Option<workspace::ModuleManifest>,
+    manifest: Option<ModuleManifest>,
     parent: Option<NodeKey>,
     children: Vec<NodeKey>,
 }
@@ -278,7 +284,7 @@ impl Node {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
         parent: Option<NodeKey>,
     ) -> Node {
         Node {
@@ -297,7 +303,7 @@ impl Node {
     }
 }
 
-fn format_manifest(manifest: Option<workspace::ModuleManifest>) -> String {
+fn format_manifest(manifest: Option<ModuleManifest>) -> String {
     if let Some(manifest) = manifest {
         let mut buf = Vec::new();
         let types::FennecVersion {
@@ -383,7 +389,7 @@ impl VfsReferenceMachine {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
         parent: Option<NodeKey>,
     ) {
         self.last_added_node_parent = parent.map(|key| self.node_path(key));
@@ -439,7 +445,7 @@ impl VfsReferenceMachine {
         &mut self,
         key: NodeKey,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
     ) {
         let node = &mut self.nodes[key];
         assert!(!node.directory);
@@ -762,7 +768,7 @@ impl VfsMachine {
         name: String,
         directory: bool,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
         parent: PathBuf,
     ) {
         let is_manifest = name == MODULE_MANIFEST_FILENAME;
@@ -792,7 +798,7 @@ impl VfsMachine {
         &mut self,
         path: PathBuf,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
     ) {
         let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
         // We remove and re-add the file to guarantee the metadata change (at least on Linux,
@@ -826,7 +832,7 @@ impl VfsMachine {
         file: &mut fs::File,
         write_manifest: bool,
         raw_content: Vec<u8>,
-        manifest: Option<workspace::ModuleManifest>,
+        manifest: Option<ModuleManifest>,
     ) {
         if write_manifest {
             let content = format_manifest(manifest);

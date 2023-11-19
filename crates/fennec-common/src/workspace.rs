@@ -52,12 +52,6 @@ pub enum UpdateKind {
     Updated,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct ModuleManifest {
-    pub module: types::ImportPath,
-    pub fennec: types::FennecVersion,
-}
-
 #[derive(Clone, Debug)]
 pub struct ModuleUpdate {
     pub source: PathBuf,
