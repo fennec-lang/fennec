@@ -1008,7 +1008,7 @@ impl StateMachineTest for VfsMachine {
             Some(state.dir.path()),
         );
         let ref_modules = canonicalize_modules(ref_state.last_scan.clone(), None);
-        pretty_assertions::assert_eq!(
+        similar_asserts::assert_eq!(
             ref_modules,
             modules,
             "modules (right) does not match reference modules (left)"

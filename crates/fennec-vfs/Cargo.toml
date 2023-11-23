@@ -24,8 +24,8 @@ fennec-module.workspace = true
 [dev-dependencies]
 env_logger.workspace = true
 fastrand.workspace = true
-pretty_assertions.workspace = true
 proptest-state-machine.workspace = true
 proptest.workspace = true
+similar-asserts.workspace = true
 slotmap.workspace = true
 tempfile.workspace = true
