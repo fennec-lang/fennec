@@ -4,12 +4,16 @@ resolver = "2"
 
 [profile.dev]
 debug = 0
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.test]
+opt-level = 1
 
 [profile.release]
 debug = 0
-
-[profile.release-lto]
-inherits = "release"
 lto = "thin"
 
 [workspace.package]
