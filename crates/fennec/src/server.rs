@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::version::vcs_version;
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use fennec_common::types;
 use fennec_core::Core;
 use fennec_server::Server;

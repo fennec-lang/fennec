@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context as _};
 use fennec_common::{types, util, MODULE_MANIFEST_FILENAME, PROJECT_NAME};
 use lsp_types::notification::{self, Notification as _};
 use std::path::{Path, PathBuf};
