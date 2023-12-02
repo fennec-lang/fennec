@@ -6,6 +6,10 @@
 
 mod flags;
 
+use std::fmt::Write as _;
+use std::fs;
+
+use anyhow::Context as _;
 use env_logger::Env;
 use flags::{Ci, ReleaseCrate, ReleaseExt, XtaskCmd};
 use xshell::{cmd, Shell};
@@ -34,6 +38,7 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        XtaskCmd::GenLex(_) => run_gen_lex(&sh),
         XtaskCmd::Lint(_) => run_lint(&sh),
         XtaskCmd::Spellcheck(_) => run_spellcheck(&sh),
         XtaskCmd::CheckDeps(_) => run_check_deps(&sh),
@@ -58,6 +63,18 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
+fn run_gen_lex(sh: &Shell) -> anyhow::Result<()> {
+    let input = fs::read_to_string("crates/fennec-module/src/lexer_def.rs")
+        .context("failed to read lexer definition")?;
+    let output = lex_codegen(input).context("failed to generate lexer")?;
+    let out_path = "crates/fennec-module/src/lexer_gen.rs";
+    fs::write(out_path, output).context("failed to write generated lexer")?;
+    cmd!(sh, "rustfmt {out_path}")
+        .run()
+        .context("failed to format generated lexer")?;
+    Ok(())
+}
+
 fn run_lint(sh: &Shell) -> anyhow::Result<()> {
     cmd!(sh, "cargo clippy").run()?;
     Ok(())
@@ -72,4 +89,20 @@ fn run_check_deps(sh: &Shell) -> anyhow::Result<()> {
     cmd!(sh, "cargo deny check").run()?;
     cmd!(sh, "cargo +nightly udeps --all-targets").run()?;
     Ok(())
+}
+
+fn lex_codegen(input: String) -> anyhow::Result<String> {
+    let input_tokens: proc_macro2::TokenStream = input
+        .parse()
+        .map_err(|err: proc_macro2::LexError| anyhow::Error::msg(err.to_string()))
+        .context("failed to parse input as rust code")?;
+    let mut output = String::new();
+    write!(output, "{}", "#![allow(unused_imports)]\n")?;
+    write!(
+        output,
+        "{}",
+        logos_codegen::strip_attributes(input_tokens.clone())
+    )?;
+    write!(output, "{}", logos_codegen::generate(input_tokens))?;
+    Ok(output)
 }

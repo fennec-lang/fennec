@@ -9,7 +9,8 @@
     "ignorePaths": [
         ".git/",
         ".vscode/extensions.json",
-        "cspell.json"
+        "cspell.json",
+        "crates/fennec-module/src/lexer_gen.rs"
     ],
     "flagWords": [
         "adn:and"
@@ -20,6 +21,7 @@
         "byteslice",
         "canonicalize",
         "clippy",
+        "codegen",
         "composability",
         "cond",
         "condvar",

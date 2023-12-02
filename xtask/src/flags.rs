@@ -17,6 +17,9 @@ xflags::xflags! {
             optional --all
         }
 
+        // Generate lexer code
+        cmd gen-lex {}
+
         /// Run Clippy
         cmd lint {}
 
@@ -54,6 +57,7 @@ pub struct Xtask {
 #[derive(Debug)]
 pub enum XtaskCmd {
     Ci(Ci),
+    GenLex(GenLex),
     Lint(Lint),
     Spellcheck(Spellcheck),
     CheckDeps(CheckDeps),
@@ -65,6 +69,9 @@ pub enum XtaskCmd {
 pub struct Ci {
     pub all: bool,
 }
+
+#[derive(Debug)]
+pub struct GenLex;
 
 #[derive(Debug)]
 pub struct Lint;
