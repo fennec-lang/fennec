@@ -382,6 +382,7 @@ dependencies = [
  "fennec-common",
  "logos",
  "serde",
+ "similar-asserts",
  "toml",
 ]
 

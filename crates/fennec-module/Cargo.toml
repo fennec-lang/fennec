@@ -19,3 +19,6 @@ serde = { workspace = true, features = ["serde_derive"] }
 toml.workspace = true
 
 fennec-common.workspace = true
+
+[dev-dependencies]
+similar-asserts.workspace = true

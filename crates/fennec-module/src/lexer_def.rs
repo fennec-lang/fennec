@@ -14,11 +14,20 @@ pub(crate) enum LogosToken {
     Whitespace,
 
     #[token("module")]
-    Module,
+    KeywordModule,
 
     #[token("fennec")]
-    Fennec,
+    KeywordFennec,
 
-    #[regex(r#""([^"\\\r\n])*""#)]
+    #[regex(r#""([^"\\\r\n])*""#, priority = 5)]
     String,
+
+    #[regex(r#""([^"\r\n])*""#)]
+    ErrorStringWithBackslashes,
+
+    #[regex(r#""([^"\r\n])*"#)]
+    ErrorStringUnterminated,
+
+    #[regex(r"//[^\r\n]*")]
+    Comment,
 }
