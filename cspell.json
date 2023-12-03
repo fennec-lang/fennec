@@ -37,6 +37,7 @@
         "implicits",
         "imstr",
         "indexmap",
+        "insta",
         "lalrpop",
         "metaprogramming",
         "mmap",

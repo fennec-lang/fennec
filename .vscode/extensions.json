@@ -6,6 +6,7 @@
         "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig",
         "guyutongxue.lalrpop-syntax-highlight",
+        "mitsuhiko.insta",
         "rust-lang.rust-analyzer",
         "streetsidesoftware.code-spell-checker",
         "tamasfe.even-better-toml",

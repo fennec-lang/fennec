@@ -12,6 +12,7 @@ Fennec is an experimental programming language and environment.
 ### Optional tools
 
 - [cargo-deny](https://github.com/EmbarkStudios/cargo-deny)
+- [cargo-insta](https://github.com/mitsuhiko/insta)
 - [cargo-release](https://github.com/crate-ci/cargo-release)
 - [cargo-udeps](https://github.com/est31/cargo-udeps)
 - [cspell](https://github.com/streetsidesoftware/cspell)

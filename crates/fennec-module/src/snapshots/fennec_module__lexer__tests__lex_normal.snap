@@ -1,0 +1,50 @@
+---
+source: crates/fennec-module/src/lexer.rs
+expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec \"0.1.0\"\n\"#.to_owned())"
+---
+[
+    (
+        "\n",
+        Newline,
+    ),
+    (
+        "module",
+        KwModule,
+    ),
+    (
+        " ",
+        Whitespace,
+    ),
+    (
+        "\"examples/hello\"",
+        String,
+    ),
+    (
+        "  ",
+        Whitespace,
+    ),
+    (
+        "// comment",
+        Comment,
+    ),
+    (
+        "\n",
+        Newline,
+    ),
+    (
+        "fennec",
+        KwFennec,
+    ),
+    (
+        " ",
+        Whitespace,
+    ),
+    (
+        "\"0.1.0\"",
+        String,
+    ),
+    (
+        "\n",
+        Newline,
+    ),
+]

@@ -21,4 +21,4 @@ toml.workspace = true
 fennec-common.workspace = true
 
 [dev-dependencies]
-similar-asserts.workspace = true
+insta.workspace = true

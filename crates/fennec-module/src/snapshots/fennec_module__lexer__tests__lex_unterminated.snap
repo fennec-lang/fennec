@@ -1,0 +1,28 @@
+---
+source: crates/fennec-module/src/lexer.rs
+expression: "lex(\"fennec \\\"hello\\nmodule\".to_owned())"
+---
+[
+    (
+        "fennec",
+        KwFennec,
+    ),
+    (
+        " ",
+        Whitespace,
+    ),
+    (
+        "\"hello",
+        Error(
+            StringUnterminated,
+        ),
+    ),
+    (
+        "\n",
+        Newline,
+    ),
+    (
+        "module",
+        KwModule,
+    ),
+]

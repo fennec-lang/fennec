@@ -8,14 +8,14 @@ use logos::Logos as _;
 
 use crate::lexer_gen::LogosToken;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum TokenErrorKind {
     StringWithBackslashes,
     StringUnterminated,
     Other,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum TokenKind {
     Newline,
     Whitespace,
@@ -36,6 +36,19 @@ const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain
 pub(crate) struct Tokens {
     input: String,
     tokens: Vec<Token>,
+}
+
+impl std::fmt::Debug for Tokens {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut exploded: Vec<(String, TokenKind)> = Vec::with_capacity(self.tokens.len());
+        let mut n = 0;
+        for tok in &self.tokens {
+            let len = tok.len as usize;
+            exploded.push(((&self.input[n..n + len]).to_owned(), tok.kind));
+            n += len;
+        }
+        exploded.fmt(f)
+    }
 }
 
 fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
@@ -74,69 +87,28 @@ pub(crate) fn lex(input: String) -> Tokens {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use similar_asserts::assert_eq;
 
-    fn check_lex(input: &str, expected: &[(&str, TokenKind)]) {
-        let tokens = lex(input.to_string());
-        let mut sliced: Vec<(&'_ str, TokenKind)> = Vec::with_capacity(expected.len());
-        let mut n = 0;
-        for tok in tokens.tokens {
-            let len = tok.len as usize;
-            sliced.push((&tokens.input[n..n + len], tok.kind));
-            n += len;
-        }
-        assert_eq!(expected, sliced, "lexing \"{input}\"");
+    #[test]
+    fn lex_empty() {
+        insta::assert_debug_snapshot!(lex("".to_owned()));
     }
 
     #[test]
-    fn lex_smoke() {
-        use TokenErrorKind::*;
-        use TokenKind::*;
+    fn lex_trivial_err() {
+        insta::assert_debug_snapshot!(lex("?".to_owned()));
+    }
 
-        let cases: &[(&str, &[(&str, TokenKind)])] = &[
-            ("", &[]),
-            ("?", &[("?", Error(Other))]),
-            (
-                "fennec module",
-                &[
-                    ("fennec", KwFennec),
-                    (" ", Whitespace),
-                    ("module", KwModule),
-                ],
-            ),
-            (
-                "fennec \"hello\nmodule",
-                &[
-                    ("fennec", KwFennec),
-                    (" ", Whitespace),
-                    ("\"hello", Error(StringUnterminated)),
-                    ("\n", Newline),
-                    ("module", KwModule),
-                ],
-            ),
-            (
-                r#"
+    #[test]
+    fn lex_unterminated() {
+        insta::assert_debug_snapshot!(lex("fennec \"hello\nmodule".to_owned()));
+    }
+
+    #[test]
+    fn lex_normal() {
+        insta::assert_debug_snapshot!(lex(r#"
 module "examples/hello"  // comment
 fennec "0.1.0"
-"#,
-                &[
-                    ("\n", Newline),
-                    ("module", KwModule),
-                    (" ", Whitespace),
-                    ("\"examples/hello\"", String),
-                    ("  ", Whitespace),
-                    ("// comment", Comment),
-                    ("\n", Newline),
-                    ("fennec", KwFennec),
-                    (" ", Whitespace),
-                    ("\"0.1.0\"", String),
-                    ("\n", Newline),
-                ],
-            ),
-        ];
-
-        for (input, expected) in cases {
-            check_lex(input, expected);
-        }
+"#
+        .to_owned()));
     }
 }
