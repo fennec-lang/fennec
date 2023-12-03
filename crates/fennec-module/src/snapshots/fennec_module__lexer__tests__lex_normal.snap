@@ -1,6 +1,6 @@
 ---
 source: crates/fennec-module/src/lexer.rs
-expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec \"0.1.0\"\n\"#.to_owned())"
+expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#.to_owned())"
 ---
 [
     (
@@ -40,8 +40,24 @@ expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec \"0.1.0\"\n
         Whitespace,
     ),
     (
-        "\"0.1.0\"",
-        String,
+        "0",
+        Number,
+    ),
+    (
+        ".",
+        Dot,
+    ),
+    (
+        "1",
+        Number,
+    ),
+    (
+        ".",
+        Dot,
+    ),
+    (
+        "0",
+        Number,
     ),
     (
         "\n",

@@ -23,6 +23,11 @@ pub(crate) enum TokenKind {
     KwFennec,
     String,
     Comment,
+    Number,
+    Ident,
+    Dot,
+    Dash,
+    Plus,
     Error(TokenErrorKind),
 }
 
@@ -65,6 +70,11 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
             TokenKind::Error(TokenErrorKind::StringUnterminated)
         }
         Ok(LogosToken::Comment) => TokenKind::Comment,
+        Ok(LogosToken::Number) => TokenKind::Number,
+        Ok(LogosToken::Ident) => TokenKind::Ident,
+        Ok(LogosToken::Dot) => TokenKind::Dot,
+        Ok(LogosToken::Dash) => TokenKind::Dash,
+        Ok(LogosToken::Plus) => TokenKind::Plus,
         Err(()) => TokenKind::Error(TokenErrorKind::Other),
     };
     let len: u32 = slice
@@ -107,7 +117,7 @@ mod tests {
     fn lex_normal() {
         insta::assert_debug_snapshot!(lex(r#"
 module "examples/hello"  // comment
-fennec "0.1.0"
+fennec 0.1.0
 "#
         .to_owned()));
     }

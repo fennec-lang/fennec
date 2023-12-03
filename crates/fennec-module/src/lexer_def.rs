@@ -19,7 +19,7 @@ pub(crate) enum LogosToken {
     #[token("fennec")]
     KeywordFennec,
 
-    #[regex(r#""([^"\\\r\n])*""#, priority = 5)]
+    #[regex(r#""([^"\\\r\n])*""#, priority = 5)] // clashes with ErrorStringWithBackslashes
     String,
 
     #[regex(r#""([^"\r\n])*""#)]
@@ -30,4 +30,19 @@ pub(crate) enum LogosToken {
 
     #[regex(r"//[^\r\n]*")]
     Comment,
+
+    #[regex(r"\d+", priority = 2)] // clashes with Ident
+    Number,
+
+    #[regex(r"[0-9A-Za-z-]+")]
+    Ident,
+
+    #[token(".")]
+    Dot,
+
+    #[token("-")]
+    Dash,
+
+    #[token("+")]
+    Plus,
 }
