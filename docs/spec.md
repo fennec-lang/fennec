@@ -14,7 +14,6 @@ Quick specification of what is *actually implemented*.
   - this is a compromise between clean separation of std
     and requirement to invent random domain names to create new modules
 - module root directory is identified by a module manifest (`fennec.mod`)
-  - file format, *for now*, is TOML
   - module directory subtrees with manifests are excluded from the "parent" module
 - module consists of packages (directories) with source (`.fn`) files
 - subdirectories of module root and source files that do not follow
@@ -25,3 +24,10 @@ Quick specification of what is *actually implemented*.
 - when gathering content of a module, we rely on file modification time
   to detect changes (we assume the change every time if mtime is unavailable)
 - maximum source file size is 2^24 (16 megabytes)
+
+## Module manifest (`fennec.mod`) format
+
+```
+module "example/hello" // comment
+fennec 0.1.0
+```

@@ -43,23 +43,13 @@
   - avoid central registry
   - don't spend too much time on a solved problem
 - `fennec.mod` (like `go.mod`)
-  - pro-TOML: extensible config (external tools, publishing, ...), avoid NIH
-  - custom extension: to be able to associate a language server with it and properly report errors
-  - probably migrate to custom file format in the future, we don't get much from using TOML?
+  - custom format to be able to associate a language server with it and properly report errors
 - make package name always match the "directory" name (except for `v2`)
   - don't require `package foo` on top of every file
 - `vendor` always exists, but can be ignored in source control (or not)
   - nudge people to be mindful of dependencies
   - makes modules more self-contained
 - is including a `version` field to be independent of source control a bad idea?
-
-```toml
-module = "example.org/hello"
-fennec = "1.0.0"
-
-[require]
-"example.org/util" = "1.2.3"
-```
 
 ### Safety
 
