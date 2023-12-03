@@ -76,7 +76,7 @@ fn run_gen_lex(sh: &Shell) -> anyhow::Result<()> {
 }
 
 fn run_lint(sh: &Shell) -> anyhow::Result<()> {
-    cmd!(sh, "cargo clippy").run()?;
+    cmd!(sh, "cargo clippy -- -D warnings").run()?;
     Ok(())
 }
 

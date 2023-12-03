@@ -27,12 +27,11 @@ edition = "2021"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
-warnings = "deny"
 
 [workspace.lints.clippy]
-all = "deny"
-pedantic = "deny"
-unwrap_used = "deny"
+all = "warn"
+pedantic = "warn"
+unwrap_used = "warn"
 missing_errors_doc = "allow"
 
 [workspace.dependencies]
