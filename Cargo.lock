@@ -363,6 +363,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "regex",
+ "similar-asserts",
 ]
 
 [[package]]

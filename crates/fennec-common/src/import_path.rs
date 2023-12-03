@@ -224,13 +224,12 @@ impl fmt::Display for ImportPath {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
+    use similar_asserts::assert_eq;
 
     #[test]
     fn parse_path() -> Result<(), anyhow::Error> {
-        let expected: HashMap<&str, ImportPath> = HashMap::from([
+        let expected = [
             (
                 "fmt",
                 ImportPath {
@@ -287,7 +286,7 @@ mod tests {
                     has_domain: true,
                 },
             ),
-        ]);
+        ];
 
         for p in expected {
             let r = ImportPath::parse(p.0)?;

@@ -15,6 +15,7 @@ use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use fennec_vfs::Vfs;
 use proptest::{prelude::*, sample, strategy::Union};
 use proptest_state_machine::{ReferenceStateMachine, StateMachineTest};
+use similar_asserts::assert_eq;
 use slotmap::SlotMap;
 
 fn vfs_config() -> ProptestConfig {
@@ -1008,9 +1009,8 @@ impl StateMachineTest for VfsMachine {
             Some(state.dir.path()),
         );
         let ref_modules = canonicalize_modules(ref_state.last_scan.clone(), None);
-        similar_asserts::assert_eq!(
-            ref_modules,
-            modules,
+        assert_eq!(
+            ref_modules, modules,
             "modules (right) does not match reference modules (left)"
         );
 
