@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
 fn run_gen_lex(sh: &Shell) -> anyhow::Result<()> {
     let input = fs::read_to_string("crates/fennec-module/src/lexer_def.rs")
         .context("failed to read lexer definition")?;
-    let output = lex_codegen(input).context("failed to generate lexer")?;
+    let output = lex_codegen(&input).context("failed to generate lexer")?;
     let out_path = "crates/fennec-module/src/lexer_gen.rs";
     fs::write(out_path, output).context("failed to write generated lexer")?;
     cmd!(sh, "rustfmt {out_path}")
@@ -91,13 +91,15 @@ fn run_check_deps(sh: &Shell) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn lex_codegen(input: String) -> anyhow::Result<String> {
+fn lex_codegen(input: &str) -> anyhow::Result<String> {
     let input_tokens: proc_macro2::TokenStream = input
         .parse()
         .map_err(|err: proc_macro2::LexError| anyhow::Error::msg(err.to_string()))
         .context("failed to parse input as rust code")?;
     let mut output = String::new();
-    write!(output, "{}", "#![allow(unused_imports)]\n")?;
+    writeln!(output, "#![allow(unused_imports)]")?;
+    writeln!(output, "#![allow(clippy::all)]")?;
+    writeln!(output, "#![allow(clippy::pedantic)]")?;
     write!(
         output,
         "{}",

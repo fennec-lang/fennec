@@ -1,4 +1,6 @@
 #![allow(unused_imports)]
+#![allow(clippy::all)]
+#![allow(clippy::pedantic)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum LogosToken {
     Newline,
