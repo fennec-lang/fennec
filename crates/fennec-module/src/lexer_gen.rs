@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
-#[derive(PartialEq, Eq)]
-enum LogosToken {
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum LogosToken {
     Newline,
     Whitespace,
     Module,
