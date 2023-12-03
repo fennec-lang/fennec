@@ -29,11 +29,38 @@ pub(crate) enum TokenKind {
     Dash,
     Plus,
     Error(TokenErrorKind),
+    Eof,
 }
 
+impl std::fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match *self {
+            TokenKind::Newline => "newline",
+            TokenKind::Whitespace => "space or tab",
+            TokenKind::KwModule => "\"module\" keyword",
+            TokenKind::KwFennec => "\"fennec\" keyword",
+            TokenKind::String => "string",
+            TokenKind::Comment => "comment",
+            TokenKind::Number => "number",
+            TokenKind::Ident => "identifier",
+            TokenKind::Dot => ".",
+            TokenKind::Dash => "-",
+            TokenKind::Plus => "+",
+            TokenKind::Error(err) => match err {
+                TokenErrorKind::StringWithBackslashes => "string literal (with backslashes)",
+                TokenErrorKind::StringUnterminated => "string literal (unterminated)",
+                TokenErrorKind::Other => "error",
+            },
+            TokenKind::Eof => "eof",
+        };
+        write!(f, "{s}")
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct Token {
-    kind: TokenKind,
-    len: u32,
+    pub kind: TokenKind,
+    pub len: u32,
 }
 
 const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain; it does not matter that much
@@ -68,7 +95,7 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
 
 pub(crate) fn lex(input: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
-    let mut lexer = LogosToken::lexer(&input);
+    let mut lexer = LogosToken::lexer(input);
     while let Some(tok) = lexer.next() {
         let token = to_token(tok, lexer.slice());
         tokens.push(token);

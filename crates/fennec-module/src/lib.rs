@@ -7,5 +7,6 @@
 mod lexer;
 mod lexer_gen;
 mod module;
+mod parser;
 
 pub use module::*;
