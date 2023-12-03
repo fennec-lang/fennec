@@ -24,3 +24,4 @@ Quick specification of what is *actually implemented*.
 - when gathering content of a module, symlinks (files and directories) are ignored
 - when gathering content of a module, we rely on file modification time
   to detect changes (we assume the change every time if mtime is unavailable)
+- maximum source file size is 2^24 (16 megabytes)

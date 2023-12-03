@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use anyhow::anyhow;
 use debug_ignore::DebugIgnore;
 use fennec_common::{
     types, util,
@@ -21,6 +22,7 @@ use std::{
 };
 
 pub const DEFAULT_VFS_POLL_INTERVAL: Duration = Duration::from_millis(991);
+const MAX_SOURCE_FILE_SIZE: u64 = (1 << 24) - 1; // 16 megabytes
 
 #[derive(Default, Clone, Debug)]
 struct File {
@@ -87,6 +89,12 @@ impl File {
 
     fn read_utf8_lossy(path: &Path) -> Result<Arc<str>, anyhow::Error> {
         let mut file = std::fs::File::open(path)?;
+        let len = file.metadata()?.len();
+        if len > MAX_SOURCE_FILE_SIZE {
+            return Err(anyhow!(
+                "source file size exceeds maximum of {MAX_SOURCE_FILE_SIZE}"
+            ));
+        }
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         let s = String::from_utf8_lossy(&buf);
