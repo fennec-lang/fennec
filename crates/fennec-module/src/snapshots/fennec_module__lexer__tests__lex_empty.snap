@@ -1,5 +1,5 @@
 ---
 source: crates/fennec-module/src/lexer.rs
-expression: "lex(\"\".to_owned())"
+expression: "lex(\"\")"
 ---
 []

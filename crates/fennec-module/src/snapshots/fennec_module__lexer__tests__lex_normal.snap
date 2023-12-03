@@ -1,6 +1,6 @@
 ---
 source: crates/fennec-module/src/lexer.rs
-expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#.to_owned())"
+expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#)"
 ---
 [
     (

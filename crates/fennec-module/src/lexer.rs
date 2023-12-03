@@ -38,24 +38,6 @@ pub(crate) struct Token {
 
 const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain; it does not matter that much
 
-pub(crate) struct Tokens {
-    input: String,
-    tokens: Vec<Token>,
-}
-
-impl std::fmt::Debug for Tokens {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut exploded: Vec<(String, TokenKind)> = Vec::with_capacity(self.tokens.len());
-        let mut n = 0;
-        for tok in &self.tokens {
-            let len = tok.len as usize;
-            exploded.push(((&self.input[n..n + len]).to_owned(), tok.kind));
-            n += len;
-        }
-        exploded.fmt(f)
-    }
-}
-
 fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
     let kind = match token {
         Ok(LogosToken::Newline) => TokenKind::Newline,
@@ -84,33 +66,57 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
     Token { kind, len }
 }
 
-pub(crate) fn lex(input: String) -> Tokens {
+pub(crate) fn lex(input: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut lexer = LogosToken::lexer(&input);
     while let Some(tok) = lexer.next() {
         let token = to_token(tok, lexer.slice());
         tokens.push(token);
     }
-    Tokens { input, tokens }
+    tokens
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    struct Tokens {
+        input: String,
+        tokens: Vec<super::Token>,
+    }
+
+    impl std::fmt::Debug for Tokens {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut exploded = Vec::with_capacity(self.tokens.len());
+            let mut n = 0;
+            for tok in &self.tokens {
+                let len = tok.len as usize;
+                exploded.push(((&self.input[n..n + len]).to_owned(), tok.kind));
+                n += len;
+            }
+            exploded.fmt(f)
+        }
+    }
+
+    fn lex(input: &str) -> Tokens {
+        let tokens = super::lex(input);
+        Tokens {
+            input: input.to_owned(),
+            tokens,
+        }
+    }
 
     #[test]
     fn lex_empty() {
-        insta::assert_debug_snapshot!(lex("".to_owned()));
+        insta::assert_debug_snapshot!(lex(""));
     }
 
     #[test]
     fn lex_trivial_err() {
-        insta::assert_debug_snapshot!(lex("?".to_owned()));
+        insta::assert_debug_snapshot!(lex("?"));
     }
 
     #[test]
     fn lex_unterminated() {
-        insta::assert_debug_snapshot!(lex("fennec \"hello\nmodule".to_owned()));
+        insta::assert_debug_snapshot!(lex("fennec \"hello\nmodule"));
     }
 
     #[test]
@@ -118,7 +124,6 @@ mod tests {
         insta::assert_debug_snapshot!(lex(r#"
 module "examples/hello"  // comment
 fennec 0.1.0
-"#
-        .to_owned()));
+"#));
     }
 }
