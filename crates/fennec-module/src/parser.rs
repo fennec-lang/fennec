@@ -120,6 +120,7 @@ impl Parser {
         self.errors.push((start_pos..end_pos, err));
     }
 
+    #[must_use]
     fn eat(&mut self, kind: TokenKind) -> bool {
         if self.at(kind) {
             self.advance();
