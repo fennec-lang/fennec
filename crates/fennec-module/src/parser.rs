@@ -53,13 +53,14 @@ const FUEL_RESET: u32 = 64;
 
 impl Parser {
     fn new(input: String, tokens: Vec<Token>) -> Parser {
+        let tok_len = tokens.len();
         Parser {
             input,
             tokens,
             token_pos: 0,
             source_pos: 0,
             fuel: Cell::new(FUEL_RESET),
-            events: Vec::new(),
+            events: Vec::with_capacity(tok_len * 2),
             errors: Vec::new(),
         }
     }
