@@ -10,6 +10,9 @@ pub(crate) enum LogosToken {
     #[token("\r\n")]
     Newline,
 
+    #[token("\r")]
+    ErrorSingleCarriageReturn, // LSP considers it a valid EOL
+
     #[regex(r"[ \t]+")]
     Whitespace,
 

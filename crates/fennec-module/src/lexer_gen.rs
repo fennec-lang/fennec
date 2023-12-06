@@ -4,6 +4,7 @@
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum LogosToken {
     Newline,
+    ErrorSingleCarriageReturn,
     Whitespace,
     KeywordModule,
     KeywordFennec,
@@ -32,102 +33,682 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
             lex.error();
         }
         static COMPACT_TABLE_0: [u8; 256] = [
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 5, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 7, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-            5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 6, 6, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+            7, 7, 7, 7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
         ];
         macro_rules ! _fast_loop { ($ lex : ident , $ test : ident , $ miss : expr) => { while let Some (arr) = $ lex . read :: < & [u8 ; 16] > () { if $ test (arr [0]) { if $ test (arr [1]) { if $ test (arr [2]) { if $ test (arr [3]) { if $ test (arr [4]) { if $ test (arr [5]) { if $ test (arr [6]) { if $ test (arr [7]) { if $ test (arr [8]) { if $ test (arr [9]) { if $ test (arr [10]) { if $ test (arr [11]) { if $ test (arr [12]) { if $ test (arr [13]) { if $ test (arr [14]) { if $ test (arr [15]) { $ lex . bump_unchecked (16) ; continue ; } $ lex . bump_unchecked (15) ; return $ miss ; } $ lex . bump_unchecked (14) ; return $ miss ; } $ lex . bump_unchecked (13) ; return $ miss ; } $ lex . bump_unchecked (12) ; return $ miss ; } $ lex . bump_unchecked (11) ; return $ miss ; } $ lex . bump_unchecked (10) ; return $ miss ; } $ lex . bump_unchecked (9) ; return $ miss ; } $ lex . bump_unchecked (8) ; return $ miss ; } $ lex . bump_unchecked (7) ; return $ miss ; } $ lex . bump_unchecked (6) ; return $ miss ; } $ lex . bump_unchecked (5) ; return $ miss ; } $ lex . bump_unchecked (4) ; return $ miss ; } $ lex . bump_unchecked (3) ; return $ miss ; } $ lex . bump_unchecked (2) ; return $ miss ; } $ lex . bump_unchecked (1) ; return $ miss ; } return $ miss ; } while $ lex . test ($ test) { $ lex . bump_unchecked (1) ; } $ miss } ; }
         #[inline]
-        fn goto16_ctx16_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::ErrorStringUnterminated));
-        }
-        #[inline]
-        fn goto8_ctx16_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::String));
+        fn goto4_ctx4_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Whitespace));
         }
         #[inline]
         fn pattern0(byte: u8) -> bool {
-            COMPACT_TABLE_0[byte as usize] & 1 > 0
-        }
-        #[inline]
-        fn goto12_ctx16_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::ErrorStringWithBackslashes));
-        }
-        #[inline]
-        fn goto200_ctx16_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read::<u8>() {
-                Some(byte) => byte,
-                None => return goto16_ctx16_x(lex),
-            };
             match byte {
-                byte if pattern0(byte) => {
-                    lex.bump_unchecked(1usize);
-                    goto200_ctx16_x(lex)
-                }
-                b'"' => {
-                    lex.bump_unchecked(1usize);
-                    goto12_ctx16_x(lex)
-                }
-                _ => goto16_ctx16_x(lex),
+                9u8 | 32u8 => true,
+                _ => false,
             }
         }
         #[inline]
-        fn goto199_ctx16_x<'s>(lex: &mut Lexer<'s>) {
+        fn goto5_ctx4_x<'s>(lex: &mut Lexer<'s>) {
+            _fast_loop!(lex, pattern0, goto4_ctx4_x(lex));
+        }
+        #[inline]
+        fn goto197_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Plus));
+        }
+        #[inline]
+        fn goto23_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Number));
+        }
+        #[inline]
+        fn goto23_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Number));
+        }
+        #[inline]
+        fn goto25_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read::<&[u8; 1usize]>() {
+                Some([160u8..=169u8]) => {
+                    lex.bump_unchecked(1usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto31_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([166u8..=175u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto50_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([144u8..=153u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto54_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J8,
-                J199,
-                J200,
+                J25,
+                J31,
+                J50,
             }
             const LUT: [Jump; 256] = {
                 use Jump::*;
                 [
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, __, J199, J199, __,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J8, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J200, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199, J199,
-                    J199, J199, J199, J199, J199, J199, J199, J199,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, J31, __, J31, __, J31, __, J31, __, J31, __, J31, __, J31,
+                    __, J31, __, J31, __, J31, __, J50, __, J50, J25, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J25 => {
+                    lex.bump_unchecked(2usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J31 => goto31_at2_ctx23_x(lex),
+                Jump::J50 => goto50_at2_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto93_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(1usize) {
+                Some([188u8, 144u8..=153u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto26_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([176u8..=185u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn pattern1(byte: u8) -> bool {
+            match byte {
+                144u8..=153u8 | 176u8..=185u8 => true,
+                _ => false,
+            }
+        }
+        #[inline]
+        fn goto88_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match byte {
+                byte if pattern1(byte) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto27_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([128u8..=137u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto92_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J26,
+                J25,
+                J88,
+                J27,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, J25, __, __, __, __, __, __,
+                    __, __, __, __, J50, J27, __, __, J88, __, J50, __, __, __, __, __, J26, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J26 => goto26_at2_ctx23_x(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(2usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J88 => goto88_at2_ctx23_x(lex),
+                Jump::J27 => goto27_at2_ctx23_x(lex),
+                Jump::J50 => goto50_at2_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn pattern2(byte: u8) -> bool {
+            match byte {
+                128u8..=137u8 | 144u8..=153u8 => true,
+                _ => false,
+            }
+        }
+        #[inline]
+        fn goto71_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match byte {
+                byte if pattern2(byte) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto64_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([134u8..=143u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto79_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J26,
+                J71,
+                J25,
+                J64,
+                J27,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J27, J50, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    J25, J50, __, __, __, __, J64, __, J50, __, __, J71, __, __, J50, J26, __, __,
+                    J71, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J26 => goto26_at2_ctx23_x(lex),
+                Jump::J71 => goto71_at2_ctx23_x(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(2usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J64 => goto64_at2_ctx23_x(lex),
+                Jump::J27 => goto27_at2_ctx23_x(lex),
+                Jump::J50 => goto50_at2_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto91_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(2usize) {
+                Some([175u8, 176u8..=185u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto27_at3_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([128u8..=137u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto50_at3_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([144u8..=153u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto172_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J25,
+                J27,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J25, __, J27, __, J50, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J25 => {
+                    lex.bump_unchecked(3usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J27 => goto27_at3_ctx23_x(lex),
+                Jump::J50 => goto50_at3_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto175_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(2usize) {
+                Some([159u8, 142u8..=191u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto26_at3_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([176u8..=185u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto188_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J50,
+                J27,
+                J26,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, J27, __, __, __, __, __,
+                    J26, __, __, __, __, __, __, __, J26, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, J50, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J50 => goto50_at3_ctx23_x(lex),
+                Jump::J27 => goto27_at3_ctx23_x(lex),
+                Jump::J26 => goto26_at3_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto99_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match byte {
+                146u8 => {
+                    lex.bump_unchecked(3usize);
+                    goto25_ctx23_x(lex)
+                }
+                180u8 => goto26_at3_ctx23_x(lex),
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto111_at3_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([182u8..=191u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto31_at3_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([166u8..=175u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto162_at2_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J50,
+                J111,
+                J31,
+                J25,
+                J27,
+                J26,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J31, __, J26, J111, __, __, J50, __, __,
+                    __, J26, __, __, __, __, __, J50, __, J50, __, __, __, __, __, J50, __, J27,
+                    J26, __, __, __, __, __, __, J25, __, J50, __, __, __, __, __, __, __, __, __,
+                    __, __, J50, __, __, __, J50, J25, __, __, __, __, __, __, J50, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J50 => goto50_at3_ctx23_x(lex),
+                Jump::J111 => goto111_at3_ctx23_x(lex),
+                Jump::J31 => goto31_at3_ctx23_x(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(3usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J27 => goto27_at3_ctx23_x(lex),
+                Jump::J26 => goto26_at3_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto190_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J91,
+                J172,
+                J175,
+                J188,
+                J99,
+                J162,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, J99, J162, __, __, __, __, J172, __, __, __, __, __, __, J175,
+                    J188, J91, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return goto23_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J91 => goto91_at2_ctx23_x(lex),
+                Jump::J172 => goto172_at2_ctx23_x(lex),
+                Jump::J175 => goto175_at2_ctx23_x(lex),
+                Jump::J188 => goto188_at2_ctx23_x(lex),
+                Jump::J99 => goto99_at2_ctx23_x(lex),
+                Jump::J162 => goto162_at2_ctx23_x(lex),
+                Jump::__ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto27_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(1usize) {
+                Some([128u8..=137u8]) => {
+                    lex.bump_unchecked(2usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto26_at1_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(1usize) {
+                Some([176u8..=185u8]) => {
+                    lex.bump_unchecked(2usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => goto23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto24_ctx23_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J54,
+                J93,
+                J92,
+                J79,
+                J190,
+                J25,
+                J24,
+                J27,
+                J26,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, J24, J24, J24, J24, J24, J24, J24, J24, J24,
+                    J24, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, J25, __, J26, __, __, __, J27, J54, J79, __, __, __, __, __, __, __, __,
+                    J92, __, __, __, __, J93, J190, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __,
                 ]
             };
             let byte = match lex.read::<u8>() {
                 Some(byte) => byte,
-                None => return goto16_ctx16_x(lex),
+                None => return goto23_ctx23_x(lex),
             };
             match LUT[byte as usize] {
-                Jump::J8 => {
+                Jump::J54 => goto54_at1_ctx23_x(lex),
+                Jump::J93 => goto93_at1_ctx23_x(lex),
+                Jump::J92 => goto92_at1_ctx23_x(lex),
+                Jump::J79 => goto79_at1_ctx23_x(lex),
+                Jump::J190 => goto190_at1_ctx23_x(lex),
+                Jump::J25 => {
                     lex.bump_unchecked(1usize);
-                    goto8_ctx16_x(lex)
+                    goto25_ctx23_x(lex)
                 }
-                Jump::J199 => {
+                Jump::J24 => {
                     lex.bump_unchecked(1usize);
-                    goto199_ctx16_x(lex)
+                    goto24_ctx23_x(lex)
                 }
-                Jump::J200 => {
+                Jump::J27 => goto27_at1_ctx23_x(lex),
+                Jump::J26 => goto26_at1_ctx23_x(lex),
+                Jump::__ => goto23_ctx23_x(lex),
+            }
+        }
+        #[inline]
+        fn goto25_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read::<&[u8; 1usize]>() {
+                Some([160u8..=169u8]) => {
                     lex.bump_unchecked(1usize);
-                    goto200_ctx16_x(lex)
+                    goto24_ctx23_x(lex)
                 }
-                Jump::__ => goto16_ctx16_x(lex),
+                _ => lex.error(),
+            }
+        }
+        #[inline]
+        fn goto31_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([166u8..=175u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto50_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([144u8..=153u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto54_at1<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J25,
+                J31,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, J31, __, J31, __, J31, __, J31, __, J31, __, J31, __, J31,
+                    __, J31, __, J31, __, J31, __, J50, __, J50, J25, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J25 => {
+                    lex.bump_unchecked(2usize);
+                    goto25_x(lex)
+                }
+                Jump::J31 => goto31_at2(lex),
+                Jump::J50 => goto50_at2(lex),
+                Jump::__ => _error(lex),
             }
         }
         #[inline]
@@ -135,714 +716,92 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
             lex.set(Ok(LogosToken::Newline));
         }
         #[inline]
-        fn goto22_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Number));
-        }
-        #[inline]
-        fn goto22_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Number));
-        }
-        #[inline]
-        fn goto49_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([144u8..=153u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto24_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read::<&[u8; 1usize]>() {
-                Some([160u8..=169u8]) => {
-                    lex.bump_unchecked(1usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto30_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([166u8..=175u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto53_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J49,
-                J24,
-                J30,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, J30, __, J30, __, J30, __, J30, __, J30, __, J30, __, J30,
-                    __, J30, __, J30, __, J30, __, J49, __, J49, J24, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(1usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J49 => goto49_at2_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(2usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J30 => goto30_at2_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto25_at3_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([176u8..=185u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto49_at3_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([144u8..=153u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto26_at3_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([128u8..=137u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto187_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J25,
-                J49,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, J26, __, __, __, __, __,
-                    J25, __, __, __, __, __, __, __, J25, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, J49, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J25 => goto25_at3_ctx22_x(lex),
-                Jump::J49 => goto49_at3_ctx22_x(lex),
-                Jump::J26 => goto26_at3_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto90_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(2usize) {
-                Some([175u8, 176u8..=185u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto174_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(2usize) {
-                Some([159u8, 142u8..=191u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto110_at3_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([182u8..=191u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto30_at3_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([166u8..=175u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto161_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J24,
-                J110,
-                J25,
-                J30,
-                J49,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J30, __, J25, J110, __, __, J49, __, __,
-                    __, J25, __, __, __, __, __, J49, __, J49, __, __, __, __, __, J49, __, J26,
-                    J25, __, __, __, __, __, __, J24, __, J49, __, __, __, __, __, __, __, __, __,
-                    __, __, J49, __, __, __, J49, J24, __, __, __, __, __, __, J49, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J24 => {
-                    lex.bump_unchecked(3usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J110 => goto110_at3_ctx22_x(lex),
-                Jump::J25 => goto25_at3_ctx22_x(lex),
-                Jump::J30 => goto30_at3_ctx22_x(lex),
-                Jump::J49 => goto49_at3_ctx22_x(lex),
-                Jump::J26 => goto26_at3_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto171_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J49,
-                J24,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J24, __, J26, __, J49, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J49 => goto49_at3_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(3usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J26 => goto26_at3_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto98_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match byte {
-                180u8 => goto25_at3_ctx22_x(lex),
-                146u8 => {
-                    lex.bump_unchecked(3usize);
-                    goto24_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto189_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J187,
-                J90,
-                J174,
-                J161,
-                J171,
-                J98,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, J98, J161, __, __, __, __, J171, __, __, __, __, __, __, J174,
-                    J187, J90, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(1usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J187 => goto187_at2_ctx22_x(lex),
-                Jump::J90 => goto90_at2_ctx22_x(lex),
-                Jump::J174 => goto174_at2_ctx22_x(lex),
-                Jump::J161 => goto161_at2_ctx22_x(lex),
-                Jump::J171 => goto171_at2_ctx22_x(lex),
-                Jump::J98 => goto98_at2_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto92_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(1usize) {
-                Some([188u8, 144u8..=153u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto63_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([134u8..=143u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn pattern1(byte: u8) -> bool {
-            match byte {
-                128u8..=137u8 | 144u8..=153u8 => true,
-                _ => false,
-            }
-        }
-        #[inline]
-        fn goto70_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match byte {
-                byte if pattern1(byte) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto25_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([176u8..=185u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto26_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([128u8..=137u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto78_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J63,
-                J70,
-                J49,
-                J24,
-                J25,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J26, J49, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    J24, J49, __, __, __, __, J63, __, J49, __, __, J70, __, __, J49, J25, __, __,
-                    J70, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(1usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J63 => goto63_at2_ctx22_x(lex),
-                Jump::J70 => goto70_at2_ctx22_x(lex),
-                Jump::J49 => goto49_at2_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(2usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J25 => goto25_at2_ctx22_x(lex),
-                Jump::J26 => goto26_at2_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto25_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(1usize) {
-                Some([176u8..=185u8]) => {
-                    lex.bump_unchecked(2usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn pattern2(byte: u8) -> bool {
-            match byte {
-                144u8..=153u8 | 176u8..=185u8 => true,
-                _ => false,
-            }
-        }
-        #[inline]
-        fn goto87_at2_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match byte {
-                byte if pattern2(byte) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto91_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J87,
-                J49,
-                J24,
-                J25,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, J24, __, __, __, __, __, __,
-                    __, __, __, __, J49, J26, __, __, J87, __, J49, __, __, __, __, __, J25, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(1usize) {
-                Some(byte) => byte,
-                None => return goto22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J87 => goto87_at2_ctx22_x(lex),
-                Jump::J49 => goto49_at2_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(2usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J25 => goto25_at2_ctx22_x(lex),
-                Jump::J26 => goto26_at2_ctx22_x(lex),
-                Jump::__ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto26_at1_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(1usize) {
-                Some([128u8..=137u8]) => {
-                    lex.bump_unchecked(2usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => goto22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto23_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J53,
-                J23,
-                J189,
-                J92,
-                J78,
-                J25,
-                J24,
-                J91,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, J23, J23, J23, J23, J23, J23, J23, J23, J23,
-                    J23, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, J24, __, J25, __, __, __, J26, J53, J78, __, __, __, __, __, __, __, __,
-                    J91, __, __, __, __, J92, J189, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __,
-                ]
-            };
-            let byte = match lex.read::<u8>() {
-                Some(byte) => byte,
-                None => return goto22_ctx22_x(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J53 => goto53_at1_ctx22_x(lex),
-                Jump::J23 => {
-                    lex.bump_unchecked(1usize);
-                    goto23_ctx22_x(lex)
-                }
-                Jump::J189 => goto189_at1_ctx22_x(lex),
-                Jump::J92 => goto92_at1_ctx22_x(lex),
-                Jump::J78 => goto78_at1_ctx22_x(lex),
-                Jump::J25 => goto25_at1_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(1usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J91 => goto91_at1_ctx22_x(lex),
-                Jump::J26 => goto26_at1_ctx22_x(lex),
-                Jump::__ => goto22_ctx22_x(lex),
-            }
-        }
-        #[inline]
-        fn goto92_at1<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(1usize) {
-                Some([188u8, 144u8..=153u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto24_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read::<&[u8; 1usize]>() {
-                Some([160u8..=169u8]) => {
-                    lex.bump_unchecked(1usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => lex.error(),
-            }
-        }
-        #[inline]
-        fn goto191_ctx191_x<'s>(lex: &mut Lexer<'s>) {
+        fn goto192_ctx192_x<'s>(lex: &mut Lexer<'s>) {
             lex.set(Ok(LogosToken::Ident));
         }
         #[inline]
         fn pattern3(byte: u8) -> bool {
-            COMPACT_TABLE_0[byte as usize] & 2 > 0
+            COMPACT_TABLE_0[byte as usize] & 1 > 0
         }
         #[inline]
-        fn goto192_ctx191_x<'s>(lex: &mut Lexer<'s>) {
-            _fast_loop!(lex, pattern3, goto191_ctx191_x(lex));
+        fn goto193_ctx192_x<'s>(lex: &mut Lexer<'s>) {
+            _fast_loop!(lex, pattern3, goto192_ctx192_x(lex));
         }
         #[inline]
-        fn goto203_ctx22_x<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J53,
-                J91,
-                J192,
-                J189,
-                J92,
-                J78,
-                J25,
-                J24,
-                J203,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, J192, __, __, J203, J203, J203, J203, J203, J203, J203,
-                    J203, J203, J203, __, __, __, __, __, __, __, J192, J192, J192, J192, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, __, __, __, __, __, __, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, J24, __, J25, __, __, __, J26,
-                    J53, J78, __, __, __, __, __, __, __, __, J91, __, __, __, __, J92, J189, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
+        fn goto195_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Dot));
+        }
+        #[inline]
+        fn goto7_ctx193_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::KeywordModule));
+        }
+        #[inline]
+        fn goto209_ctx193_x<'s>(lex: &mut Lexer<'s>) {
             let byte = match lex.read::<u8>() {
                 Some(byte) => byte,
-                None => return goto22_ctx22_x(lex),
+                None => return goto7_ctx193_x(lex),
             };
-            match LUT[byte as usize] {
-                Jump::J53 => goto53_at1_ctx22_x(lex),
-                Jump::J91 => goto91_at1_ctx22_x(lex),
-                Jump::J192 => {
+            match byte {
+                byte if pattern3(byte) => {
                     lex.bump_unchecked(1usize);
-                    goto192_ctx191_x(lex)
+                    goto193_ctx192_x(lex)
                 }
-                Jump::J189 => goto189_at1_ctx22_x(lex),
-                Jump::J92 => goto92_at1_ctx22_x(lex),
-                Jump::J78 => goto78_at1_ctx22_x(lex),
-                Jump::J25 => goto25_at1_ctx22_x(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(1usize);
-                    goto24_ctx22_x(lex)
-                }
-                Jump::J203 => {
-                    lex.bump_unchecked(1usize);
-                    goto203_ctx22_x(lex)
-                }
-                Jump::J26 => goto26_at1_ctx22_x(lex),
-                Jump::__ => goto22_ctx22_x(lex),
+                _ => goto7_ctx193_x(lex),
             }
         }
         #[inline]
-        fn goto26_at1<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(1usize) {
+        fn goto208_ctx193_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read::<&[u8; 5usize]>() {
+                Some(b"odule") => {
+                    lex.bump_unchecked(5usize);
+                    goto209_ctx193_x(lex)
+                }
+                _ => goto193_ctx192_x(lex),
+            }
+        }
+        #[inline]
+        fn goto26_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([176u8..=185u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto88_at2<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match byte {
+                byte if pattern1(byte) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto27_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
                 Some([128u8..=137u8]) => {
-                    lex.bump_unchecked(2usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto49_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([144u8..=153u8]) => {
                     lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto30_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([166u8..=175u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto53_at1<'s>(lex: &mut Lexer<'s>) {
+        fn goto92_at1<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J49,
-                J24,
-                J30,
+                J26,
+                J25,
+                J88,
+                J27,
+                J50,
             }
             const LUT: [Jump; 256] = {
                 use Jump::*;
@@ -854,9 +813,78 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, J25, __, __, __, __, __, __,
+                    __, __, __, __, J50, J27, __, __, J88, __, J50, __, __, __, __, __, J26, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, J30, __, J30, __, J30, __, J30, __, J30, __, J30, __, J30,
-                    __, J30, __, J30, __, J30, __, J49, __, J49, J24, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(1usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J26 => goto26_at2(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(2usize);
+                    goto25_x(lex)
+                }
+                Jump::J88 => goto88_at2(lex),
+                Jump::J27 => goto27_at2(lex),
+                Jump::J50 => goto50_at2(lex),
+                Jump::__ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto71_at2<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match byte {
+                byte if pattern2(byte) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto64_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(2usize) {
+                Some([134u8..=143u8]) => {
+                    lex.bump_unchecked(3usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto79_at1<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J26,
+                J71,
+                J25,
+                J64,
+                J27,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J27, J50, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    J25, J50, __, __, __, __, J64, __, J50, __, __, J71, __, __, J50, J26, __, __,
+                    J71, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
@@ -867,100 +895,94 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 None => return _error(lex),
             };
             match LUT[byte as usize] {
-                Jump::J49 => goto49_at2(lex),
-                Jump::J24 => {
+                Jump::J26 => goto26_at2(lex),
+                Jump::J71 => goto71_at2(lex),
+                Jump::J25 => {
                     lex.bump_unchecked(2usize);
-                    goto24_x(lex)
+                    goto25_x(lex)
                 }
-                Jump::J30 => goto30_at2(lex),
+                Jump::J64 => goto64_at2(lex),
+                Jump::J27 => goto27_at2(lex),
+                Jump::J50 => goto50_at2(lex),
                 Jump::__ => _error(lex),
             }
         }
         #[inline]
-        fn goto3_ctx3_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Whitespace));
-        }
-        #[inline]
-        fn pattern4(byte: u8) -> bool {
-            match byte {
-                9u8 | 32u8 => true,
-                _ => false,
-            }
-        }
-        #[inline]
-        fn goto4_ctx3_x<'s>(lex: &mut Lexer<'s>) {
-            _fast_loop!(lex, pattern4, goto3_ctx3_x(lex));
-        }
-        #[inline]
-        fn goto196_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Plus));
-        }
-        #[inline]
-        fn goto7_ctx192_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::KeywordFennec));
-        }
-        #[inline]
-        fn goto210_ctx192_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read::<u8>() {
-                Some(byte) => byte,
-                None => return goto7_ctx192_x(lex),
-            };
-            match byte {
-                byte if pattern3(byte) => {
-                    lex.bump_unchecked(1usize);
-                    goto192_ctx191_x(lex)
-                }
-                _ => goto7_ctx192_x(lex),
-            }
-        }
-        #[inline]
-        fn goto209_ctx192_x<'s>(lex: &mut Lexer<'s>) {
-            match lex.read::<&[u8; 5usize]>() {
-                Some(b"ennec") => {
-                    lex.bump_unchecked(5usize);
-                    goto210_ctx192_x(lex)
-                }
-                _ => goto192_ctx191_x(lex),
-            }
-        }
-        #[inline]
-        fn goto195_ctx195_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Dash));
-        }
-        #[inline]
-        fn goto211_ctx195_x<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read::<u8>() {
-                Some(byte) => byte,
-                None => return goto195_ctx195_x(lex),
-            };
-            match byte {
-                byte if pattern3(byte) => {
-                    lex.bump_unchecked(1usize);
-                    goto192_ctx191_x(lex)
-                }
-                _ => goto195_ctx195_x(lex),
-            }
-        }
-        #[inline]
-        fn goto194_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Dot));
-        }
-        #[inline]
-        fn goto25_at3<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([176u8..=185u8]) => {
+        fn goto91_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(2usize) {
+                Some([175u8, 176u8..=185u8]) => {
                     lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto49_at3<'s>(lex: &mut Lexer<'s>) {
+        fn goto27_at3<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(3usize) {
+                Some([128u8..=137u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto50_at3<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(3usize) {
                 Some([144u8..=153u8]) => {
                     lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto172_at2<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J25,
+                J27,
+                J50,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J25, __, J27, __, J50, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                ]
+            };
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J25 => {
+                    lex.bump_unchecked(3usize);
+                    goto25_x(lex)
+                }
+                Jump::J27 => goto27_at3(lex),
+                Jump::J50 => goto50_at3(lex),
+                Jump::__ => _error(lex),
+            }
+        }
+        #[inline]
+        fn goto175_at2<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(2usize) {
+                Some([159u8, 142u8..=191u8]) => {
+                    lex.bump_unchecked(4usize);
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
@@ -968,19 +990,19 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
         #[inline]
         fn goto26_at3<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(3usize) {
-                Some([128u8..=137u8]) => {
+                Some([176u8..=185u8]) => {
                     lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto187_at2<'s>(lex: &mut Lexer<'s>) {
+        fn goto188_at2<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J25,
-                J49,
+                J50,
+                J27,
                 J26,
             }
             const LUT: [Jump; 256] = {
@@ -992,9 +1014,9 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, J26, __, __, __, __, __,
-                    J25, __, __, __, __, __, __, __, J25, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, J49, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, J27, __, __, __, __, __,
+                    J26, __, __, __, __, __, __, __, J26, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, J50, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
@@ -1006,61 +1028,56 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 None => return _error(lex),
             };
             match LUT[byte as usize] {
-                Jump::J25 => goto25_at3(lex),
-                Jump::J49 => goto49_at3(lex),
+                Jump::J50 => goto50_at3(lex),
+                Jump::J27 => goto27_at3(lex),
                 Jump::J26 => goto26_at3(lex),
                 Jump::__ => _error(lex),
             }
         }
         #[inline]
-        fn goto90_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(2usize) {
-                Some([175u8, 176u8..=185u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+        fn goto99_at2<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read_at::<u8>(2usize) {
+                Some(byte) => byte,
+                None => return _error(lex),
+            };
+            match byte {
+                146u8 => {
+                    lex.bump_unchecked(3usize);
+                    goto25_x(lex)
                 }
+                180u8 => goto26_at3(lex),
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto174_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 2usize]>(2usize) {
-                Some([159u8, 142u8..=191u8]) => {
-                    lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto110_at3<'s>(lex: &mut Lexer<'s>) {
+        fn goto111_at3<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(3usize) {
                 Some([182u8..=191u8]) => {
                     lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto30_at3<'s>(lex: &mut Lexer<'s>) {
+        fn goto31_at3<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(3usize) {
                 Some([166u8..=175u8]) => {
                     lex.bump_unchecked(4usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto161_at2<'s>(lex: &mut Lexer<'s>) {
+        fn goto162_at2<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J24,
-                J110,
+                J50,
+                J111,
+                J31,
                 J25,
-                J30,
-                J49,
+                J27,
                 J26,
             }
             const LUT: [Jump; 256] = {
@@ -1072,10 +1089,10 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J30, __, J25, J110, __, __, J49, __, __,
-                    __, J25, __, __, __, __, __, J49, __, J49, __, __, __, __, __, J49, __, J26,
-                    J25, __, __, __, __, __, __, J24, __, J49, __, __, __, __, __, __, __, __, __,
-                    __, __, J49, __, __, __, J49, J24, __, __, __, __, __, __, J49, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J31, __, J26, J111, __, __, J50, __, __,
+                    __, J26, __, __, __, __, __, J50, __, J50, __, __, __, __, __, J50, __, J27,
+                    J26, __, __, __, __, __, __, J25, __, J50, __, __, __, __, __, __, __, __, __,
+                    __, __, J50, __, __, __, J50, J25, __, __, __, __, __, __, J50, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
@@ -1087,25 +1104,28 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 None => return _error(lex),
             };
             match LUT[byte as usize] {
-                Jump::J24 => {
+                Jump::J50 => goto50_at3(lex),
+                Jump::J111 => goto111_at3(lex),
+                Jump::J31 => goto31_at3(lex),
+                Jump::J25 => {
                     lex.bump_unchecked(3usize);
-                    goto24_x(lex)
+                    goto25_x(lex)
                 }
-                Jump::J110 => goto110_at3(lex),
-                Jump::J25 => goto25_at3(lex),
-                Jump::J30 => goto30_at3(lex),
-                Jump::J49 => goto49_at3(lex),
+                Jump::J27 => goto27_at3(lex),
                 Jump::J26 => goto26_at3(lex),
                 Jump::__ => _error(lex),
             }
         }
         #[inline]
-        fn goto171_at2<'s>(lex: &mut Lexer<'s>) {
+        fn goto190_at1<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J49,
-                J24,
-                J26,
+                J91,
+                J172,
+                J175,
+                J188,
+                J99,
+                J162,
             }
             const LUT: [Jump; 256] = {
                 use Jump::*;
@@ -1117,66 +1137,8 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J24, __, J26, __, J49, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return _error(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J49 => goto49_at3(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(3usize);
-                    goto24_x(lex)
-                }
-                Jump::J26 => goto26_at3(lex),
-                Jump::__ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto98_at2<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return _error(lex),
-            };
-            match byte {
-                180u8 => goto25_at3(lex),
-                146u8 => {
-                    lex.bump_unchecked(3usize);
-                    goto24_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto189_at1<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J187,
-                J90,
-                J174,
-                J161,
-                J171,
-                J98,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, J98, J161, __, __, __, __, J171, __, __, __, __, __, __, J174,
-                    J187, J90, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, J99, J162, __, __, __, __, J172, __, __, __, __, __, __, J175,
+                    J188, J91, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
@@ -1188,120 +1150,116 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 None => return _error(lex),
             };
             match LUT[byte as usize] {
-                Jump::J187 => goto187_at2(lex),
-                Jump::J90 => goto90_at2(lex),
-                Jump::J174 => goto174_at2(lex),
-                Jump::J161 => goto161_at2(lex),
-                Jump::J171 => goto171_at2(lex),
-                Jump::J98 => goto98_at2(lex),
+                Jump::J91 => goto91_at2(lex),
+                Jump::J172 => goto172_at2(lex),
+                Jump::J175 => goto175_at2(lex),
+                Jump::J188 => goto188_at2(lex),
+                Jump::J99 => goto99_at2(lex),
+                Jump::J162 => goto162_at2(lex),
                 Jump::__ => _error(lex),
             }
         }
         #[inline]
-        fn goto2_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Newline));
+        fn goto20_ctx20_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Comment));
         }
         #[inline]
-        fn goto204_at1<'s>(lex: &mut Lexer<'s>) {
+        fn pattern4(byte: u8) -> bool {
+            COMPACT_TABLE_0[byte as usize] & 2 > 0
+        }
+        #[inline]
+        fn goto21_ctx20_x<'s>(lex: &mut Lexer<'s>) {
+            _fast_loop!(lex, pattern4, goto20_ctx20_x(lex));
+        }
+        #[inline]
+        fn goto203_at1<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(1usize) {
-                Some(&[10u8]) => {
+                Some(b"/") => {
                     lex.bump_unchecked(2usize);
-                    goto2_x(lex)
+                    goto21_ctx20_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto6_ctx192_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::KeywordModule));
+        fn goto26_at1<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 1usize]>(1usize) {
+                Some([176u8..=185u8]) => {
+                    lex.bump_unchecked(2usize);
+                    goto24_ctx23_x(lex)
+                }
+                _ => _error(lex),
+            }
         }
         #[inline]
-        fn goto207_ctx192_x<'s>(lex: &mut Lexer<'s>) {
+        fn goto196_ctx196_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Dash));
+        }
+        #[inline]
+        fn goto213_ctx196_x<'s>(lex: &mut Lexer<'s>) {
             let byte = match lex.read::<u8>() {
                 Some(byte) => byte,
-                None => return goto6_ctx192_x(lex),
+                None => return goto196_ctx196_x(lex),
             };
             match byte {
                 byte if pattern3(byte) => {
                     lex.bump_unchecked(1usize);
-                    goto192_ctx191_x(lex)
+                    goto193_ctx192_x(lex)
                 }
-                _ => goto6_ctx192_x(lex),
+                _ => goto196_ctx196_x(lex),
             }
         }
         #[inline]
-        fn goto206_ctx192_x<'s>(lex: &mut Lexer<'s>) {
+        fn goto8_ctx193_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::KeywordFennec));
+        }
+        #[inline]
+        fn goto212_ctx193_x<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read::<u8>() {
+                Some(byte) => byte,
+                None => return goto8_ctx193_x(lex),
+            };
+            match byte {
+                byte if pattern3(byte) => {
+                    lex.bump_unchecked(1usize);
+                    goto193_ctx192_x(lex)
+                }
+                _ => goto8_ctx193_x(lex),
+            }
+        }
+        #[inline]
+        fn goto211_ctx193_x<'s>(lex: &mut Lexer<'s>) {
             match lex.read::<&[u8; 5usize]>() {
-                Some(b"odule") => {
+                Some(b"ennec") => {
                     lex.bump_unchecked(5usize);
-                    goto207_ctx192_x(lex)
+                    goto212_ctx193_x(lex)
                 }
-                _ => goto192_ctx191_x(lex),
+                _ => goto193_ctx192_x(lex),
             }
         }
         #[inline]
-        fn goto25_at1<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(1usize) {
-                Some([176u8..=185u8]) => {
-                    lex.bump_unchecked(2usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto63_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([134u8..=143u8]) => {
+        fn goto93_at1<'s>(lex: &mut Lexer<'s>) {
+            match lex.read_at::<&[u8; 2usize]>(1usize) {
+                Some([188u8, 144u8..=153u8]) => {
                     lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto70_at2<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return _error(lex),
-            };
-            match byte {
-                byte if pattern1(byte) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto25_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([176u8..=185u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto26_at2<'s>(lex: &mut Lexer<'s>) {
-            match lex.read_at::<&[u8; 1usize]>(2usize) {
-                Some([128u8..=137u8]) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
-                }
-                _ => _error(lex),
-            }
-        }
-        #[inline]
-        fn goto78_at1<'s>(lex: &mut Lexer<'s>) {
+        fn goto204_ctx23_x<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J63,
-                J70,
-                J49,
-                J24,
+                J54,
+                J193,
+                J93,
+                J204,
+                J79,
+                J92,
                 J25,
+                J190,
+                J27,
                 J26,
             }
             const LUT: [Jump; 256] = {
@@ -1309,159 +1267,206 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 [
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, J193, __, __, J204, J204, J204, J204, J204, J204, J204,
+                    J204, J204, J204, __, __, __, __, __, __, __, J193, J193, J193, J193, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, __, __, __, __, __, __, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, J26, J49, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    J24, J49, __, __, __, __, J63, __, J49, __, __, J70, __, __, J49, J25, __, __,
-                    J70, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, J25, __, J26, __, __, __, J27,
+                    J54, J79, __, __, __, __, __, __, __, __, J92, __, __, __, __, J93, J190, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                 ]
             };
-            let byte = match lex.read_at::<u8>(1usize) {
+            let byte = match lex.read::<u8>() {
                 Some(byte) => byte,
-                None => return _error(lex),
+                None => return goto23_ctx23_x(lex),
             };
             match LUT[byte as usize] {
-                Jump::J63 => goto63_at2(lex),
-                Jump::J70 => goto70_at2(lex),
-                Jump::J49 => goto49_at2(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(2usize);
-                    goto24_x(lex)
+                Jump::J54 => goto54_at1_ctx23_x(lex),
+                Jump::J193 => {
+                    lex.bump_unchecked(1usize);
+                    goto193_ctx192_x(lex)
                 }
-                Jump::J25 => goto25_at2(lex),
-                Jump::J26 => goto26_at2(lex),
-                Jump::__ => _error(lex),
+                Jump::J93 => goto93_at1_ctx23_x(lex),
+                Jump::J204 => {
+                    lex.bump_unchecked(1usize);
+                    goto204_ctx23_x(lex)
+                }
+                Jump::J79 => goto79_at1_ctx23_x(lex),
+                Jump::J92 => goto92_at1_ctx23_x(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(1usize);
+                    goto25_ctx23_x(lex)
+                }
+                Jump::J190 => goto190_at1_ctx23_x(lex),
+                Jump::J27 => goto27_at1_ctx23_x(lex),
+                Jump::J26 => goto26_at1_ctx23_x(lex),
+                Jump::__ => goto23_ctx23_x(lex),
             }
         }
         #[inline]
-        fn goto87_at2<'s>(lex: &mut Lexer<'s>) {
-            let byte = match lex.read_at::<u8>(2usize) {
-                Some(byte) => byte,
-                None => return _error(lex),
-            };
-            match byte {
-                byte if pattern2(byte) => {
-                    lex.bump_unchecked(3usize);
-                    goto23_ctx22_x(lex)
+        fn goto3_ctx3_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::ErrorSingleCarriageReturn));
+        }
+        #[inline]
+        fn goto2_ctx3_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::Newline));
+        }
+        #[inline]
+        fn goto206_ctx3_x<'s>(lex: &mut Lexer<'s>) {
+            match lex.read::<&[u8; 1usize]>() {
+                Some(&[10u8]) => {
+                    lex.bump_unchecked(1usize);
+                    goto2_ctx3_x(lex)
                 }
-                _ => _error(lex),
+                _ => goto3_ctx3_x(lex),
             }
         }
         #[inline]
-        fn goto91_at1<'s>(lex: &mut Lexer<'s>) {
-            enum Jump {
-                __,
-                J87,
-                J49,
-                J24,
-                J25,
-                J26,
-            }
-            const LUT: [Jump; 256] = {
-                use Jump::*;
-                [
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, J24, __, __, __, __, __, __,
-                    __, __, __, __, J49, J26, __, __, J87, __, J49, __, __, __, __, __, J25, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                ]
-            };
-            let byte = match lex.read_at::<u8>(1usize) {
-                Some(byte) => byte,
-                None => return _error(lex),
-            };
-            match LUT[byte as usize] {
-                Jump::J87 => goto87_at2(lex),
-                Jump::J49 => goto49_at2(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(2usize);
-                    goto24_x(lex)
-                }
-                Jump::J25 => goto25_at2(lex),
-                Jump::J26 => goto26_at2(lex),
-                Jump::__ => _error(lex),
-            }
+        fn goto17_ctx17_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::ErrorStringUnterminated));
         }
         #[inline]
-        fn goto19_ctx19_x<'s>(lex: &mut Lexer<'s>) {
-            lex.set(Ok(LogosToken::Comment));
+        fn goto9_ctx17_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::String));
         }
         #[inline]
         fn pattern5(byte: u8) -> bool {
             COMPACT_TABLE_0[byte as usize] & 4 > 0
         }
         #[inline]
-        fn goto20_ctx19_x<'s>(lex: &mut Lexer<'s>) {
-            _fast_loop!(lex, pattern5, goto19_ctx19_x(lex));
+        fn goto13_ctx17_x<'s>(lex: &mut Lexer<'s>) {
+            lex.set(Ok(LogosToken::ErrorStringWithBackslashes));
         }
         #[inline]
-        fn goto202_at1<'s>(lex: &mut Lexer<'s>) {
+        fn goto201_ctx17_x<'s>(lex: &mut Lexer<'s>) {
+            let byte = match lex.read::<u8>() {
+                Some(byte) => byte,
+                None => return goto17_ctx17_x(lex),
+            };
+            match byte {
+                byte if pattern5(byte) => {
+                    lex.bump_unchecked(1usize);
+                    goto201_ctx17_x(lex)
+                }
+                b'"' => {
+                    lex.bump_unchecked(1usize);
+                    goto13_ctx17_x(lex)
+                }
+                _ => goto17_ctx17_x(lex),
+            }
+        }
+        #[inline]
+        fn goto200_ctx17_x<'s>(lex: &mut Lexer<'s>) {
+            enum Jump {
+                __,
+                J9,
+                J200,
+                J201,
+            }
+            const LUT: [Jump; 256] = {
+                use Jump::*;
+                [
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, __, J200, J200, __,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J9, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J201, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200, J200,
+                    J200, J200, J200, J200, J200, J200, J200, J200,
+                ]
+            };
+            let byte = match lex.read::<u8>() {
+                Some(byte) => byte,
+                None => return goto17_ctx17_x(lex),
+            };
+            match LUT[byte as usize] {
+                Jump::J9 => {
+                    lex.bump_unchecked(1usize);
+                    goto9_ctx17_x(lex)
+                }
+                Jump::J200 => {
+                    lex.bump_unchecked(1usize);
+                    goto200_ctx17_x(lex)
+                }
+                Jump::J201 => {
+                    lex.bump_unchecked(1usize);
+                    goto201_ctx17_x(lex)
+                }
+                Jump::__ => goto17_ctx17_x(lex),
+            }
+        }
+        #[inline]
+        fn goto27_at1<'s>(lex: &mut Lexer<'s>) {
             match lex.read_at::<&[u8; 1usize]>(1usize) {
-                Some(b"/") => {
+                Some([128u8..=137u8]) => {
                     lex.bump_unchecked(2usize);
-                    goto20_ctx19_x(lex)
+                    goto24_ctx23_x(lex)
                 }
                 _ => _error(lex),
             }
         }
         #[inline]
-        fn goto212<'s>(lex: &mut Lexer<'s>) {
+        fn goto214<'s>(lex: &mut Lexer<'s>) {
             enum Jump {
                 __,
-                J199,
+                J5,
+                J197,
+                J54,
                 J1,
+                J193,
+                J195,
+                J208,
                 J92,
-                J24,
+                J79,
+                J190,
                 J203,
                 J26,
-                J53,
-                J4,
-                J196,
-                J209,
-                J192,
+                J213,
                 J211,
-                J194,
-                J189,
+                J93,
                 J204,
                 J206,
                 J25,
-                J78,
-                J91,
-                J202,
+                J200,
+                J27,
             }
             const LUT: [Jump; 256] = {
                 use Jump::*;
                 [
-                    __, __, __, __, __, __, __, __, __, J4, J1, __, __, J204, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, J4, __, J199, __, __, __,
-                    __, __, __, __, __, J196, __, J211, J194, J202, J203, J203, J203, J203, J203,
-                    J203, J203, J203, J203, J203, __, __, __, __, __, __, __, J192, J192, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192,
-                    J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, __, __, __, __, __,
-                    __, J192, J192, J192, J192, J192, J209, J192, J192, J192, J192, J192, J192,
-                    J206, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192, J192,
-                    J192, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, J5, J1, __, __, J206, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, J5, __, J200, __, __, __,
+                    __, __, __, __, __, J197, __, J213, J195, J203, J204, J204, J204, J204, J204,
+                    J204, J204, J204, J204, J204, __, __, __, __, __, __, __, J193, J193, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193,
+                    J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, __, __, __, __, __,
+                    __, J193, J193, J193, J193, J193, J211, J193, J193, J193, J193, J193, J193,
+                    J208, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193, J193,
+                    J193, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
-                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, J24, __, J25,
-                    __, __, __, J26, J53, J78, __, __, __, __, __, __, __, __, J91, __, __, __, __,
-                    J92, J189, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
+                    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, J25, __, J26,
+                    __, __, __, J27, J54, J79, __, __, __, __, __, __, __, __, J92, __, __, __, __,
+                    J93, J190, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __,
                 ]
             };
             let byte = match lex.read::<u8>() {
@@ -1469,62 +1474,65 @@ impl<'s> ::logos::Logos<'s> for LogosToken {
                 None => return _end(lex),
             };
             match LUT[byte as usize] {
-                Jump::J199 => {
+                Jump::J5 => {
                     lex.bump_unchecked(1usize);
-                    goto199_ctx16_x(lex)
+                    goto5_ctx4_x(lex)
                 }
+                Jump::J197 => {
+                    lex.bump_unchecked(1usize);
+                    goto197_x(lex)
+                }
+                Jump::J54 => goto54_at1(lex),
                 Jump::J1 => {
                     lex.bump_unchecked(1usize);
                     goto1_x(lex)
                 }
+                Jump::J193 => {
+                    lex.bump_unchecked(1usize);
+                    goto193_ctx192_x(lex)
+                }
+                Jump::J195 => {
+                    lex.bump_unchecked(1usize);
+                    goto195_x(lex)
+                }
+                Jump::J208 => {
+                    lex.bump_unchecked(1usize);
+                    goto208_ctx193_x(lex)
+                }
                 Jump::J92 => goto92_at1(lex),
-                Jump::J24 => {
-                    lex.bump_unchecked(1usize);
-                    goto24_x(lex)
-                }
-                Jump::J203 => {
-                    lex.bump_unchecked(1usize);
-                    goto203_ctx22_x(lex)
-                }
+                Jump::J79 => goto79_at1(lex),
+                Jump::J190 => goto190_at1(lex),
+                Jump::J203 => goto203_at1(lex),
                 Jump::J26 => goto26_at1(lex),
-                Jump::J53 => goto53_at1(lex),
-                Jump::J4 => {
+                Jump::J213 => {
                     lex.bump_unchecked(1usize);
-                    goto4_ctx3_x(lex)
-                }
-                Jump::J196 => {
-                    lex.bump_unchecked(1usize);
-                    goto196_x(lex)
-                }
-                Jump::J209 => {
-                    lex.bump_unchecked(1usize);
-                    goto209_ctx192_x(lex)
-                }
-                Jump::J192 => {
-                    lex.bump_unchecked(1usize);
-                    goto192_ctx191_x(lex)
+                    goto213_ctx196_x(lex)
                 }
                 Jump::J211 => {
                     lex.bump_unchecked(1usize);
-                    goto211_ctx195_x(lex)
+                    goto211_ctx193_x(lex)
                 }
-                Jump::J194 => {
+                Jump::J93 => goto93_at1(lex),
+                Jump::J204 => {
                     lex.bump_unchecked(1usize);
-                    goto194_x(lex)
+                    goto204_ctx23_x(lex)
                 }
-                Jump::J189 => goto189_at1(lex),
-                Jump::J204 => goto204_at1(lex),
                 Jump::J206 => {
                     lex.bump_unchecked(1usize);
-                    goto206_ctx192_x(lex)
+                    goto206_ctx3_x(lex)
                 }
-                Jump::J25 => goto25_at1(lex),
-                Jump::J78 => goto78_at1(lex),
-                Jump::J91 => goto91_at1(lex),
-                Jump::J202 => goto202_at1(lex),
+                Jump::J25 => {
+                    lex.bump_unchecked(1usize);
+                    goto25_x(lex)
+                }
+                Jump::J200 => {
+                    lex.bump_unchecked(1usize);
+                    goto200_ctx17_x(lex)
+                }
+                Jump::J27 => goto27_at1(lex),
                 Jump::__ => _error(lex),
             }
         }
-        goto212(lex)
+        goto214(lex)
     }
 }
