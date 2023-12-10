@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use fennec_common::types::{TextRange, TextSize};
 use std::cell::Cell;
 
 use crate::lexer::{lex, Token, TokenKind};
@@ -31,6 +32,7 @@ pub(crate) fn parse(input: &str) -> Tree {
 #[derive(Debug)]
 pub(crate) struct Tree {
     kind: TreeKind,
+    loc: TextRange,
     children: Vec<Node>,
 }
 
@@ -44,13 +46,14 @@ enum Node {
 struct Parser {
     tokens: Vec<Token>,
     token_pos: usize,
+    pos: TextSize,
     fuel: Cell<u32>,
     events: Vec<Event>,
 }
 
 #[derive(PartialEq, Eq, Debug)]
 enum Event {
-    Open { kind: TreeKind },
+    Open { kind: TreeKind, loc: TextRange },
     Close,
     Advance(usize),
     Error(String),
@@ -68,6 +71,7 @@ impl Parser {
         Parser {
             tokens,
             token_pos: 0,
+            pos: 0.into(),
             fuel: Cell::new(FUEL_RESET),
             events: Vec::with_capacity(tok_len * 2),
         }
@@ -79,15 +83,17 @@ impl Parser {
         let mut tokens = self.tokens.into_iter();
         let mut stack = vec![Tree {
             kind: N::Unknown,
+            loc: TextRange::empty(0.into()),
             children: Vec::new(),
         }];
 
         for event in self.events {
             match event {
-                Event::Open { kind } => {
+                Event::Open { kind, loc } => {
                     assert_ne!(kind, N::Unknown);
                     stack.push(Tree {
                         kind,
+                        loc,
                         children: Vec::new(),
                     });
                 }
@@ -121,29 +127,43 @@ impl Parser {
 
     fn open(&mut self) -> usize {
         let open_ix = self.events.len();
-        self.events.push(Event::Open { kind: N::Unknown });
+        self.events.push(Event::Open {
+            kind: N::Unknown,
+            loc: TextRange::empty(self.pos),
+        });
         open_ix
     }
 
-    fn close(&mut self, open_ix: usize, kind: TreeKind) {
-        assert_eq!(self.events[open_ix], Event::Open { kind: N::Unknown });
-        self.events[open_ix] = Event::Open { kind };
-        self.events.push(Event::Close);
+    fn close(&mut self, open_ix: usize, close_kind: TreeKind) {
+        if let Event::Open { kind, loc } = &mut self.events[open_ix] {
+            assert_eq!(*kind, N::Unknown);
+            *kind = close_kind;
+            *loc = TextRange::new(loc.start(), self.pos);
+            self.events.push(Event::Close);
+        } else {
+            panic!("mismatching close event");
+        }
     }
 
     fn advance(&mut self) {
         assert!(!self.eof());
         self.fuel.set(FUEL_RESET);
         let mut trivia = 0;
+        // Skip trivia.
         while !self.eof() && self.tokens[self.token_pos].kind.is_trivia() {
             trivia += 1;
+            self.pos += self.tokens[self.token_pos].len;
             self.token_pos += 1;
         }
-        // Avoid advancing past the end of tokens.
-        let adv = usize::from(!self.eof());
-        assert!(trivia + adv > 0);
-        self.events.push(Event::Advance(trivia + adv));
-        self.token_pos += adv;
+        if self.eof() {
+            // Avoid advancing past the end.
+            self.events.push(Event::Advance(trivia));
+        } else {
+            // Do the advance.
+            self.pos += self.tokens[self.token_pos].len;
+            self.token_pos += 1;
+            self.events.push(Event::Advance(trivia + 1));
+        }
     }
 
     fn eof(&self) -> bool {
@@ -245,10 +265,11 @@ fn empty(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use fennec_common::types::TextSize;
+    use fennec_common::types::{TextSize, TextRange};
 
     struct Tree {
         kind: super::TreeKind,
+        loc: TextRange,
         children: Vec<Node>,
     }
 
@@ -261,8 +282,9 @@ mod tests {
     impl std::fmt::Debug for Tree {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let kind = &self.kind;
+            let loc = &self.loc;
             let children = &self.children;
-            write!(f, "{kind:?}: {children:#?}")
+            write!(f, "{kind:?}[{loc:?}]: {children:#?}")
         }
     }
 
@@ -279,6 +301,7 @@ mod tests {
     fn to_tree_impl(tree: super::Tree, input: &str, pos: &mut TextSize) -> Tree {
         Tree {
             kind: tree.kind,
+            loc: tree.loc,
             children: tree
                 .children
                 .into_iter()
