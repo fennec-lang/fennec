@@ -1,0 +1,81 @@
+---
+source: crates/fennec-module/src/parser.rs
+expression: "parse(\"fennec \\\"hello\\nmodule\")"
+---
+Tree {
+    kind: TreeManifest,
+    children: [
+        Tree(
+            Tree {
+                kind: TreeFennec,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokKwFennec,
+                            len: 6,
+                        },
+                    ),
+                    Error(
+                        "expected semantic version",
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeError,
+                children: [
+                    Error(
+                        "expected \"module\" keyword, \"fennec\" keyword or newline",
+                    ),
+                    Token(
+                        Token {
+                            kind: TokWhitespace,
+                            len: 1,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokError(
+                                StringUnterminated,
+                            ),
+                            len: 6,
+                        },
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeEmpty,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokNewline,
+                            len: 1,
+                        },
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeModule,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokKwModule,
+                            len: 6,
+                        },
+                    ),
+                    Error(
+                        "expected string",
+                    ),
+                    Error(
+                        "expected newline",
+                    ),
+                ],
+            },
+        ),
+    ],
+}

@@ -256,4 +256,24 @@ mod tests {
     fn parse_empty() {
         insta::assert_debug_snapshot!(parse(""));
     }
+
+    #[test]
+    fn parse_trivial_err() {
+        insta::assert_debug_snapshot!(parse("?"));
+    }
+
+    #[test]
+    fn parse_unterminated() {
+        insta::assert_debug_snapshot!(parse("fennec \"hello\nmodule"));
+    }
+
+    #[test]
+    fn parse_normal() {
+        insta::assert_debug_snapshot!(parse(
+            r#"
+module "examples/hello"  // comment
+fennec 0.1.0
+"#
+        ));
+    }
 }

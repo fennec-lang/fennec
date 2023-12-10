@@ -1,0 +1,103 @@
+---
+source: crates/fennec-module/src/parser.rs
+expression: "parse(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#)"
+---
+Tree {
+    kind: TreeManifest,
+    children: [
+        Tree(
+            Tree {
+                kind: TreeEmpty,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokNewline,
+                            len: 1,
+                        },
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeModule,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokKwModule,
+                            len: 6,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokWhitespace,
+                            len: 1,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokString,
+                            len: 16,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokWhitespace,
+                            len: 2,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokComment,
+                            len: 10,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokNewline,
+                            len: 1,
+                        },
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeFennec,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokKwFennec,
+                            len: 6,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokWhitespace,
+                            len: 1,
+                        },
+                    ),
+                    Token(
+                        Token {
+                            kind: TokVersion,
+                            len: 5,
+                        },
+                    ),
+                ],
+            },
+        ),
+        Tree(
+            Tree {
+                kind: TreeEmpty,
+                children: [
+                    Token(
+                        Token {
+                            kind: TokNewline,
+                            len: 1,
+                        },
+                    ),
+                ],
+            },
+        ),
+    ],
+}
