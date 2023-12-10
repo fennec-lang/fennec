@@ -97,6 +97,10 @@ fn lex_codegen(input: &str) -> anyhow::Result<String> {
         .map_err(|err: proc_macro2::LexError| anyhow::Error::msg(err.to_string()))
         .context("failed to parse input as rust code")?;
     let mut output = String::new();
+    writeln!(
+        output,
+        "// Generated code; run `cargo x gen-lex` to re-generate."
+    )?;
     writeln!(output, "#![allow(unused_imports)]")?;
     writeln!(output, "#![allow(clippy::all)]")?;
     writeln!(output, "#![allow(clippy::pedantic)]")?;

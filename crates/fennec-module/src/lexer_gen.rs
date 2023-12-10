@@ -1,3 +1,4 @@
+// Generated code; run `cargo x gen-lex` to re-generate.
 #![allow(unused_imports)]
 #![allow(clippy::all)]
 #![allow(clippy::pedantic)]
