@@ -2,8 +2,8 @@
 source: crates/fennec-module/src/parser.rs
 expression: "parse(\"?\")"
 ---
-TreeManifest: [
-    TreeError: [
+Manifest: [
+    Error: [
         "expected \"module\" keyword, \"fennec\" keyword or newline",
         ERR(OTHER) "?",
     ],

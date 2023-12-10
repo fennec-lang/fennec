@@ -2,20 +2,20 @@
 source: crates/fennec-module/src/parser.rs
 expression: "parse(\"fennec \\\"hello\\nmodule\")"
 ---
-TreeManifest: [
-    TreeFennec: [
+Manifest: [
+    Fennec: [
         KW_FENNEC "fennec",
         "expected semantic version",
     ],
-    TreeError: [
+    Error: [
         "expected \"module\" keyword, \"fennec\" keyword or newline",
         WS " ",
         ERR(STR_TERM) "\"hello",
     ],
-    TreeEmpty: [
+    Empty: [
         LF "\n",
     ],
-    TreeModule: [
+    Module: [
         KW_MODULE "module",
         "expected string",
         "expected newline",

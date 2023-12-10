@@ -8,22 +8,18 @@ use std::cell::Cell;
 
 use crate::lexer::{lex, Token, TokenKind};
 
-#[allow(clippy::enum_variant_names)]
 #[derive(PartialEq, Eq, Debug)]
 enum TreeKind {
-    TreeUnknown,
-    TreeError,
-    TreeManifest,
-    TreeEmpty,
-    TreeModule,
-    TreeFennec,
+    Unknown,
+    Error,
+    Manifest,
+    Empty,
+    Module,
+    Fennec,
 }
 
-#[allow(clippy::enum_glob_use)]
-use TokenKind::*;
-
-#[allow(clippy::enum_glob_use)]
-use TreeKind::*;
+use TokenKind as T;
+use TreeKind as N;
 
 pub(crate) fn parse(input: &str) -> Tree {
     let tokens = lex(input);
@@ -82,14 +78,14 @@ impl Parser {
 
         let mut tokens = self.tokens.into_iter();
         let mut stack = vec![Tree {
-            kind: TreeUnknown,
+            kind: N::Unknown,
             children: Vec::new(),
         }];
 
         for event in self.events {
             match event {
                 Event::Open { kind } => {
-                    assert_ne!(kind, TreeUnknown);
+                    assert_ne!(kind, N::Unknown);
                     stack.push(Tree {
                         kind,
                         children: Vec::new(),
@@ -125,12 +121,12 @@ impl Parser {
 
     fn open(&mut self) -> usize {
         let open_ix = self.events.len();
-        self.events.push(Event::Open { kind: TreeUnknown });
+        self.events.push(Event::Open { kind: N::Unknown });
         open_ix
     }
 
     fn close(&mut self, open_ix: usize, kind: TreeKind) {
-        assert_eq!(self.events[open_ix], Event::Open { kind: TreeUnknown });
+        assert_eq!(self.events[open_ix], Event::Open { kind: N::Unknown });
         self.events[open_ix] = Event::Open { kind };
         self.events.push(Event::Close);
     }
@@ -194,58 +190,57 @@ impl Parser {
         let ix = self.open();
         self.error(err);
         self.advance();
-        self.close(ix, TreeError);
+        self.close(ix, N::Error);
     }
 }
 
 fn manifest(p: &mut Parser) {
     let ix = p.open();
 
+    use T::{KwFennec, KwModule, Newline};
     while !p.eof() {
-        if p.at(TokKwModule) {
+        if p.at(KwModule) {
             module(p);
-        } else if p.at(TokKwFennec) {
+        } else if p.at(KwFennec) {
             fennec(p);
-        } else if p.at(TokNewline) {
+        } else if p.at(Newline) {
             empty(p);
         } else {
-            p.advance_with_error(format!(
-                "expected {TokKwModule}, {TokKwFennec} or {TokNewline}"
-            ));
+            p.advance_with_error(format!("expected {KwModule}, {KwFennec} or {Newline}"));
         }
     }
 
-    p.close(ix, TreeManifest);
+    p.close(ix, N::Manifest);
 }
 
 fn module(p: &mut Parser) {
-    assert!(p.at(TokKwModule));
+    assert!(p.at(T::KwModule));
     let ix = p.open();
 
-    p.expect(TokKwModule);
-    p.expect(TokString);
-    p.expect(TokNewline);
+    p.expect(T::KwModule);
+    p.expect(T::String);
+    p.expect(T::Newline);
 
-    p.close(ix, TreeModule);
+    p.close(ix, N::Module);
 }
 
 fn fennec(p: &mut Parser) {
-    assert!(p.at(TokKwFennec));
+    assert!(p.at(T::KwFennec));
     let ix = p.open();
 
-    p.expect(TokKwFennec);
-    p.expect(TokVersion);
+    p.expect(T::KwFennec);
+    p.expect(T::Version);
 
-    p.close(ix, TreeFennec);
+    p.close(ix, N::Fennec);
 }
 
 fn empty(p: &mut Parser) {
-    assert!(p.at(TokNewline));
+    assert!(p.at(T::Newline));
     let ix = p.open();
 
-    while p.eat(TokNewline) {}
+    while p.eat(T::Newline) {}
 
-    p.close(ix, TreeEmpty);
+    p.close(ix, N::Empty);
 }
 
 #[cfg(test)]

@@ -2,11 +2,11 @@
 source: crates/fennec-module/src/parser.rs
 expression: "parse(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#)"
 ---
-TreeManifest: [
-    TreeEmpty: [
+Manifest: [
+    Empty: [
         LF "\n",
     ],
-    TreeModule: [
+    Module: [
         KW_MODULE "module",
         WS " ",
         STR "\"examples/hello\"",
@@ -14,12 +14,12 @@ TreeManifest: [
         COMMENT "// comment",
         LF "\n",
     ],
-    TreeFennec: [
+    Fennec: [
         KW_FENNEC "fennec",
         WS " ",
         VER "0.1.0",
     ],
-    TreeEmpty: [
+    Empty: [
         LF "\n",
     ],
 ]

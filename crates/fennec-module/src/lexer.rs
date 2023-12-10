@@ -18,23 +18,22 @@ pub(crate) enum TokenErrorKind {
     Other,
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TokenKind {
-    TokNewline,
-    TokWhitespace,
-    TokKwModule,
-    TokKwFennec,
-    TokString,
-    TokComment,
-    TokVersion,
-    TokError(TokenErrorKind),
-    TokEof,
+    Newline,
+    Whitespace,
+    KwModule,
+    KwFennec,
+    String,
+    Comment,
+    Version,
+    Error(TokenErrorKind),
+    Eof,
 }
 
 impl TokenKind {
     pub fn is_trivia(self) -> bool {
-        self == TokenKind::TokWhitespace || self == TokenKind::TokComment
+        self == TokenKind::Whitespace || self == TokenKind::Comment
     }
 }
 
@@ -42,21 +41,21 @@ impl std::fmt::Debug for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TokenKind::*;
         let s = match *self {
-            TokNewline => "LF",
-            TokWhitespace => "WS",
-            TokKwModule => "KW_MODULE",
-            TokKwFennec => "KW_FENNEC",
-            TokString => "STR",
-            TokComment => "COMMENT",
-            TokVersion => "VER",
-            TokError(err) => match err {
+            Newline => "LF",
+            Whitespace => "WS",
+            KwModule => "KW_MODULE",
+            KwFennec => "KW_FENNEC",
+            String => "STR",
+            Comment => "COMMENT",
+            Version => "VER",
+            Error(err) => match err {
                 TokenErrorKind::Identifier => "ERR(IDENT)",
                 TokenErrorKind::SingleCarriageReturn => "ERR(CR)",
                 TokenErrorKind::StringWithBackslashes => "ERR(STR_ESC)",
                 TokenErrorKind::StringUnterminated => "ERR(STR_TERM)",
                 TokenErrorKind::Other => "ERR(OTHER)",
             },
-            TokEof => "EOF",
+            Eof => "EOF",
         };
         write!(f, "{s}")
     }
@@ -66,21 +65,21 @@ impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TokenKind::*;
         let s = match *self {
-            TokNewline => "newline",
-            TokWhitespace => "space or tab",
-            TokKwModule => "\"module\" keyword",
-            TokKwFennec => "\"fennec\" keyword",
-            TokString => "string",
-            TokComment => "comment",
-            TokVersion => "semantic version",
-            TokError(err) => match err {
+            Newline => "newline",
+            Whitespace => "space or tab",
+            KwModule => "\"module\" keyword",
+            KwFennec => "\"fennec\" keyword",
+            String => "string",
+            Comment => "comment",
+            Version => "semantic version",
+            Error(err) => match err {
                 TokenErrorKind::Identifier => "identifier",
                 TokenErrorKind::SingleCarriageReturn => "carriage return (\\r)",
                 TokenErrorKind::StringWithBackslashes => "string literal (with backslashes)",
                 TokenErrorKind::StringUnterminated => "string literal (unterminated)",
                 TokenErrorKind::Other => "error",
             },
-            TokEof => "eof",
+            Eof => "eof",
         };
         write!(f, "{s}")
     }
@@ -95,7 +94,7 @@ pub(crate) struct Token {
 impl Token {
     pub fn eof() -> Token {
         Token {
-            kind: TokenKind::TokEof,
+            kind: TokenKind::Eof,
             len: 0.into(),
         }
     }
@@ -104,25 +103,21 @@ impl Token {
 const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain; it does not matter that much
 
 fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
+    use LogosToken as LT;
+    use TokenKind as T;
     let kind = match token {
-        Ok(LogosToken::Newline) => TokenKind::TokNewline,
-        Ok(LogosToken::ErrorSingleCarriageReturn) => {
-            TokenKind::TokError(TokenErrorKind::SingleCarriageReturn)
-        }
-        Ok(LogosToken::Whitespace) => TokenKind::TokWhitespace,
-        Ok(LogosToken::KeywordModule) => TokenKind::TokKwModule,
-        Ok(LogosToken::KeywordFennec) => TokenKind::TokKwFennec,
-        Ok(LogosToken::String) => TokenKind::TokString,
-        Ok(LogosToken::ErrorStringWithBackslashes) => {
-            TokenKind::TokError(TokenErrorKind::StringWithBackslashes)
-        }
-        Ok(LogosToken::ErrorStringUnterminated) => {
-            TokenKind::TokError(TokenErrorKind::StringUnterminated)
-        }
-        Ok(LogosToken::Comment) => TokenKind::TokComment,
-        Ok(LogosToken::ErrorIdentifier) => TokenKind::TokError(TokenErrorKind::Identifier),
-        Ok(LogosToken::Version) => TokenKind::TokVersion,
-        Err(()) => TokenKind::TokError(TokenErrorKind::Other),
+        Ok(LT::Newline) => T::Newline,
+        Ok(LT::ErrorSingleCarriageReturn) => T::Error(TokenErrorKind::SingleCarriageReturn),
+        Ok(LT::Whitespace) => T::Whitespace,
+        Ok(LT::KeywordModule) => T::KwModule,
+        Ok(LT::KeywordFennec) => T::KwFennec,
+        Ok(LT::String) => T::String,
+        Ok(LT::ErrorStringWithBackslashes) => T::Error(TokenErrorKind::StringWithBackslashes),
+        Ok(LT::ErrorStringUnterminated) => T::Error(TokenErrorKind::StringUnterminated),
+        Ok(LT::Comment) => T::Comment,
+        Ok(LT::ErrorIdentifier) => T::Error(TokenErrorKind::Identifier),
+        Ok(LT::Version) => T::Version,
+        Err(()) => T::Error(TokenErrorKind::Other),
     };
     let len: TextSize = slice
         .len()
