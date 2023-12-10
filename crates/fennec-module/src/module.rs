@@ -4,21 +4,38 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::Context as _;
-use fennec_common::{types, PROJECT_NAME, RELEASE_VERSION};
+use anyhow::anyhow;
+use fennec_common::{types, PROJECT_NAME, RELEASE_VERSION, RELEASE_VERSION_STR};
 
-#[derive(serde::Deserialize)]
-struct ManifestData {
-    module: String,
-}
+use crate::{analysis, parser};
 
-pub fn extract(content: &str) -> Result<types::ImportPath, anyhow::Error> {
-    let manifest: ManifestData =
-        toml::from_str(content).context("failed to parse manifest TOML")?;
-    let module_str = &manifest.module;
-    let module = types::ImportPath::parse(module_str).with_context(|| {
-        format!(r#"failed to parse manifest module import path "{module_str}""#)
-    })?;
+pub fn extract(input: &str) -> Result<types::ImportPath, anyhow::Error> {
+    let tree = parser::parse(input);
+    let (module, version, errors) = analysis::visit(input, tree);
+    if !errors.is_empty() {
+        return Err(anyhow!("{errors:?}"));
+    }
+    let Some(module) = module else {
+        return Err(anyhow!("missing module import path"));
+    };
+    let Some(version) = version else {
+        return Err(anyhow!("missing {PROJECT_NAME} version requirement"));
+    };
+    let version_req = semver::VersionReq {
+        comparators: vec![semver::Comparator {
+            op: semver::Op::Caret,
+            major: version.major,
+            minor: Some(version.minor),
+            patch: Some(version.patch),
+            pre: version.pre.clone(),
+        }],
+    };
+    if !version_req.matches(&RELEASE_VERSION) {
+        let release: &semver::Version = &RELEASE_VERSION;
+        return Err(anyhow!(
+            "required {PROJECT_NAME} version {version} does not match {release}"
+        ));
+    }
     Ok(module)
 }
 
@@ -28,7 +45,7 @@ pub fn write_with_current_version(
 ) -> Result<(), anyhow::Error> {
     write!(
         w,
-        "{PROJECT_NAME} = \"{RELEASE_VERSION}\"\nmodule = \"{path}\"\n"
+        "module \"{path}\"\n{PROJECT_NAME} {RELEASE_VERSION_STR}\n"
     )?;
     Ok(())
 }

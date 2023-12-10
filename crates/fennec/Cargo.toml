@@ -35,6 +35,6 @@ xshell.workspace = true
 
 [package.metadata.release]
 pre-release-replacements = [
-    { file = "build.rs", search = 'const RELEASE_VERSION: &str = ".*"', replace = 'const RELEASE_VERSION: &str = "{{version}}"' },
+    { file = "build.rs", search = 'const RELEASE_VERSION_STR: &str = ".*"', replace = 'const RELEASE_VERSION_STR: &str = "{{version}}"' },
     { file = "../../ide/vscode-fennec/package.json", search = '"version": ".*",', replace = '"version": "{{version}}",' },
 ]

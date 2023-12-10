@@ -10,7 +10,7 @@ use std::cell::Cell;
 use crate::lexer::{lex, Token, TokenKind};
 
 #[derive(PartialEq, Eq, Debug)]
-enum TreeKind {
+pub(crate) enum TreeKind {
     Unknown,
     Error,
     Manifest,
@@ -31,13 +31,13 @@ pub(crate) fn parse(input: &str) -> Tree {
 
 #[derive(Debug)]
 pub(crate) struct Tree {
-    kind: TreeKind,
-    loc: TextRange,
-    children: Vec<Node>,
+    pub(crate) kind: TreeKind,
+    pub(crate) loc: TextRange,
+    pub(crate) children: Vec<Node>,
 }
 
 #[derive(Debug)]
-enum Node {
+pub(crate) enum Node {
     Token(Token),
     Error(String),
     Tree(Tree),
@@ -61,7 +61,7 @@ enum Event {
 
 const FUEL_RESET: u32 = 64;
 
-fn top(stack: &mut Vec<Tree>) -> &mut Tree {
+fn top(stack: &mut [Tree]) -> &mut Tree {
     stack.last_mut().expect("stack must be non-empty")
 }
 
@@ -215,9 +215,9 @@ impl Parser {
 }
 
 fn manifest(p: &mut Parser) {
+    use T::{KwFennec, KwModule, Newline};
     let ix = p.open();
 
-    use T::{KwFennec, KwModule, Newline};
     while !p.eof() {
         if p.at(KwModule) {
             module(p);
@@ -265,7 +265,7 @@ fn empty(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use fennec_common::types::{TextSize, TextRange};
+    use fennec_common::types::{TextRange, TextSize};
 
     struct Tree {
         kind: super::TreeKind,
@@ -313,10 +313,9 @@ mod tests {
     fn to_node_impl(node: super::Node, input: &str, pos: &mut TextSize) -> Node {
         match node {
             super::Node::Token(tok) => {
-                let from: usize = (*pos).into();
-                let to: usize = (*pos + tok.len).into();
+                let loc = TextRange::at(*pos, tok.len);
                 *pos += tok.len;
-                Node::Token(tok.kind, input[from..to].to_owned())
+                Node::Token(tok.kind, input[loc].to_owned())
             }
             super::Node::Tree(tree) => Node::Tree(to_tree_impl(tree, input, pos)),
             super::Node::Error(err) => Node::Error(err),

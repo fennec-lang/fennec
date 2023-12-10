@@ -15,8 +15,7 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 logos.workspace = true
-serde = { workspace = true, features = ["serde_derive"] }
-toml.workspace = true
+semver.workspace = true
 
 fennec-common.workspace = true
 

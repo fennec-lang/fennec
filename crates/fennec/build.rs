@@ -8,7 +8,7 @@ use time::format_description::well_known::Rfc2822;
 use time::OffsetDateTime;
 use xshell::{cmd, Shell};
 
-const RELEASE_VERSION: &str = "0.1.8";
+const RELEASE_VERSION_STR: &str = "0.1.8";
 
 fn main() -> anyhow::Result<()> {
     let sh = Shell::new()?;
@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         .output()?;
     let git_describe = String::from_utf8(git_describe.stdout)?;
     let git_describe = if git_describe.is_empty() {
-        format!("v{RELEASE_VERSION}")
+        format!("v{RELEASE_VERSION_STR}")
     } else {
         git_describe
     };
