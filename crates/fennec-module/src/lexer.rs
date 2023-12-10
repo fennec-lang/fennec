@@ -33,7 +33,10 @@ pub(crate) enum TokenKind {
 
 impl TokenKind {
     pub fn is_trivia(self) -> bool {
-        self == TokenKind::Whitespace || self == TokenKind::Comment
+        matches!(
+            self,
+            TokenKind::Whitespace | TokenKind::Comment | TokenKind::Error(_)
+        )
     }
 }
 

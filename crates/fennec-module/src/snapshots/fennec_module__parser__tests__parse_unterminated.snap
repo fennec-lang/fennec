@@ -7,12 +7,9 @@ Manifest[0..20]: [
         KW_FENNEC "fennec",
         "expected semantic version",
     ],
-    Error[6..13]: [
-        "expected \"module\" keyword, \"fennec\" keyword or newline",
+    Empty[6..14]: [
         WS " ",
         ERR(STR_TERM) "\"hello",
-    ],
-    Empty[13..14]: [
         LF "\n",
     ],
     Module[14..20]: [
