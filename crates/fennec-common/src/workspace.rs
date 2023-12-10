@@ -8,6 +8,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::types;
 
+// TODO: remove from here?
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct File {
     pub source: PathBuf,
@@ -15,6 +16,7 @@ pub struct File {
     pub detached: bool, // invalid file name
 }
 
+// TODO: remove from here?
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Package {
     pub source: PathBuf,
@@ -22,6 +24,7 @@ pub struct Package {
     pub files: Vec<File>,
 }
 
+// TODO: remove from here?
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Module {
     pub source: PathBuf,

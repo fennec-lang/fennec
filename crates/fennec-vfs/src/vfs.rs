@@ -6,11 +6,7 @@
 
 use anyhow::anyhow;
 use debug_ignore::DebugIgnore;
-use fennec_common::{
-    types, util,
-    workspace::{self, FileUpdate},
-    MODULE_MANIFEST_FILENAME,
-};
+use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
 use std::{
     cmp::Ordering,
     io::Read,
@@ -650,29 +646,21 @@ impl Vfs {
                     prev_package_dir_iter.next();
                 }
                 (Some(&(dir, detached)), None) => {
-                    let files = dir
-                        .source_files
-                        .iter()
-                        .filter(|f| !f.deleted && !f.is_manifest())
-                        .map(|f| workspace::File {
-                            source: f.path.clone(),
-                            content: f
-                                .content
-                                .as_ref()
-                                .expect("content must be set on all files in a package directory")
-                                .clone(),
-                            detached: f.detached(),
-                        });
+                    let files =
+                        dir.source_files
+                            .iter()
+                            .filter(|f| !f.deleted && !f.is_manifest())
+                            .map(|f| workspace::FileUpdate {
+                                source: f.path.clone(),
+                                content: Some(f.content.clone().expect(
+                                    "content must be set on all files in a package directory",
+                                )),
+                                detached: f.detached(),
+                            });
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
                         path: Self::pkg_import_path(detached, mod_path, mod_dir, &dir.path),
-                        files: files
-                            .map(|f| FileUpdate {
-                                source: f.source,
-                                content: Some(f.content),
-                                detached: f.detached,
-                            })
-                            .collect(), // may be empty
+                        files: files.collect(), // may be empty
                         update: workspace::UpdateKind::Added,
                     });
                     package_dir_iter.next();
