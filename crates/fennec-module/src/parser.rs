@@ -140,6 +140,36 @@ impl Parser {
     }
 }
 
-fn manifest(_p: &mut Parser) {
-    todo!()
+#[allow(clippy::enum_glob_use)]
+use TokenKind::*;
+
+#[allow(clippy::enum_glob_use)]
+use TreeKind::*;
+
+fn manifest(p: &mut Parser) {
+    let ix = p.open();
+
+    while !p.eof() {
+        if p.at(KwModule) {
+            module(p);
+        } else if p.at(KwFennec) {
+            fennec_version(p);
+        } else {
+            p.advance_with_error(format!("expected {KwModule} or {KwFennec}"));
+        }
+    }
+
+    p.close(ix, Manifest);
+}
+
+fn module(p: &mut Parser) {
+    assert!(p.at(KwModule));
+
+    todo!();
+}
+
+fn fennec_version(p: &mut Parser) {
+    assert!(p.at(KwFennec));
+
+    todo!();
 }

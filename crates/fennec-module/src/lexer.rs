@@ -22,9 +22,9 @@ pub(crate) enum TokenKind {
     Whitespace,
     KwModule,
     KwFennec,
-    String,
+    LitString,
     Comment,
-    Number,
+    LitNumber,
     Ident,
     Dot,
     Dash,
@@ -40,9 +40,9 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Whitespace => "space or tab",
             TokenKind::KwModule => "\"module\" keyword",
             TokenKind::KwFennec => "\"fennec\" keyword",
-            TokenKind::String => "string",
+            TokenKind::LitString => "string",
             TokenKind::Comment => "comment",
-            TokenKind::Number => "number",
+            TokenKind::LitNumber => "number",
             TokenKind::Ident => "identifier",
             TokenKind::Dot => ".",
             TokenKind::Dash => "-",
@@ -76,7 +76,7 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
         Ok(LogosToken::Whitespace) => TokenKind::Whitespace,
         Ok(LogosToken::KeywordModule) => TokenKind::KwModule,
         Ok(LogosToken::KeywordFennec) => TokenKind::KwFennec,
-        Ok(LogosToken::String) => TokenKind::String,
+        Ok(LogosToken::String) => TokenKind::LitString,
         Ok(LogosToken::ErrorStringWithBackslashes) => {
             TokenKind::Error(TokenErrorKind::StringWithBackslashes)
         }
@@ -84,7 +84,7 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
             TokenKind::Error(TokenErrorKind::StringUnterminated)
         }
         Ok(LogosToken::Comment) => TokenKind::Comment,
-        Ok(LogosToken::Number) => TokenKind::Number,
+        Ok(LogosToken::Number) => TokenKind::LitNumber,
         Ok(LogosToken::Ident) => TokenKind::Ident,
         Ok(LogosToken::Dot) => TokenKind::Dot,
         Ok(LogosToken::Dash) => TokenKind::Dash,
