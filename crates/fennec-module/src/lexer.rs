@@ -4,6 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use fennec_common::types::TextSize;
 use logos::Logos as _;
 
 use crate::lexer_gen::LogosToken;
@@ -88,14 +89,14 @@ impl std::fmt::Display for TokenKind {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) struct Token {
     pub kind: TokenKind,
-    pub len: u32,
+    pub len: TextSize,
 }
 
 impl Token {
     pub fn eof() -> Token {
         Token {
             kind: TokenKind::TokEof,
-            len: 0,
+            len: 0.into(),
         }
     }
 }
@@ -123,7 +124,7 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
         Ok(LogosToken::Version) => TokenKind::TokVersion,
         Err(()) => TokenKind::TokError(TokenErrorKind::Other),
     };
-    let len: u32 = slice
+    let len: TextSize = slice
         .len()
         .try_into()
         .expect("token length must fit into 32 bits");
@@ -152,7 +153,7 @@ mod tests {
             let mut exploded = Vec::with_capacity(self.tokens.len());
             let mut n = 0;
             for tok in &self.tokens {
-                let len = tok.len as usize;
+                let len: usize = tok.len.into();
                 exploded.push(((&self.input[n..n + len]).to_owned(), tok.kind));
                 n += len;
             }

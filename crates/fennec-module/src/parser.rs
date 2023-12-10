@@ -250,6 +250,8 @@ fn empty(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
+    use fennec_common::types::TextSize;
+
     struct Tree {
         kind: super::TreeKind,
         children: Vec<Node>,
@@ -279,7 +281,7 @@ mod tests {
         }
     }
 
-    fn to_tree_impl(tree: super::Tree, input: &str, pos: &mut usize) -> Tree {
+    fn to_tree_impl(tree: super::Tree, input: &str, pos: &mut TextSize) -> Tree {
         Tree {
             kind: tree.kind,
             children: tree
@@ -290,12 +292,12 @@ mod tests {
         }
     }
 
-    fn to_node_impl(node: super::Node, input: &str, pos: &mut usize) -> Node {
+    fn to_node_impl(node: super::Node, input: &str, pos: &mut TextSize) -> Node {
         match node {
             super::Node::Token(tok) => {
-                let from = *pos;
-                let to = from + (tok.len as usize);
-                *pos = to;
+                let from: usize = (*pos).into();
+                let to: usize = (*pos + tok.len).into();
+                *pos += tok.len;
                 Node::Token(tok.kind, input[from..to].to_owned())
             }
             super::Node::Tree(tree) => Node::Tree(to_tree_impl(tree, input, pos)),
@@ -305,7 +307,7 @@ mod tests {
 
     fn parse(input: &str) -> Tree {
         let tree = super::parse(input);
-        let mut pos = 0;
+        let mut pos = TextSize::new(0);
         to_tree_impl(tree, input, &mut pos)
     }
 

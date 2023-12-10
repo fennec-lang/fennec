@@ -62,6 +62,7 @@ serde_json = "1"
 similar-asserts = "1.5"
 slotmap = "1"
 tempfile = "3"
+text-size = "1.1"
 time = { version = "0.3.30", default-features = false }
 toml = "0.8.8"
 walkdir = "2"

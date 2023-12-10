@@ -10,6 +10,8 @@ pub type HashSet<K> = std::collections::HashSet<K, ahash::RandomState>;
 pub use crate::import_path::*;
 pub use crate::sync_state::*;
 
+pub use text_size::{TextRange, TextSize};
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct FennecVersion {
     pub major: u64,
