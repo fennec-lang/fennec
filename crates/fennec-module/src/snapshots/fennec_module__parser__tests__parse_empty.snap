@@ -1,0 +1,8 @@
+---
+source: crates/fennec-module/src/parser.rs
+expression: "parse(\"\")"
+---
+Tree {
+    kind: TreeManifest,
+    children: [],
+}

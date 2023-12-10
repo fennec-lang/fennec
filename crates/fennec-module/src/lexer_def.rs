@@ -34,18 +34,8 @@ pub(crate) enum LogosToken {
     #[regex(r"//[^\r\n]*")]
     Comment,
 
-    #[regex(r"\d+", priority = 2)] // clashes with Ident
-    Number,
-
-    #[regex(r"[0-9A-Za-z-]+")]
-    Ident,
-
-    #[token(".")]
-    Dot,
-
-    #[token("-")]
-    Dash,
-
-    #[token("+")]
-    Plus,
+    // Exact regex, can be found at https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string.
+    // We recognize a superset, for more resilient parsing.
+    #[regex(r"\d+(\.\d+)?(\.\d+)?(-([0-9a-zA-Z-]+)(\.([0-9a-zA-Z-]+))*)?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?")]
+    Version,
 }

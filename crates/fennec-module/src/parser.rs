@@ -8,7 +8,23 @@ use std::cell::Cell;
 
 use crate::lexer::{lex, Token, TokenKind};
 
-// Parser design heavily based on https://matklad.github.io/2023/05/21/resilient-ll-parsing-tutorial.html.
+#[allow(clippy::enum_variant_names)]
+#[derive(PartialEq, Eq, Debug)]
+enum TreeKind {
+    TreeUnknown,
+    TreeError,
+    TreeManifest,
+    TreeEmpty,
+    TreeModule,
+    TreeFennec,
+}
+
+#[allow(clippy::enum_glob_use)]
+use TokenKind::*;
+
+#[allow(clippy::enum_glob_use)]
+use TreeKind::*;
+
 pub(crate) fn parse(input: &str) -> Tree {
     let tokens = lex(input);
     let mut p = Parser::new(tokens);
@@ -16,20 +32,16 @@ pub(crate) fn parse(input: &str) -> Tree {
     p.build_tree()
 }
 
+#[derive(Debug)]
 pub(crate) struct Tree {
     kind: TreeKind,
     children: Vec<Node>,
 }
 
-#[derive(PartialEq, Eq, Debug)]
-enum TreeKind {
-    Unknown,
-    Error,
-    Manifest,
-}
-
+#[derive(Debug)]
 enum Node {
     Token(Token),
+    Error(String),
     Tree(Tree),
 }
 
@@ -44,11 +56,15 @@ struct Parser {
 enum Event {
     Open { kind: TreeKind },
     Close,
-    Advance,
+    Advance(usize),
     Error(String),
 }
 
 const FUEL_RESET: u32 = 64;
+
+fn top(stack: &mut Vec<Tree>) -> &mut Tree {
+    stack.last_mut().expect("stack must be non-empty")
+}
 
 impl Parser {
     fn new(tokens: Vec<Token>) -> Parser {
@@ -62,24 +78,59 @@ impl Parser {
     }
 
     fn build_tree(self) -> Tree {
-        todo!()
+        assert!(self.eof());
+
+        let mut tokens = self.tokens.into_iter();
+        let mut stack = vec![Tree {
+            kind: TreeUnknown,
+            children: Vec::new(),
+        }];
+
+        for event in self.events {
+            match event {
+                Event::Open { kind } => {
+                    assert_ne!(kind, TreeUnknown);
+                    stack.push(Tree {
+                        kind,
+                        children: Vec::new(),
+                    });
+                }
+                Event::Close => {
+                    let tree = stack.pop().expect("stack must be non-empty");
+                    top(&mut stack).children.push(Node::Tree(tree));
+                }
+                Event::Advance(n) => {
+                    let children = &mut top(&mut stack).children;
+                    for _ in 0..n {
+                        let tok = tokens.next().expect("token to advance over must exist");
+                        children.push(Node::Token(tok));
+                    }
+                }
+                Event::Error(err) => {
+                    top(&mut stack).children.push(Node::Error(err));
+                }
+            }
+        }
+
+        assert!(tokens.next().is_none());
+        assert_eq!(stack.len(), 1);
+        assert_eq!(stack[0].children.len(), 1);
+
+        if let Node::Tree(tree) = stack[0].children.remove(0) {
+            tree
+        } else {
+            panic!("invalid node at the top of stack");
+        }
     }
 
     fn open(&mut self) -> usize {
         let open_ix = self.events.len();
-        self.events.push(Event::Open {
-            kind: TreeKind::Unknown,
-        });
+        self.events.push(Event::Open { kind: TreeUnknown });
         open_ix
     }
 
     fn close(&mut self, open_ix: usize, kind: TreeKind) {
-        assert_eq!(
-            self.events[open_ix],
-            Event::Open {
-                kind: TreeKind::Unknown
-            }
-        );
+        assert_eq!(self.events[open_ix], Event::Open { kind: TreeUnknown });
         self.events[open_ix] = Event::Open { kind };
         self.events.push(Event::Close);
     }
@@ -87,8 +138,16 @@ impl Parser {
     fn advance(&mut self) {
         assert!(!self.eof());
         self.fuel.set(FUEL_RESET);
-        self.events.push(Event::Advance);
-        self.token_pos += 1;
+        let mut trivia = 0;
+        while !self.eof() && self.tokens[self.token_pos].kind.is_trivia() {
+            trivia += 1;
+            self.token_pos += 1;
+        }
+        // Avoid advancing past the end of tokens.
+        let adv = usize::from(!self.eof());
+        assert!(trivia + adv > 0);
+        self.events.push(Event::Advance(trivia + adv));
+        self.token_pos += adv;
     }
 
     fn eof(&self) -> bool {
@@ -98,13 +157,12 @@ impl Parser {
     fn nth(&self, lookahead: usize) -> Token {
         assert!(self.fuel.get() > 0);
         self.fuel.set(self.fuel.get() - 1);
-        self.tokens
-            .get(self.token_pos + lookahead)
+        self.tokens[self.token_pos..]
+            .iter()
+            .filter(|tok| !tok.kind.is_trivia())
+            .nth(lookahead)
             .cloned()
-            .unwrap_or(Token {
-                kind: TokenKind::Eof,
-                len: 0,
-            })
+            .unwrap_or(Token::eof())
     }
 
     fn at(&self, kind: TokenKind) -> bool {
@@ -136,40 +194,66 @@ impl Parser {
         let ix = self.open();
         self.error(err);
         self.advance();
-        self.close(ix, TreeKind::Error);
+        self.close(ix, TreeError);
     }
 }
-
-#[allow(clippy::enum_glob_use)]
-use TokenKind::*;
-
-#[allow(clippy::enum_glob_use)]
-use TreeKind::*;
 
 fn manifest(p: &mut Parser) {
     let ix = p.open();
 
     while !p.eof() {
-        if p.at(KwModule) {
+        if p.at(TokKwModule) {
             module(p);
-        } else if p.at(KwFennec) {
-            fennec_version(p);
+        } else if p.at(TokKwFennec) {
+            fennec(p);
+        } else if p.at(TokNewline) {
+            empty(p);
         } else {
-            p.advance_with_error(format!("expected {KwModule} or {KwFennec}"));
+            p.advance_with_error(format!(
+                "expected {TokKwModule}, {TokKwFennec} or {TokNewline}"
+            ));
         }
     }
 
-    p.close(ix, Manifest);
+    p.close(ix, TreeManifest);
 }
 
 fn module(p: &mut Parser) {
-    assert!(p.at(KwModule));
+    assert!(p.at(TokKwModule));
+    let ix = p.open();
 
-    todo!();
+    p.expect(TokKwModule);
+    p.expect(TokString);
+    p.expect(TokNewline);
+
+    p.close(ix, TreeModule);
 }
 
-fn fennec_version(p: &mut Parser) {
-    assert!(p.at(KwFennec));
+fn fennec(p: &mut Parser) {
+    assert!(p.at(TokKwFennec));
+    let ix = p.open();
 
-    todo!();
+    p.expect(TokKwFennec);
+    p.expect(TokVersion);
+
+    p.close(ix, TreeFennec);
+}
+
+fn empty(p: &mut Parser) {
+    assert!(p.at(TokNewline));
+    let ix = p.open();
+
+    while p.eat(TokNewline) {}
+
+    p.close(ix, TreeEmpty);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+
+    #[test]
+    fn parse_empty() {
+        insta::assert_debug_snapshot!(parse(""));
+    }
 }
