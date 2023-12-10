@@ -85,24 +85,25 @@ impl<'input> Visitor<'input> {
     }
 
     fn try_parse_module_child(&mut self, node: &Node) {
-        if let Node::Token(Token {
+        let Node::Token(Token {
             kind: TokenKind::String,
             len,
         }) = node
-        {
-            let loc = TextRange::at(self.pos, *len);
-            let module_str = &self.input[loc];
-            let module = Self::parse_module(module_str);
-            match module {
-                Ok(module) => {
-                    self.module = Some(module);
-                }
-                Err(err) => {
-                    self.errors.push(Error::new(
-                        loc,
-                        format!("failed to parse import path {module_str:?}: {err}"),
-                    ));
-                }
+        else {
+            return;
+        };
+        let loc = TextRange::at(self.pos, *len);
+        let module_str = &self.input[loc];
+        let module = Self::parse_module(module_str);
+        match module {
+            Ok(module) => {
+                self.module = Some(module);
+            }
+            Err(err) => {
+                self.errors.push(Error::new(
+                    loc,
+                    format!("failed to parse import path {module_str:?}: {err}"),
+                ));
             }
         }
     }
@@ -116,24 +117,25 @@ impl<'input> Visitor<'input> {
     }
 
     fn try_parse_version_child(&mut self, node: &Node) {
-        if let Node::Token(Token {
+        let Node::Token(Token {
             kind: TokenKind::Version,
             len,
         }) = node
-        {
-            let loc = TextRange::at(self.pos, *len);
-            let version_str = &self.input[loc];
-            let version = Self::parse_version(version_str);
-            match version {
-                Ok(version) => {
-                    self.version = Some(version);
-                }
-                Err(err) => {
-                    self.errors.push(Error::new(
-                        loc,
-                        format!("failed to parse {PROJECT_NAME} version {version_str:?}: {err}"),
-                    ));
-                }
+        else {
+            return;
+        };
+        let loc = TextRange::at(self.pos, *len);
+        let version_str = &self.input[loc];
+        let version = Self::parse_version(version_str);
+        match version {
+            Ok(version) => {
+                self.version = Some(version);
+            }
+            Err(err) => {
+                self.errors.push(Error::new(
+                    loc,
+                    format!("failed to parse {PROJECT_NAME} version {version_str:?}: {err}"),
+                ));
             }
         }
     }

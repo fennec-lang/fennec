@@ -118,11 +118,10 @@ impl Parser {
         assert_eq!(stack.len(), 1);
         assert_eq!(stack[0].children.len(), 1);
 
-        if let Node::Tree(tree) = stack[0].children.remove(0) {
-            tree
-        } else {
+        let Node::Tree(tree) = stack[0].children.remove(0) else {
             panic!("invalid node at the top of stack");
-        }
+        };
+        tree
     }
 
     fn open(&mut self) -> usize {
@@ -135,14 +134,13 @@ impl Parser {
     }
 
     fn close(&mut self, open_ix: usize, close_kind: TreeKind) {
-        if let Event::Open { kind, loc } = &mut self.events[open_ix] {
-            assert_eq!(*kind, N::Unknown);
-            *kind = close_kind;
-            *loc = TextRange::new(loc.start(), self.pos);
-            self.events.push(Event::Close);
-        } else {
+        let Event::Open { kind, loc } = &mut self.events[open_ix] else {
             panic!("mismatching close event");
-        }
+        };
+        assert_eq!(*kind, N::Unknown);
+        *kind = close_kind;
+        *loc = TextRange::new(loc.start(), self.pos);
+        self.events.push(Event::Close);
     }
 
     fn advance(&mut self) {
