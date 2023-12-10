@@ -18,7 +18,7 @@ pub(crate) enum TokenErrorKind {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TokenKind {
     TokNewline,
     TokWhitespace,
@@ -37,24 +37,49 @@ impl TokenKind {
     }
 }
 
+impl std::fmt::Debug for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TokenKind::*;
+        let s = match *self {
+            TokNewline => "LF",
+            TokWhitespace => "WS",
+            TokKwModule => "KW_MODULE",
+            TokKwFennec => "KW_FENNEC",
+            TokString => "STR",
+            TokComment => "COMMENT",
+            TokVersion => "VER",
+            TokError(err) => match err {
+                TokenErrorKind::Identifier => "ERR(IDENT)",
+                TokenErrorKind::SingleCarriageReturn => "ERR(CR)",
+                TokenErrorKind::StringWithBackslashes => "ERR(STR_ESC)",
+                TokenErrorKind::StringUnterminated => "ERR(STR_TERM)",
+                TokenErrorKind::Other => "ERR(OTHER)",
+            },
+            TokEof => "EOF",
+        };
+        write!(f, "{s}")
+    }
+}
+
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TokenKind::*;
         let s = match *self {
-            TokenKind::TokNewline => "newline",
-            TokenKind::TokWhitespace => "space or tab",
-            TokenKind::TokKwModule => "\"module\" keyword",
-            TokenKind::TokKwFennec => "\"fennec\" keyword",
-            TokenKind::TokString => "string",
-            TokenKind::TokComment => "comment",
-            TokenKind::TokVersion => "semantic version",
-            TokenKind::TokError(err) => match err {
+            TokNewline => "newline",
+            TokWhitespace => "space or tab",
+            TokKwModule => "\"module\" keyword",
+            TokKwFennec => "\"fennec\" keyword",
+            TokString => "string",
+            TokComment => "comment",
+            TokVersion => "semantic version",
+            TokError(err) => match err {
                 TokenErrorKind::Identifier => "identifier",
                 TokenErrorKind::SingleCarriageReturn => "carriage return (\\r)",
                 TokenErrorKind::StringWithBackslashes => "string literal (with backslashes)",
                 TokenErrorKind::StringUnterminated => "string literal (unterminated)",
                 TokenErrorKind::Other => "error",
             },
-            TokenKind::TokEof => "eof",
+            TokEof => "eof",
         };
         write!(f, "{s}")
     }

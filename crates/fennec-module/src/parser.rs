@@ -250,7 +250,64 @@ fn empty(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
+    struct Tree {
+        kind: super::TreeKind,
+        children: Vec<Node>,
+    }
+
+    enum Node {
+        Token(super::TokenKind, String),
+        Error(String),
+        Tree(Tree),
+    }
+
+    impl std::fmt::Debug for Tree {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let kind = &self.kind;
+            let children = &self.children;
+            write!(f, "{kind:?}: {children:#?}")
+        }
+    }
+
+    impl std::fmt::Debug for Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Node::Token(kind, s) => write!(f, "{kind:?} {s:?}"),
+                Node::Tree(tree) => tree.fmt(f),
+                Node::Error(err) => err.fmt(f),
+            }
+        }
+    }
+
+    fn to_tree_impl(tree: super::Tree, input: &str, pos: &mut usize) -> Tree {
+        Tree {
+            kind: tree.kind,
+            children: tree
+                .children
+                .into_iter()
+                .map(|n| to_node_impl(n, input, pos))
+                .collect(),
+        }
+    }
+
+    fn to_node_impl(node: super::Node, input: &str, pos: &mut usize) -> Node {
+        match node {
+            super::Node::Token(tok) => {
+                let from = *pos;
+                let to = from + (tok.len as usize);
+                *pos = to;
+                Node::Token(tok.kind, input[from..to].to_owned())
+            }
+            super::Node::Tree(tree) => Node::Tree(to_tree_impl(tree, input, pos)),
+            super::Node::Error(err) => Node::Error(err),
+        }
+    }
+
+    fn parse(input: &str) -> Tree {
+        let tree = super::parse(input);
+        let mut pos = 0;
+        to_tree_impl(tree, input, &mut pos)
+    }
 
     #[test]
     fn parse_empty() {

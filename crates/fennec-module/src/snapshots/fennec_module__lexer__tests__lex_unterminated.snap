@@ -5,24 +5,22 @@ expression: "lex(\"fennec \\\"hello\\nmodule\")"
 [
     (
         "fennec",
-        TokKwFennec,
+        KW_FENNEC,
     ),
     (
         " ",
-        TokWhitespace,
+        WS,
     ),
     (
         "\"hello",
-        TokError(
-            StringUnterminated,
-        ),
+        ERR(STR_TERM),
     ),
     (
         "\n",
-        TokNewline,
+        LF,
     ),
     (
         "module",
-        TokKwModule,
+        KW_MODULE,
     ),
 ]

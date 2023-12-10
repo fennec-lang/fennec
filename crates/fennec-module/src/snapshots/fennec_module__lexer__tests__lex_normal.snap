@@ -5,46 +5,46 @@ expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#)
 [
     (
         "\n",
-        TokNewline,
+        LF,
     ),
     (
         "module",
-        TokKwModule,
+        KW_MODULE,
     ),
     (
         " ",
-        TokWhitespace,
+        WS,
     ),
     (
         "\"examples/hello\"",
-        TokString,
+        STR,
     ),
     (
         "  ",
-        TokWhitespace,
+        WS,
     ),
     (
         "// comment",
-        TokComment,
+        COMMENT,
     ),
     (
         "\n",
-        TokNewline,
+        LF,
     ),
     (
         "fennec",
-        TokKwFennec,
+        KW_FENNEC,
     ),
     (
         " ",
-        TokWhitespace,
+        WS,
     ),
     (
         "0.1.0",
-        TokVersion,
+        VER,
     ),
     (
         "\n",
-        TokNewline,
+        LF,
     ),
 ]
