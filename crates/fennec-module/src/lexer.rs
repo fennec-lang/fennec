@@ -10,6 +10,7 @@ use crate::lexer_gen::LogosToken;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum TokenErrorKind {
+    Identifier,
     SingleCarriageReturn,
     StringWithBackslashes,
     StringUnterminated,
@@ -47,6 +48,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::TokComment => "comment",
             TokenKind::TokVersion => "semantic version",
             TokenKind::TokError(err) => match err {
+                TokenErrorKind::Identifier => "identifier",
                 TokenErrorKind::SingleCarriageReturn => "carriage return (\\r)",
                 TokenErrorKind::StringWithBackslashes => "string literal (with backslashes)",
                 TokenErrorKind::StringUnterminated => "string literal (unterminated)",
@@ -92,6 +94,7 @@ fn to_token(token: Result<LogosToken, ()>, slice: &str) -> Token {
             TokenKind::TokError(TokenErrorKind::StringUnterminated)
         }
         Ok(LogosToken::Comment) => TokenKind::TokComment,
+        Ok(LogosToken::ErrorIdentifier) => TokenKind::TokError(TokenErrorKind::Identifier),
         Ok(LogosToken::Version) => TokenKind::TokVersion,
         Err(()) => TokenKind::TokError(TokenErrorKind::Other),
     };
