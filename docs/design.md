@@ -351,6 +351,10 @@
   - have a way to write a portable vector version that is guaranteed to be identical to the scalar one
   - have a way to write a non-portable vector version that is guaranteed to be identical to the portable one
   - that's it; all people need is a sufficiently nice to use macro assembler
+- can we have a language pattern that allows to write functions that can be used in 2 modes:
+  - either return a new value (convenient), or
+  - re-use the storage of the previous value (efficient)? so that it is convenient and transparent to the
+    programmer, and is a default way of writing functions? avoid separate `append` class of APIs
 
 ### Ergonomics
 
