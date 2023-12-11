@@ -3,8 +3,5 @@ source: crates/fennec-module/src/lexer.rs
 expression: "lex(\"?\")"
 ---
 [
-    (
-        "?",
-        ERR(OTHER),
-    ),
+    ERR(OTHER) "?",
 ]

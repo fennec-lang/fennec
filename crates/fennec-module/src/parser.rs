@@ -263,21 +263,22 @@ fn empty(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
+    use crate::lexer::SlicedToken;
     use fennec_common::types::{TextRange, TextSize};
 
-    struct Tree {
+    struct Tree<'input> {
         kind: super::TreeKind,
         loc: TextRange,
-        children: Vec<Node>,
+        children: Vec<Node<'input>>,
     }
 
-    enum Node {
-        Token(super::TokenKind, String),
+    enum Node<'input> {
+        Token(SlicedToken<'input>),
         Error(String),
-        Tree(Tree),
+        Tree(Tree<'input>),
     }
 
-    impl std::fmt::Debug for Tree {
+    impl<'input> std::fmt::Debug for Tree<'input> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let kind = &self.kind;
             let loc = &self.loc;
@@ -286,17 +287,21 @@ mod tests {
         }
     }
 
-    impl std::fmt::Debug for Node {
+    impl<'input> std::fmt::Debug for Node<'input> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Node::Token(kind, s) => write!(f, "{kind:?} {s:?}"),
+                Node::Token(tok) => tok.fmt(f),
                 Node::Tree(tree) => tree.fmt(f),
                 Node::Error(err) => err.fmt(f),
             }
         }
     }
 
-    fn to_tree_impl(tree: super::Tree, input: &str, pos: &mut TextSize) -> Tree {
+    fn to_tree_impl<'input>(
+        tree: super::Tree,
+        input: &'input str,
+        pos: &mut TextSize,
+    ) -> Tree<'input> {
         Tree {
             kind: tree.kind,
             loc: tree.loc,
@@ -308,19 +313,23 @@ mod tests {
         }
     }
 
-    fn to_node_impl(node: super::Node, input: &str, pos: &mut TextSize) -> Node {
+    fn to_node_impl<'input>(
+        node: super::Node,
+        input: &'input str,
+        pos: &mut TextSize,
+    ) -> Node<'input> {
         match node {
             super::Node::Token(tok) => {
-                let loc = TextRange::at(*pos, tok.len);
+                let sliced = tok.to_sliced(*pos, input);
                 *pos += tok.len;
-                Node::Token(tok.kind, input[loc].to_owned())
+                Node::Token(sliced)
             }
             super::Node::Tree(tree) => Node::Tree(to_tree_impl(tree, input, pos)),
             super::Node::Error(err) => Node::Error(err),
         }
     }
 
-    fn parse(input: &str) -> Tree {
+    fn parse<'input>(input: &'input str) -> Tree<'input> {
         let tree = super::parse(input);
         let mut pos = TextSize::new(0);
         to_tree_impl(tree, input, &mut pos)

@@ -112,6 +112,8 @@ pub(crate) struct Token {
     pub len: TextSize,
 }
 
+const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain; it does not matter that much
+
 impl Token {
     pub fn eof() -> Token {
         Token {
@@ -119,9 +121,30 @@ impl Token {
             len: 0.into(),
         }
     }
+
+    #[cfg(test)]
+    pub fn to_sliced<'input>(&self, pos: TextSize, input: &'input str) -> SlicedToken<'input> {
+        use fennec_common::types::TextRange;
+        let loc = TextRange::at(pos, self.len);
+        SlicedToken {
+            kind: self.kind,
+            data: &input[loc],
+        }
+    }
 }
 
-const _: () = assert!(core::mem::size_of::<Token>() == 8); // just to be certain; it does not matter that much
+pub(crate) struct SlicedToken<'input> {
+    kind: TokenKind,
+    data: &'input str,
+}
+
+impl<'input> std::fmt::Debug for SlicedToken<'input> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let kind = self.kind;
+        let data = self.data;
+        write!(f, "{kind:?} {data:?}")
+    }
+}
 
 fn to_token(token: Result<LogosToken, ()>, span: Range<usize>) -> Token {
     use LogosToken as LT;
@@ -158,32 +181,17 @@ pub(crate) fn lex(input: &str) -> Vec<Token> {
 
 #[cfg(test)]
 mod tests {
-    use fennec_common::types::{TextRange, TextSize};
+    use fennec_common::types::TextSize;
 
-    struct Tokens {
-        input: String,
-        tokens: Vec<super::Token>,
-    }
-
-    impl std::fmt::Debug for Tokens {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut exploded = Vec::with_capacity(self.tokens.len());
-            let mut start = TextSize::new(0);
-            for tok in &self.tokens {
-                let loc = TextRange::at(start, tok.len);
-                exploded.push(((&self.input[loc]).to_owned(), tok.kind));
-                start += tok.len;
-            }
-            exploded.fmt(f)
-        }
-    }
-
-    fn lex(input: &str) -> Tokens {
+    fn lex<'input>(input: &'input str) -> Vec<super::SlicedToken<'input>> {
         let tokens = super::lex(input);
-        Tokens {
-            input: input.to_owned(),
-            tokens,
+        let mut sliced = Vec::with_capacity(tokens.len());
+        let mut start = TextSize::new(0);
+        for tok in &tokens {
+            sliced.push(tok.to_sliced(start, input));
+            start += tok.len;
         }
+        sliced
     }
 
     #[test]

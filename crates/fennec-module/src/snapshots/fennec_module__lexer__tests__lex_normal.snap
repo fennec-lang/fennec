@@ -3,48 +3,15 @@ source: crates/fennec-module/src/lexer.rs
 expression: "lex(r#\"\nmodule \"examples/hello\"  // comment\nfennec 0.1.0\n\"#)"
 ---
 [
-    (
-        "\n",
-        LF,
-    ),
-    (
-        "module",
-        KW_MODULE,
-    ),
-    (
-        " ",
-        WS,
-    ),
-    (
-        "\"examples/hello\"",
-        STR,
-    ),
-    (
-        "  ",
-        WS,
-    ),
-    (
-        "// comment",
-        COMMENT,
-    ),
-    (
-        "\n",
-        LF,
-    ),
-    (
-        "fennec",
-        KW_FENNEC,
-    ),
-    (
-        " ",
-        WS,
-    ),
-    (
-        "0.1.0",
-        VER,
-    ),
-    (
-        "\n",
-        LF,
-    ),
+    LF "\n",
+    KW_MODULE "module",
+    WS " ",
+    STR "\"examples/hello\"",
+    WS "  ",
+    COMMENT "// comment",
+    LF "\n",
+    KW_FENNEC "fennec",
+    WS " ",
+    VER "0.1.0",
+    LF "\n",
 ]

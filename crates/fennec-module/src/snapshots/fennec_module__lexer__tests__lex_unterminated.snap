@@ -3,24 +3,9 @@ source: crates/fennec-module/src/lexer.rs
 expression: "lex(\"fennec \\\"hello\\nmodule\")"
 ---
 [
-    (
-        "fennec",
-        KW_FENNEC,
-    ),
-    (
-        " ",
-        WS,
-    ),
-    (
-        "\"hello",
-        ERR(STR_TERM),
-    ),
-    (
-        "\n",
-        LF,
-    ),
-    (
-        "module",
-        KW_MODULE,
-    ),
+    KW_FENNEC "fennec",
+    WS " ",
+    ERR(STR_TERM) "\"hello",
+    LF "\n",
+    KW_MODULE "module",
 ]
