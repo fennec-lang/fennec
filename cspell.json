@@ -39,6 +39,7 @@
         "imstr",
         "indexmap",
         "insta",
+        "kani",
         "lalrpop",
         "metaprogramming",
         "mmap",
