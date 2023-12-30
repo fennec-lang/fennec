@@ -355,6 +355,9 @@
   - either return a new value (convenient), or
   - re-use the storage of the previous value (efficient)? so that it is convenient and transparent to the
     programmer, and is a default way of writing functions? avoid separate `append` class of APIs
+- build on top of chunked primitives by default?
+  - make `string`, `vec`  and builtin iteration constructs chunked
+  - or have a fundamental "chunked stuff" type, maybe with virtual dispatch to get next chunk?
 
 ### Ergonomics
 
@@ -382,6 +385,10 @@
 ### Tooling
 
 - built-in documentation generator (can embed runnable code so that people can play with it)
+- auto-render (in the IDE) and export (to HTML) content of e.g. `docs` folder, using `djot`
+  - make the documentation built-in and automatic the same way we do it for testing
+  - of course, the generated documentation must contain code examples that are runnable using WASM
+  - isn't this really close to notebooks, in a sense?
 
 ## Architecture
 
