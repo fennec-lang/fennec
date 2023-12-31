@@ -20,4 +20,9 @@ semver.workspace = true
 fennec-common.workspace = true
 
 [dev-dependencies]
+bolero.workspace = true
 insta.workspace = true
+
+[[test]]
+name = "parser_fuzz"
+harness = false

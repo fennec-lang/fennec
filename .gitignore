@@ -3,3 +3,4 @@
 *.swp
 
 /target/
+/crates/fennec-module/target/
