@@ -5,6 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[logos(subpattern semver_ident = r"[0-9a-zA-Z-]+")]
 pub(crate) enum LogosToken {
     #[token("\n")]
     #[token("\r\n")]
@@ -39,6 +40,6 @@ pub(crate) enum LogosToken {
 
     // Exact regex, can be found at https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string.
     // We recognize a superset, for more resilient parsing.
-    #[regex(r"\d+(\.\d+)?(\.\d+)?(-([0-9a-zA-Z-]+)(\.([0-9a-zA-Z-]+))*)?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?", priority = 2)] // clashes with ErrorIdentifier
+    #[regex(r"\d+(\.\d+)?(\.\d+)?(-(?&semver_ident)(\.(?&semver_ident))*)?(\+((?&semver_ident)(\.(?&semver_ident))*))?", priority = 2)] // clashes with ErrorIdentifier
     Version,
 }

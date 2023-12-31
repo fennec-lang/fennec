@@ -82,6 +82,7 @@
         "structs",
         "subdir",
         "subdirs",
+        "subpattern",
         "tempfile",
         "typestate",
         "udeps",
