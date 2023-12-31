@@ -11,6 +11,10 @@ use crate::{analysis, parser};
 
 pub fn extract(input: &str) -> Result<types::ImportPath, anyhow::Error> {
     let tree = parser::parse(input);
+    if cfg!(fuzzing) {
+        let reconstructed = parser::reconstruct_input(input, &tree);
+        assert_eq!(input, &reconstructed);
+    }
     let (module, version, errors) = analysis::visit(input, tree);
     if !errors.is_empty() {
         return Err(anyhow!("{errors:?}"));

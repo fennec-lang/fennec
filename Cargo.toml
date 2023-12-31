@@ -39,6 +39,7 @@ all = "warn"
 pedantic = "warn"
 unwrap_used = "warn"
 missing_errors_doc = "allow"
+missing_panics_doc = "allow"
 
 [workspace.dependencies]
 ahash = "0.8.6"

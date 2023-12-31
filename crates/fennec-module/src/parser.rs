@@ -29,6 +29,27 @@ pub(crate) fn parse(input: &str) -> Tree {
     p.build_tree()
 }
 
+pub(crate) fn reconstruct_input(input: &str, tree: &Tree) -> String {
+    let mut s = String::new();
+    let mut pos: TextSize = 0.into();
+    reconstruct_tree(&mut s, &mut pos, input, tree);
+    s
+}
+
+fn reconstruct_tree(s: &mut String, pos: &mut TextSize, input: &str, tree: &Tree) {
+    for child in &tree.children {
+        match child {
+            Node::Token(tok) => {
+                let loc = TextRange::at(*pos, tok.len);
+                s.push_str(&input[loc]);
+                *pos += tok.len;
+            }
+            Node::Error(_) => {}
+            Node::Tree(tree) => reconstruct_tree(s, pos, input, tree),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Tree {
     pub(crate) kind: TreeKind,
