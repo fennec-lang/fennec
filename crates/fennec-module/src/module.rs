@@ -49,3 +49,15 @@ pub fn write_with_current_version(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use fennec_common::types;
+
+    #[test]
+    fn write_with_current_version_works() {
+        let path = types::ImportPath::parse("examples/hello").unwrap();
+        let mut buf = Vec::new();
+        super::write_with_current_version(&mut buf, &path).unwrap();
+    }
+}
