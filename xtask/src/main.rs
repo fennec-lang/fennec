@@ -38,6 +38,7 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        XtaskCmd::FuzzModParser(_) => run_fuzz_mod_parser(&sh),
         XtaskCmd::GenLex(_) => run_gen_lex(&sh),
         XtaskCmd::Lint(_) => run_lint(&sh),
         XtaskCmd::Spellcheck(_) => run_spellcheck(&sh),
@@ -61,6 +62,12 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+fn run_fuzz_mod_parser(sh: &Shell) -> anyhow::Result<()> {
+    sh.change_dir("crates/fennec-module");
+    cmd!(sh, "cargo +nightly bolero test parser_fuzz").run()?;
+    Ok(())
 }
 
 fn run_gen_lex(sh: &Shell) -> anyhow::Result<()> {

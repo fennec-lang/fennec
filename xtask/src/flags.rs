@@ -17,7 +17,10 @@ xflags::xflags! {
             optional --all
         }
 
-        // Generate lexer code
+        /// Fuzz the module file parser
+        cmd fuzz-mod-parser {}
+
+        /// Generate lexer code
         cmd gen-lex {}
 
         /// Run Clippy
@@ -57,6 +60,7 @@ pub struct Xtask {
 #[derive(Debug)]
 pub enum XtaskCmd {
     Ci(Ci),
+    FuzzModParser(FuzzModParser),
     GenLex(GenLex),
     Lint(Lint),
     Spellcheck(Spellcheck),
@@ -69,6 +73,9 @@ pub enum XtaskCmd {
 pub struct Ci {
     pub all: bool,
 }
+
+#[derive(Debug)]
+pub struct FuzzModParser;
 
 #[derive(Debug)]
 pub struct GenLex;
