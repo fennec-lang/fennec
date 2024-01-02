@@ -26,7 +26,7 @@ struct File {
     meta: Option<DebugIgnore<std::fs::Metadata>>,
     deleted: bool,
     content_changed: Option<bool>,
-    content: Option<Arc<str>>, // None initially or in case of read error, and also for deleted files
+    content: Option<types::Text>, // None initially or in case of read error, and also for deleted files
 }
 
 impl File {
@@ -83,7 +83,7 @@ impl File {
         self.content.is_some()
     }
 
-    fn read_utf8_lossy(path: &Path) -> Result<Arc<str>, anyhow::Error> {
+    fn read_utf8_lossy(path: &Path) -> Result<types::Text, anyhow::Error> {
         let mut file = std::fs::File::open(path)?;
         let len = file.metadata()?.len();
         if len > MAX_SOURCE_FILE_SIZE {
@@ -157,7 +157,7 @@ impl Directory {
             .ok()
     }
 
-    fn changed_module_manifest(&self) -> Option<Arc<str>> {
+    fn changed_module_manifest(&self) -> Option<types::Text> {
         let ix = self
             .manifest_pos()
             .expect("directory must contain a manifest");

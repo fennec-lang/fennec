@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use crate::types;
 
@@ -12,7 +12,7 @@ use crate::types;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct File {
     pub source: PathBuf,
-    pub content: Arc<str>,
+    pub content: Text,
     pub detached: bool, // invalid file name
 }
 
@@ -29,15 +29,15 @@ pub struct Package {
 pub struct Module {
     pub source: PathBuf,
     pub path: Option<types::ImportPath>, // empty in case of detached module
-    pub manifest: Arc<str>,
+    pub manifest: Text,
     pub packages: Vec<Package>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FileUpdate {
     pub source: PathBuf,
-    pub content: Option<Arc<str>>, // empty in case file was removed
-    pub detached: bool,            // invalid file name
+    pub content: Option<types::Text>, // empty in case file was removed
+    pub detached: bool,               // invalid file name
 }
 
 #[derive(Clone, Debug)]
@@ -59,7 +59,7 @@ pub enum UpdateKind {
 pub struct ModuleUpdate {
     pub source: PathBuf,
     pub module: Option<types::ImportPath>, // empty in case of detached module, otherwise same as manifest.module
-    pub manifest: Option<Arc<str>>,
+    pub manifest: Option<types::Text>,
     pub packages: Vec<PackageUpdate>, // empty in case of no changes to the packages or module was removed
     pub update: UpdateKind,
 }
