@@ -8,31 +8,6 @@ use std::path::PathBuf;
 
 use crate::types;
 
-// TODO: remove from here?
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct File {
-    pub source: PathBuf,
-    pub content: Text,
-    pub detached: bool, // invalid file name
-}
-
-// TODO: remove from here?
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Package {
-    pub source: PathBuf,
-    pub path: Option<types::ImportPath>, // empty in case of detached package
-    pub files: Vec<File>,
-}
-
-// TODO: remove from here?
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Module {
-    pub source: PathBuf,
-    pub path: Option<types::ImportPath>, // empty in case of detached module
-    pub manifest: Text,
-    pub packages: Vec<Package>,
-}
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FileUpdate {
     pub source: PathBuf,

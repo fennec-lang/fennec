@@ -291,6 +291,28 @@ fn format_manifest(path: Option<types::ImportPath>) -> String {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct File {
+    source: PathBuf,
+    content: types::Text,
+    detached: bool, // invalid file name
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct Package {
+    source: PathBuf,
+    path: Option<types::ImportPath>, // empty in case of detached package
+    files: Vec<File>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct Module {
+    source: PathBuf,
+    path: Option<types::ImportPath>, // empty in case of detached module
+    manifest: types::Text,
+    packages: Vec<Package>,
+}
+
 #[derive(Clone, Debug, Default)]
 struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
@@ -298,7 +320,7 @@ struct VfsReferenceMachine {
     files: Vec<NodeKey>,
     directories: Vec<NodeKey>,
     scan_roots: types::HashSet<PathBuf>,
-    last_scan: Vec<workspace::Module>,
+    last_scan: Vec<Module>,
     // Kludges to simplify name resolution in real state machine.
     last_added_node_parent: Option<PathBuf>,
     last_removed_node_path: Option<PathBuf>,
@@ -480,13 +502,12 @@ impl VfsReferenceMachine {
         PathBuf::from_iter(rev.components().rev())
     }
 
-    fn reconstruct(&self) -> Vec<workspace::Module> {
-        let mut modules: Vec<workspace::Module> = Vec::new();
+    fn reconstruct(&self) -> Vec<Module> {
+        let mut modules: Vec<Module> = Vec::new();
         for top_key in &self.toplevel {
             let node = &self.nodes[*top_key];
             if node.directory {
-                let mut module_map: types::HashMap<ModuleLoc, workspace::Module> =
-                    types::HashMap::default();
+                let mut module_map: types::HashMap<ModuleLoc, Module> = types::HashMap::default();
                 self.reconstruct_subtree(&mut module_map, PathBuf::new(), None, node, None, false);
                 modules.extend(module_map.into_values());
             }
@@ -496,7 +517,7 @@ impl VfsReferenceMachine {
 
     fn reconstruct_subtree(
         &self,
-        modules: &mut types::HashMap<ModuleLoc, workspace::Module>,
+        modules: &mut types::HashMap<ModuleLoc, Module>,
         parent_source: PathBuf,
         parent_path: Option<types::ImportPath>,
         node: &Node,
@@ -522,7 +543,7 @@ impl VfsReferenceMachine {
                     cur_pkg_path = loc.module.clone();
                     modules.insert(
                         loc.clone(),
-                        workspace::Module {
+                        Module {
                             source: loc.source,
                             path: loc.module,
                             manifest: Arc::from(format_manifest(manifest_node.manifest.clone())),
@@ -536,7 +557,7 @@ impl VfsReferenceMachine {
                 if cur_dir_source != loc.source && !util::valid_package_name(&node.name) {
                     cur_pkg_path = None;
                 }
-                let pkg = workspace::Package {
+                let pkg = Package {
                     source: cur_dir_source.clone(),
                     path: cur_pkg_path.clone(),
                     files: node
@@ -544,7 +565,7 @@ impl VfsReferenceMachine {
                         .iter()
                         .map(|key| &self.nodes[*key])
                         .filter(|node| !node.directory && util::valid_source_extension(&node.name))
-                        .map(|node| workspace::File {
+                        .map(|node| File {
                             source: cur_dir_source.join(&node.name),
                             content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
                             detached: !util::valid_source_file_name(&node.name),
@@ -681,7 +702,7 @@ struct VfsMachine {
     vfs_join_handle: Option<thread::JoinHandle<()>>,
     last_scan_id: u64,
     pending_updates: Vec<workspace::ModuleUpdate>,
-    modules: types::HashMap<ModuleLoc, workspace::Module>,
+    modules: types::HashMap<ModuleLoc, Module>,
 }
 
 impl Drop for VfsMachine {
@@ -843,20 +864,20 @@ impl VfsMachine {
                             source: m_upd.source.clone(),
                             module: m_upd.module.clone(),
                         },
-                        workspace::Module {
+                        Module {
                             source: m_upd.source,
                             path: m_upd.module,
                             manifest: m_upd.manifest.unwrap(),
                             packages: m_upd
                                 .packages
                                 .into_iter()
-                                .map(|p_upd| workspace::Package {
+                                .map(|p_upd| Package {
                                     source: p_upd.source,
                                     path: p_upd.path,
                                     files: p_upd
                                         .files
                                         .into_iter()
-                                        .map(|f| workspace::File {
+                                        .map(|f| File {
                                             source: f.source,
                                             content: f.content.unwrap(),
                                             detached: f.detached,
@@ -889,13 +910,13 @@ impl VfsMachine {
                     for p_upd in m_upd.packages {
                         match p_upd.update {
                             workspace::UpdateKind::Added => {
-                                m.packages.push(workspace::Package {
+                                m.packages.push(Package {
                                     source: p_upd.source,
                                     path: p_upd.path,
                                     files: p_upd
                                         .files
                                         .into_iter()
-                                        .map(|f| workspace::File {
+                                        .map(|f| File {
                                             source: f.source,
                                             content: f.content.unwrap(),
                                             detached: f.detached,
@@ -928,7 +949,7 @@ impl VfsMachine {
                                         }
                                     } else {
                                         let content = f_upd.content.unwrap();
-                                        p.files.push(workspace::File {
+                                        p.files.push(File {
                                             source: f_upd.source,
                                             content,
                                             detached: f_upd.detached,
@@ -1031,10 +1052,7 @@ fn fix_source(source: &mut PathBuf, root: Option<&Path>) {
     }
 }
 
-fn canonicalize_modules(
-    mut modules: Vec<workspace::Module>,
-    root: Option<&Path>,
-) -> Vec<workspace::Module> {
+fn canonicalize_modules(mut modules: Vec<Module>, root: Option<&Path>) -> Vec<Module> {
     for m in &mut modules {
         for p in &mut m.packages {
             for f in &mut p.files {
