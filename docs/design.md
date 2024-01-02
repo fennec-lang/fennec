@@ -358,6 +358,7 @@
 - build on top of chunked primitives by default?
   - make `string`, `vec`  and builtin iteration constructs chunked
   - or have a fundamental "chunked stuff" type, maybe with virtual dispatch to get next chunk?
+  - this is general enough so that e.g. gap buffers or ropes can be used everywhere instead of strings/vectors
 
 ### Ergonomics
 
