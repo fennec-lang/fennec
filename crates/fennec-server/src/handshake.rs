@@ -12,8 +12,7 @@ use lsp_types::{
     ClientCapabilities, DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern,
     InitializeParams, OneOf, PositionEncodingKind, Registration, RegistrationParams,
     ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TextDocumentSyncSaveOptions, WatchKind, WorkspaceFoldersServerCapabilities,
-    WorkspaceServerCapabilities,
+    WatchKind, WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
 };
 use std::path::PathBuf;
 
@@ -40,7 +39,7 @@ pub fn server_capabilities(utf8_pos: bool) -> ServerCapabilities {
                 change: Some(TextDocumentSyncKind::INCREMENTAL), // textDocument/didChange
                 will_save: Some(false), // textDocument/willSave
                 will_save_wait_until: Some(false), // textDocument/willSaveWaitUntil
-                save: Some(TextDocumentSyncSaveOptions::Supported(false)), // textDocument/didSave
+                save: Some(false.into()), // textDocument/didSave
             },
         )),
         workspace: Some(WorkspaceServerCapabilities {

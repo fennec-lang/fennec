@@ -490,6 +490,7 @@ version = "0.1.8"
 dependencies = [
  "ahash",
  "anyhow",
+ "line-index",
  "once_cell",
  "parking_lot",
  "regex",
@@ -551,6 +552,7 @@ dependencies = [
  "fastrand",
  "fennec-common",
  "fennec-module",
+ "line-index",
  "log",
  "proptest",
  "proptest-state-machine",
@@ -742,6 +744,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "line-index"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67d61795376ae2683928c218fda7d7d7db136fd38c06b7552904667f0d55580a"
+dependencies = [
+ "nohash-hasher",
+ "text-size",
+]
+
+[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -834,6 +846,12 @@ name = "new_debug_unreachable"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4a24736216ec316047a1fc4252e27dabb04218aa4a3f37c6e7ddbf1f9782b54"
+
+[[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "num-traits"

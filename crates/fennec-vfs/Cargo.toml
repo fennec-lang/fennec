@@ -15,6 +15,7 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 debug-ignore.workspace = true
+line-index.workspace = true
 log.workspace = true
 walkdir.workspace = true
 

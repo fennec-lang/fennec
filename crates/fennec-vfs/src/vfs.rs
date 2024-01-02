@@ -7,6 +7,7 @@
 use anyhow::anyhow;
 use debug_ignore::DebugIgnore;
 use fennec_common::{types, util, workspace, MODULE_MANIFEST_FILENAME};
+use line_index::{LineIndex, WideEncoding, WideLineCol};
 use std::{
     cmp::Ordering,
     io::Read,
@@ -22,34 +23,138 @@ const MAX_SOURCE_FILE_SIZE: u64 = (1 << 24) - 1; // 16 megabytes
 #[derive(Default, Clone, Debug)]
 struct File {
     path: PathBuf,
-    meta: Option<DebugIgnore<std::fs::Metadata>>,
-    deleted: bool,
+    meta: Metadata,
     content_changed: Option<bool>,
-    content: Option<types::Text>, // None initially or in case of read error, and also for deleted files
+    content_fs: Option<types::Text>, // None initially or in case of read error (including deleted files)
+    content_overlay: Option<(types::Text, i32)>,
 }
 
+#[derive(Default, Clone, Debug)]
+struct Metadata {
+    meta: Option<DebugIgnore<std::fs::Metadata>>,
+}
+
+impl Metadata {
+    fn new(meta: Option<std::fs::Metadata>) -> Metadata {
+        Metadata {
+            meta: meta.map(std::convert::Into::into),
+        }
+    }
+
+    #[cfg(unix)]
+    fn unix_attrs(&self) -> (i64, i64, u64) {
+        if let Some(meta) = &self.meta {
+            use std::os::unix::prelude::MetadataExt as _;
+            (meta.ctime(), meta.ctime_nsec(), meta.ino())
+        } else {
+            (0, 0, 0)
+        }
+    }
+
+    #[cfg(not(unix))]
+    fn unix_attrs(&self) -> (i64, i64, u64) {
+        (0, 0, 0)
+    }
+}
+
+impl PartialEq for Metadata {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Some(a), Some(b)) = (&self.meta, &other.meta) {
+            (
+                self.unix_attrs(),
+                a.modified().ok(),
+                a.permissions(),
+                a.len(),
+            ) == (
+                other.unix_attrs(),
+                b.modified().ok(),
+                b.permissions(),
+                b.len(),
+            )
+        } else {
+            false // conservative
+        }
+    }
+}
+
+impl Eq for Metadata {}
+
 impl File {
-    fn new(path: PathBuf, meta: Option<std::fs::Metadata>) -> File {
+    fn new_scratch(path: PathBuf, meta: Option<std::fs::Metadata>) -> File {
         File {
             path,
-            meta: meta.map(std::convert::Into::into),
+            meta: Metadata::new(meta),
             ..Default::default()
         }
     }
 
-    fn new_from_existing(mut file: File, content_changed: bool) -> File {
-        assert!(!file.deleted && file.content.is_some());
-        file.content_changed = Some(content_changed);
+    fn new_merged(mut cur_file: File, prev_file: &File) -> File {
+        // Current file is from the scan tree with no overlays.
+        assert!(cur_file.meta.meta.is_some());
+        assert!(cur_file.content_overlay.is_none());
+        assert!(prev_file.content_changed.is_some());
+
+        // If there was no overlay, the content from FS is guaranteed to be up-to-date.
+        let (content_fs, meta, reuse_fs_content) = if prev_file.content_overlay.is_none() {
+            if cur_file.meta == prev_file.meta {
+                // The file did not change.
+                (prev_file.content_fs.clone(), take(&mut cur_file.meta), true)
+            } else if let Some((content_fs, meta)) = Self::read_content(&cur_file.path) {
+                (Some(content_fs), Metadata::new(Some(meta)), false)
+            } else {
+                // Pretend that the file did not change.
+                (prev_file.content_fs.clone(), take(&mut cur_file.meta), true)
+            }
+        } else {
+            (None, Metadata::new(None), false)
+        };
+
+        let mut file = File {
+            path: take(&mut cur_file.path),
+            meta,
+            content_changed: None,
+            content_fs,
+            content_overlay: prev_file.content_overlay.clone(),
+        };
+        file.content_changed = Some(
+            prev_file.content_changed.unwrap_or_default() // overlay exists *and* has changed
+                || (prev_file.content_overlay.is_none() && !reuse_fs_content && file.content() != prev_file.content()),
+        );
         file
     }
 
-    fn new_deleted(path: PathBuf) -> File {
-        File {
-            path,
-            deleted: true,
-            content_changed: Some(true),
-            ..Default::default()
+    fn new_added(mut file: File) -> Option<File> {
+        if let Some((content_fs, meta)) = Self::read_content(&file.path) {
+            Some(File {
+                path: take(&mut file.path),
+                meta: Metadata::new(Some(meta)),
+                content_changed: Some(true),
+                content_fs: Some(content_fs),
+                content_overlay: None,
+            })
+        } else {
+            // File became inaccessible by the time we got to read it.
+            None
         }
+    }
+
+    fn new_removed(prev_file: &File) -> File {
+        assert!(prev_file.content_changed.is_some());
+        // File does not exist on disk, so it is either completely removed or overlay-only.
+        File {
+            path: prev_file.path.clone(),
+            meta: Metadata::new(None),
+            content_changed: Some(
+                prev_file.content_changed.unwrap_or_default() // overlay exists *and* has changed
+                    || prev_file.content_overlay.is_none(),
+            ),
+            content_fs: None,
+            content_overlay: prev_file.content_overlay.clone(),
+        }
+    }
+
+    fn deleted(&self) -> bool {
+        self.content().is_none()
     }
 
     fn file_name(&self) -> &str {
@@ -64,36 +169,44 @@ impl File {
         !util::valid_source_file_name(self.file_name())
     }
 
-    #[must_use]
     fn is_manifest(&self) -> bool {
         self.file_name() == MODULE_MANIFEST_FILENAME
     }
 
-    fn read_content(&mut self) -> bool {
-        let res = Self::read_utf8_lossy(&self.path);
-        self.content = match res {
+    fn content(&self) -> Option<&types::Text> {
+        if let Some((text, _)) = &self.content_overlay {
+            Some(text)
+        } else {
+            self.content_fs.as_ref()
+        }
+    }
+
+    fn read_content(path: &Path) -> Option<(types::Text, std::fs::Metadata)> {
+        let res = Self::read_utf8_lossy(path);
+        match res {
             Ok(content) => Some(content),
             Err(err) => {
-                let disp = self.path.display();
+                let disp = path.display();
                 log::warn!(r#"failed to read content of "{disp}", ignoring: {err}"#);
                 None
             }
-        };
-        self.content.is_some()
+        }
     }
 
-    fn read_utf8_lossy(path: &Path) -> Result<types::Text, anyhow::Error> {
+    fn read_utf8_lossy(path: &Path) -> Result<(types::Text, std::fs::Metadata), anyhow::Error> {
         let mut file = std::fs::File::open(path)?;
-        let len = file.metadata()?.len();
+        let meta = file.metadata()?;
+        let len = meta.len();
         if len > MAX_SOURCE_FILE_SIZE {
+            let disp = path.display();
             return Err(anyhow!(
-                "source file size exceeds maximum of {MAX_SOURCE_FILE_SIZE}"
+                r#"source file "{disp}" size of {len} exceeds maximum of {MAX_SOURCE_FILE_SIZE}"#
             ));
         }
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         let s = String::from_utf8_lossy(&buf);
-        Ok(types::Text::from(s))
+        Ok((types::Text::from(s), meta))
         // Vec -> Cow -> Arc is quite a lot of copies, but hopefully guaranteed UTF-8 simplifies things downstream.
     }
 }
@@ -102,6 +215,7 @@ impl File {
 struct Directory {
     path: PathBuf,
     depth: isize,
+    ghost: bool,                // virtual parent of an overlay
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
@@ -117,9 +231,16 @@ impl Directory {
         }
     }
 
+    fn new_ghost(path: PathBuf, depth: isize) -> Directory {
+        let mut dir = Directory::new(path, depth);
+        dir.ghost = true;
+        dir
+    }
+
     fn new_from_existing(mut dir: Directory) -> Directory {
         dir.subdirectories.truncate(0);
         dir.content_changed = None;
+        dir.module = None;
         dir
     }
 
@@ -153,8 +274,8 @@ impl Directory {
         let m_changed = m.content_changed.expect("change marker must be set");
         if m_changed {
             let content = m
-                .content
-                .clone()
+                .content()
+                .cloned()
                 .expect("manifest source must be set in the module directory");
             Some(content)
         } else {
@@ -166,7 +287,7 @@ impl Directory {
         let ix = self.manifest_pos();
         if let Some(ix) = ix {
             let m = &self.source_files[ix];
-            if m.deleted {
+            if m.deleted() {
                 return None;
             }
             let changed = m.content_changed.expect("change indicator must be set");
@@ -174,8 +295,7 @@ impl Directory {
                 return prev_module;
             }
             let content = m
-                .content
-                .as_ref()
+                .content()
                 .expect("changed file must contain content")
                 .as_ref();
             let res = fennec_module::extract(content);
@@ -270,15 +390,41 @@ struct ScanState {
     root: PathBuf,
     tree: Vec<Directory>,
     modules: Vec<ModTraverse>,
+    active_overlays: Vec<PathBuf>, // sorted
+    overlay_updates: Vec<types::OverlayUpdate>,
 }
 
 impl ScanState {
     fn new(root: PathBuf) -> ScanState {
+        let mut tree = vec![
+            Directory::new(PathBuf::new(), -1),
+            Directory::new(root.clone(), 0),
+        ];
+        tree[0].subdirectories = vec![1];
+
         ScanState {
             root,
-            tree: Vec::default(),
+            tree,
             modules: Vec::default(),
+            active_overlays: Vec::default(),
+            overlay_updates: Vec::default(),
         }
+    }
+
+    fn extract_overlays(&self) -> Vec<types::OverlayUpdate> {
+        let mut updates = Vec::with_capacity(self.active_overlays.len());
+        for dir in &self.tree {
+            for file in &dir.source_files {
+                if let Some((text, version)) = &file.content_overlay {
+                    updates.push(types::OverlayUpdate::AddOverlay(
+                        file.path.clone(),
+                        text.clone(),
+                        *version,
+                    ));
+                }
+            }
+        }
+        updates
     }
 }
 
@@ -308,6 +454,7 @@ pub struct Vfs {
     poll_interval: Duration,
     cleanup_stale_roots: bool,
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
+    out_of_root_updates: Vec<types::OverlayUpdate>,
 }
 
 impl Vfs {
@@ -317,6 +464,7 @@ impl Vfs {
             poll_interval,
             cleanup_stale_roots,
             scan_state: Vec::default(),
+            out_of_root_updates: Vec::default(),
         }
     }
 
@@ -337,10 +485,8 @@ impl Vfs {
                 should_scan |= self.add_root(root, &mut updates);
             }
 
-            if should_scan {
-                self.scan(&mut updates);
-                state.signal_core_module_updates(updates, changes.force_scan_id);
-            }
+            self.scan(&mut updates, should_scan, changes.overlay_updates);
+            state.signal_core_module_updates(updates, changes.force_scan_id);
         }
     }
 
@@ -350,9 +496,13 @@ impl Vfs {
         updates
     }
 
-    pub fn __test_scan(&mut self) -> Vec<workspace::ModuleUpdate> {
+    pub fn __test_scan(
+        &mut self,
+        should_scan: bool,
+        overlay_updates: Vec<types::OverlayUpdate>,
+    ) -> Vec<workspace::ModuleUpdate> {
         let mut updates: Vec<workspace::ModuleUpdate> = Vec::new();
-        self.scan(&mut updates);
+        self.scan(&mut updates, should_scan, overlay_updates);
         updates
     }
 
@@ -369,11 +519,12 @@ impl Vfs {
                         }
                     }
                 }
+                let mut new_state = ScanState::new(root);
                 while let Some(next_state) = self.scan_state.get(ix) {
-                    if util::has_prefix(&next_state.root, &root) {
+                    if util::has_prefix(&next_state.root, &new_state.root) {
                         // Trying to add parent of an existing root; remove old one instead.
                         let state = self.scan_state.remove(ix);
-                        for module in state.modules {
+                        for module in &state.modules {
                             let dir = module.index_root(&state.tree);
                             updates.push(workspace::ModuleUpdate {
                                 source: dir.path.clone(),
@@ -383,22 +534,65 @@ impl Vfs {
                                 update: workspace::UpdateKind::Removed,
                             });
                         }
+                        // Transfer all overlays to pending updates to add them.
+                        new_state.overlay_updates.extend(state.extract_overlays());
                     } else {
                         break;
                     }
                 }
-                self.scan_state.insert(ix, ScanState::new(root));
+                self.scan_state.insert(ix, new_state);
                 true
             }
         }
     }
 
-    fn scan(&mut self, updates: &mut Vec<workspace::ModuleUpdate>) {
+    fn scan(
+        &mut self,
+        updates: &mut Vec<workspace::ModuleUpdate>,
+        should_scan: bool,
+        overlay_updates: Vec<types::OverlayUpdate>,
+    ) {
+        let to_apply = overlay_updates.len();
+        log::trace!("scan start ({to_apply} new overlay updates, should_scan {should_scan})");
+        self.prepare_overlay_updates(overlay_updates);
         for state in &mut self.scan_state {
-            let scan_tree = Self::scan_root(&state.root);
-            log::trace!("scan tree {scan_tree:#?}");
-            let tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &state.tree);
-            log::trace!("tree {tree:#?}");
+            // Really expensive; would be great to find a cheaper alternative.
+            let mut tree = state.tree.clone();
+            for dir in &mut tree {
+                dir.content_changed = Some(false);
+                for file in &mut dir.source_files {
+                    file.content_changed = Some(false);
+                }
+            }
+            let to_apply = state.overlay_updates.len();
+            log::trace!("tree (before {to_apply} updates) {tree:#?}");
+            for update in take(&mut state.overlay_updates) {
+                log::trace!("applying overlay update {update:?}");
+                Self::apply_overlay_update(
+                    &mut tree,
+                    &mut state.active_overlays,
+                    &state.root,
+                    update,
+                );
+            }
+            // Ensure we have no leftover directories consisting only of newly removed overlays.
+            Self::clean_abandoned(&mut tree);
+            log::trace!("tree (after {to_apply} updates and cleanup) {tree:#?}");
+            if should_scan {
+                let mut scan_tree = Self::scan_root(&state.root);
+                log::trace!("scan tree {scan_tree:#?}");
+                // Ensure all "ghost" directories exist in the scan tree before merging.
+                for overlay_path in &state.active_overlays {
+                    Self::tree_ensure_overlay_path(&mut scan_tree, overlay_path, &state.root, true);
+                }
+                tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &tree);
+                log::trace!("merged scan tree {tree:#?}");
+            }
+            // Tree invariants, at this point:
+            // - all real and "ghost" directories exist
+            // - removed files are represented inside directories
+            // - all file content and change markers are correct
+            // - all directory change markers (non-recursive!) are correct and based on file ones
             let tree_modules = Self::build_modules(&tree);
             log::trace!("modules {tree_modules:#?}");
             let tree_updates =
@@ -412,17 +606,339 @@ impl Vfs {
             // Since we only clean up after all manifest entries are removed from the tree,
             // by that time we have already reported that the modules are deleted;
             // no need to special-case scan root removal in module diff calculation.
-            self.scan_state.retain(|s| {
-                let any_manifest = s.tree.iter().any(|dir| {
+            let mut ix = 0;
+            while ix < self.scan_state.len() {
+                let any_manifest = self.scan_state[ix].tree.iter().any(|dir| {
                     if let Some(ix) = dir.manifest_pos() {
-                        !dir.source_files[ix].deleted
+                        !dir.source_files[ix].deleted()
                     } else {
                         false
                     }
                 });
-                assert!(any_manifest || s.modules.is_empty());
-                any_manifest
-            });
+                assert!(any_manifest || self.scan_state[ix].modules.is_empty());
+                if any_manifest {
+                    ix += 1;
+                } else {
+                    let s = self.scan_state.remove(ix);
+                    self.out_of_root_updates.extend(s.extract_overlays());
+                }
+            }
+        }
+    }
+
+    fn prepare_overlay_updates(&mut self, mut updates: Vec<types::OverlayUpdate>) {
+        // Preserve the update order: newer updates go after older ones.
+        let mut all_updates = take(&mut self.out_of_root_updates);
+        all_updates.extend(take(&mut updates));
+        // Add-[Change]-Remove chains can lead to us to mark phantom files/directories as changed,
+        // which can cause us to emit bogus update events or bogus packages. Remove the chains.
+        let mut by_path: types::HashMap<PathBuf, Vec<types::OverlayUpdate>> =
+            types::HashMap::default();
+        for update in all_updates {
+            match &update {
+                types::OverlayUpdate::AddOverlay(path, _, _) => {
+                    by_path.insert(path.clone(), vec![update]);
+                }
+                types::OverlayUpdate::ChangeOverlay(path, _, _) => {
+                    if let Some(v) = by_path.get_mut(path) {
+                        v.push(update);
+                    } else {
+                        updates.push(update);
+                    }
+                }
+                types::OverlayUpdate::RemoveOverlay(path) => {
+                    if by_path.remove(path).is_none() {
+                        updates.push(update);
+                    }
+                }
+            }
+        }
+        for path_updates in by_path.into_values() {
+            updates.extend(path_updates);
+        }
+        // Finally, group updates by scan roots.
+        for update in updates {
+            let path = update.path();
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default();
+            if name != MODULE_MANIFEST_FILENAME && !util::valid_source_extension(name) {
+                log::warn!("ignoring unrelated overlay update to {path:?}");
+                continue;
+            }
+            let pos = self
+                .scan_state
+                .iter()
+                .position(|s| util::has_strict_prefix(path, &s.root));
+            if let Some(ix) = pos {
+                log::trace!("will apply {update:?}");
+                self.scan_state[ix].overlay_updates.push(update);
+            } else {
+                log::trace!("postpone (out of root) {update:?}");
+                self.out_of_root_updates.push(update);
+            }
+        }
+    }
+
+    fn clean_abandoned(tree: &mut Vec<Directory>) {
+        let mut ix = tree.len() - 1;
+        while ix > 0 {
+            let abandoned = tree[ix].ghost
+                && tree[ix].subdirectories.is_empty()
+                && tree[ix]
+                    .source_files
+                    .iter()
+                    .all(|f| f.deleted() && f.content_changed.unwrap_or_default());
+            if abandoned {
+                tree.remove(ix);
+                for dir in tree.iter_mut() {
+                    dir.subdirectories.retain(|subdir| *subdir != ix);
+                    for subdir in &mut dir.subdirectories {
+                        if *subdir > ix {
+                            *subdir -= 1;
+                        }
+                    }
+                }
+            }
+            ix -= 1;
+        }
+    }
+
+    fn apply_overlay_update(
+        tree: &mut Vec<Directory>,
+        active_overlays: &mut Vec<PathBuf>,
+        root: &Path,
+        update: types::OverlayUpdate,
+    ) {
+        let (file, dir_ix) = Self::tree_ensure_overlay_path(tree, update.path(), root, false)
+            .expect("dir_only mode is false");
+
+        let mut content_changed = false;
+        match update {
+            types::OverlayUpdate::AddOverlay(_, text, version) => 'add: {
+                if let Some((_, cur_version)) = &file.content_overlay {
+                    let path = file.path.display();
+                    log::error!("attempting to add an overlay over existing one (new version {version}, old {cur_version}) for {path}");
+                    if version <= *cur_version {
+                        break 'add;
+                    }
+                }
+                content_changed = Some(&text) != file.content_fs.as_ref();
+                file.content_overlay = Some((text, version));
+                if let Err(insert_ix) = active_overlays.binary_search(&file.path) {
+                    active_overlays.insert(insert_ix, file.path.clone());
+                }
+            }
+            types::OverlayUpdate::ChangeOverlay(_, changes, version) => {
+                if let Some((cur_text, cur_version)) = &file.content_overlay {
+                    if version <= *cur_version {
+                        let path = file.path.display();
+                        log::error!("attempting to change an overlay with wrong version (new version {version}, old {cur_version}) for {path}");
+                    } else {
+                        let text =
+                            Self::apply_overlay_changes(String::from(cur_text.as_ref()), changes);
+                        content_changed = text != cur_text.as_ref();
+                        file.content_overlay = Some((types::Text::from(text), version));
+                    }
+                } else {
+                    let path = file.path.display();
+                    log::error!("attempting to change an overlay when none is existing for {path}");
+                }
+            }
+            types::OverlayUpdate::RemoveOverlay(_) => {
+                if file.content_overlay.is_none() {
+                    let path = file.path.display();
+                    log::error!("attempting to remove an overlay when none is existing for {path}");
+                } else {
+                    let prev_overlay = take(&mut file.content_overlay);
+                    // We did not re-read the content while the overlay was active, so we must re-read it now.
+                    if let Some((content_fs, meta)) = File::read_content(&file.path) {
+                        file.content_fs = Some(content_fs);
+                        file.meta = Metadata::new(Some(meta));
+                    } else {
+                        file.content_fs = None;
+                        file.meta = Metadata::new(None);
+                    }
+                    content_changed = file.content_fs != prev_overlay.map(|ov| ov.0);
+                    if let Ok(remove_ix) = active_overlays.binary_search(&file.path) {
+                        active_overlays.remove(remove_ix);
+                    }
+                }
+            }
+        };
+
+        let is_manifest = file.is_manifest();
+        if !file.content_changed.unwrap_or_default() {
+            file.content_changed = Some(content_changed);
+        }
+        if content_changed {
+            tree[dir_ix].content_changed = Some(true);
+        }
+        if is_manifest {
+            let prev_module = take(&mut tree[dir_ix].module);
+            tree[dir_ix].module = tree[dir_ix].get_module(prev_module);
+        }
+    }
+
+    fn apply_overlay_changes(mut text: String, changes: Vec<types::OverlayChange>) -> String {
+        for change in changes {
+            if let Some((mut start, mut end)) = change.range {
+                // This is painfully inefficient and slow.
+                let index = LineIndex::new(&text);
+                if !change.utf8_pos {
+                    let Some(utf8_start) = index.to_utf8(
+                        WideEncoding::Utf16,
+                        WideLineCol {
+                            line: start.line,
+                            col: start.col,
+                        },
+                    ) else {
+                        log::error!(
+                            "invalid utf-16 change range start: {start:?}; ignoring the change"
+                        );
+                        continue;
+                    };
+                    let Some(utf8_end) = index.to_utf8(
+                        WideEncoding::Utf16,
+                        WideLineCol {
+                            line: end.line,
+                            col: end.col,
+                        },
+                    ) else {
+                        log::error!(
+                            "invalid utf-16 change range end: {end:?}; ignoring the change"
+                        );
+                        continue;
+                    };
+                    start = utf8_start;
+                    end = utf8_end;
+                }
+                let Some(start) = index.offset(start) else {
+                    log::error!("invalid utf-8 change range start: {start:?}; ignoring the change");
+                    continue;
+                };
+                let Some(end) = index.offset(end) else {
+                    log::error!("invalid utf-8 change range end: {end:?}; ignoring the change");
+                    continue;
+                };
+                let (start, end): (usize, usize) = (start.into(), end.into());
+                text.replace_range(start..end, &change.content);
+            } else {
+                text = change.content;
+            }
+        }
+        text
+    }
+
+    fn tree_ensure_overlay_path<'tree>(
+        tree: &'tree mut Vec<Directory>,
+        path: &Path,
+        root: &Path,
+        dir_only: bool,
+    ) -> Option<(&'tree mut File, usize)> {
+        assert_eq!(tree[0].depth, -1); // root-of-root
+
+        let root_parent = root.parent().expect("root path must have a valid parent");
+        let rel_path = path
+            .strip_prefix(root_parent)
+            .expect("update path must be a subdirectory of a scan root");
+
+        log::trace!("searching for {rel_path:?} overlay node");
+        let mut dir_components = rel_path
+            .parent()
+            .expect("file path must have a valid parent")
+            .components()
+            .peekable();
+
+        // Navigate to the innermost subdirectory. First component must be the scan root.
+        let mut cur_parent_ix = 0;
+        loop {
+            let Some(component) = dir_components.peek() else {
+                log::trace!("end of components");
+                break;
+            };
+            let res = tree[cur_parent_ix]
+                .subdirectories
+                .binary_search_by_key(&component.as_os_str(), |ix| tree[*ix].name().as_ref());
+            if let Ok(ix) = res {
+                let dir_ix = tree[cur_parent_ix].subdirectories[ix];
+                log::trace!("moving current parent index to {dir_ix} for {component:?}");
+                cur_parent_ix = dir_ix;
+                dir_components.next();
+            } else {
+                log::trace!("subdirectory {component:?} no found");
+                break;
+            }
+        }
+
+        // Create all leftover subdirectories. We must preserve the preorder.
+        for component in dir_components {
+            let mut parent_path = tree[cur_parent_ix].path.as_path();
+            if parent_path.as_os_str().is_empty() {
+                // We are re-inserting the scan root; ensure absolute path.
+                parent_path = root_parent;
+            }
+            let dir_path = parent_path.join(component);
+            let dir = Directory::new_ghost(dir_path, tree[cur_parent_ix].depth + 1);
+
+            let ix = tree[cur_parent_ix]
+                .subdirectories
+                .partition_point(|ix| tree[*ix].name() < dir.name());
+            let dir_ix = if tree[cur_parent_ix].subdirectories.is_empty() {
+                // Insert immediately after the current parent.
+                cur_parent_ix + 1
+            } else if ix == tree[cur_parent_ix].subdirectories.len() {
+                // Insert immediately before the next sibling directory (same as after the last recursive subdirectory).
+                let mut dir_ix = tree[cur_parent_ix]
+                    .subdirectories
+                    .last()
+                    .expect("subdirectories are not empty")
+                    + 1;
+                while dir_ix < tree.len() && tree[dir_ix].path < dir.path {
+                    dir_ix += 1;
+                }
+                dir_ix
+            } else {
+                // Insert before the subdirectory at `ix`.
+                tree[cur_parent_ix].subdirectories[ix]
+            };
+
+            assert!(dir_ix > cur_parent_ix);
+            // Fixup all subdir references caused by shifting the tree.
+            for dir in tree.iter_mut() {
+                for subdir_ix in &mut dir.subdirectories {
+                    if *subdir_ix >= dir_ix {
+                        *subdir_ix += 1;
+                    }
+                }
+            }
+            tree.insert(dir_ix, dir);
+            tree[cur_parent_ix].subdirectories.insert(ix, dir_ix);
+            cur_parent_ix = dir_ix;
+            log::trace!("moving current parent index to {dir_ix} after inserting {component:?}");
+        }
+
+        if dir_only {
+            return None;
+        }
+
+        // Finally, grab or create the file.
+        let name = rel_path
+            .file_name()
+            .expect("file path must have a valid file name");
+        let res = tree[cur_parent_ix]
+            .source_files
+            .binary_search_by_key(&name, |f| f.file_name().as_ref());
+        match res {
+            Ok(ix) => Some((&mut tree[cur_parent_ix].source_files[ix], cur_parent_ix)),
+            Err(ix) => {
+                let file_path = tree[cur_parent_ix].path.join(name);
+                let file = File::new_scratch(file_path, None);
+                tree[cur_parent_ix].source_files.insert(ix, file);
+                Some((&mut tree[cur_parent_ix].source_files[ix], cur_parent_ix))
+            }
         }
     }
 
@@ -437,7 +953,7 @@ impl Vfs {
                 modules.push(stack.pop().expect("stack is not empty"));
             }
             if let Some(m_ix) = dir.manifest_pos() {
-                if !dir.source_files[m_ix].deleted {
+                if !dir.source_files[m_ix].deleted() {
                     // Push new module on the stack, if we are visiting an existing module root.
                     let m = ModTraverse::new(ix, dir.depth);
                     stack.push(m);
@@ -614,7 +1130,7 @@ impl Vfs {
                         })
                         .map(|f| workspace::FileUpdate {
                             source: f.path.clone(),
-                            content: f.content.clone(),
+                            content: f.content().cloned(),
                             detached: f.detached(),
                         })
                         .collect();
@@ -633,13 +1149,15 @@ impl Vfs {
                     let files =
                         dir.source_files
                             .iter()
-                            .filter(|f| !f.deleted && !f.is_manifest())
-                            .map(|f| workspace::FileUpdate {
+                            .filter(|f| !f.deleted() && !f.is_manifest())
+                            .map(|f| {
+                                workspace::FileUpdate {
                                 source: f.path.clone(),
-                                content: Some(f.content.clone().expect(
+                                content: Some(f.content().expect(
                                     "content must be set on all files in a package directory",
-                                )),
+                                ).clone()),
                                 detached: f.detached(),
+                            }
                             });
                     updates.push(workspace::PackageUpdate {
                         source: dir.path.clone(),
@@ -710,8 +1228,10 @@ impl Vfs {
                             .expect("is_valid_utf8_visible() must ensure UTF-8");
                         if name == MODULE_MANIFEST_FILENAME || util::valid_source_extension(name) {
                             let meta = entry.metadata().ok();
-                            let file = File::new(entry.into_path(), meta);
-                            state.add_file(file);
+                            if meta.is_some() {
+                                let file = File::new_scratch(entry.into_path(), meta);
+                                state.add_file(file);
+                            }
                         }
                     }
                 }
@@ -777,7 +1297,10 @@ impl Vfs {
     fn merge_hydrate_sorted_files(files: Vec<File>, prev_files: &[File]) -> Vec<File> {
         let mut merged_files: Vec<File> = Vec::with_capacity(files.len());
         let mut file_iter = files.into_iter().peekable();
-        let mut prev_file_iter = prev_files.iter().filter(|f| !f.deleted).peekable();
+        let mut prev_file_iter = prev_files
+            .iter()
+            .filter(|f| !f.deleted() || f.content_changed.unwrap_or_default())
+            .peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching files.
             let (cur, prev) = match (file_iter.peek_mut(), prev_file_iter.peek()) {
@@ -793,27 +1316,19 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(file), Some(prev_file)) => {
-                    let modified = match (&file.meta, &prev_file.meta) {
-                        (Some(a), Some(b)) => compare_meta(a, b),
-                        _ => true, // conservative
-                    };
-                    if modified && file.read_content() {
-                        let diff = file.content != prev_file.content;
-                        merged_files.push(File::new_from_existing(take(file), diff));
-                    } else {
-                        merged_files.push(File::new_from_existing((*prev_file).clone(), false));
-                    }
+                    let merged = File::new_merged(take(file), prev_file);
+                    merged_files.push(merged);
                     file_iter.next();
                     prev_file_iter.next();
                 }
                 (Some(file), None) => {
-                    if file.read_content() {
-                        merged_files.push(File::new_from_existing(take(file), true));
-                    }
+                    let merged = File::new_added(take(file));
+                    merged_files.extend(merged);
                     file_iter.next();
                 }
                 (None, Some(prev_file)) => {
-                    merged_files.push(File::new_deleted(prev_file.path.clone()));
+                    let merged = File::new_removed(prev_file);
+                    merged_files.push(merged);
                     prev_file_iter.next();
                 }
                 _ => unreachable!("at least one file must be set"),
@@ -821,18 +1336,6 @@ impl Vfs {
         }
         merged_files // sorted by file name
     }
-}
-
-#[cfg(unix)]
-fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
-    use std::os::unix::prelude::MetadataExt as _;
-    (a.ctime(), a.ctime_nsec(), a.ino(), a.permissions(), a.len())
-        != (b.ctime(), b.ctime_nsec(), b.ino(), b.permissions(), b.len())
-}
-
-#[cfg(not(unix))]
-fn compare_meta(a: &std::fs::Metadata, b: &std::fs::Metadata) -> bool {
-    (a.modified().ok(), a.permissions(), a.len()) != (b.modified().ok(), b.permissions(), b.len())
 }
 
 fn path_parent_filename(p: &Path) -> Option<&str> {

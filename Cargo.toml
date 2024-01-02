@@ -53,6 +53,7 @@ fastrand = { version = "2", default-features = false }
 insta = { version = "1.34.0", default-features = false, features = ["colors"] }
 lalrpop = { version = "0.20", default-features = false }
 lalrpop-util = { version = "0.20", default-features = false }
+line-index = "0.1.1"
 log = { version = "0.4", features = ["std"] }
 logos = { version = "0.13.0", default-features = false, features = ["std"] }
 logos-codegen = "0.13.0"

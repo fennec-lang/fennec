@@ -2,8 +2,9 @@ extern crate proptest;
 extern crate proptest_state_machine;
 
 use std::{
-    fs::{self},
-    io::Write,
+    cmp::Ordering,
+    fs,
+    io::Read,
     mem::take,
     path::{Path, PathBuf},
     sync::Arc,
@@ -50,20 +51,27 @@ enum Transition {
     AddNode {
         name: String,
         directory: bool,
+        overlay: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     },
+    SetupOverlayNode {
+        key: NodeKey, // not a directory
+    },
     RemoveNode {
-        key: NodeKey,
+        key: NodeKey, // can be regular or overlay node
     },
     UpdateNode {
-        key: NodeKey,
+        key: NodeKey, // can be regular or overlay node
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
     },
-    MarkScanRoot {
+    SaveOverlayNode {
         key: NodeKey,
+    },
+    MarkScanRoot {
+        key: NodeKey, // directory
     },
     Scan {},
 }
@@ -74,6 +82,7 @@ impl std::fmt::Debug for Transition {
             Transition::AddNode {
                 name,
                 directory,
+                overlay,
                 raw_content,
                 manifest,
                 parent,
@@ -84,16 +93,19 @@ impl std::fmt::Debug for Transition {
                     let valid_manifest = manifest.is_some();
                     write!(
                         f,
-                        "Add MANIFEST {name}, parent {parent:?}, valid manifest {valid_manifest}"
+                        "Add MANIFEST {name}, parent {parent:?}, valid manifest {valid_manifest}, overlay {overlay}"
                     )
                 } else {
                     let n = raw_content.len();
                     let pretty_content = String::from_utf8_lossy(&raw_content);
                     write!(
                         f,
-                        "Add FILE {name}, parent {parent:?}, content ({n}) {pretty_content}"
+                        "Add FILE {name}, parent {parent:?}, overlay {overlay} content ({n}) {pretty_content}"
                     )
                 }
+            }
+            Transition::SetupOverlayNode { key } => {
+                write!(f, "SETUP OVERLAY {key:?}")
             }
             Transition::RemoveNode { key } => {
                 write!(f, "REMOVE {key:?}")
@@ -110,6 +122,9 @@ impl std::fmt::Debug for Transition {
                     f,
                     "UPDATE {key:?}, valid manifest {valid_manifest}, content ({n}) {pretty_content}"
                 )
+            }
+            Transition::SaveOverlayNode { key } => {
+                write!(f, "SAVE OVERLAY {key:?}")
             }
             Transition::MarkScanRoot { key } => {
                 write!(f, "MARK SCAN ROOT {key:?}")
@@ -173,7 +188,7 @@ fn manifest_strategy() -> BoxedStrategy<Option<types::ImportPath>> {
     .boxed()
 }
 
-fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
+fn add_node_strategy(gen_overlay: bool, parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let name_kind_strategy = Union::new(vec![
         Just(NodeNameKind::Other),
         Just(NodeNameKind::SourceCode),
@@ -183,6 +198,15 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let name_strategy = (name_kind_strategy, valid_ident_strategy)
         .prop_flat_map(|(name_kind, valid_ident)| node_name_strategy(name_kind, valid_ident));
     let directory_strategy = any::<bool>();
+    let directory_overlay_strategy = directory_strategy.prop_flat_map(move |directory| {
+        if directory || !gen_overlay {
+            Just((directory, false)).boxed()
+        } else {
+            any::<bool>()
+                .prop_map(move |overlay| (directory, overlay))
+                .boxed()
+        }
+    });
     let want_parent_strategy = any::<bool>();
     let maybe_parent_strategy = want_parent_strategy
         .prop_flat_map(move |want_parent| {
@@ -198,20 +222,28 @@ fn add_node_strategy(parents: Vec<NodeKey>) -> BoxedStrategy<Transition> {
 
     (
         name_strategy,
-        directory_strategy,
+        directory_overlay_strategy,
         raw_content_strategy(),
         manifest_strategy(),
         maybe_parent_strategy,
     )
         .prop_map(
-            |(name, directory, raw_content, manifest, parent)| Transition::AddNode {
+            |(name, (directory, overlay), raw_content, manifest, parent)| Transition::AddNode {
                 name,
                 directory,
+                overlay,
                 raw_content,
                 manifest,
                 parent,
             },
         )
+        .boxed()
+}
+
+fn setup_overlay_node_strategy(regular_files: Vec<NodeKey>) -> BoxedStrategy<Transition> {
+    let key_strategy = sample::select(regular_files);
+    key_strategy
+        .prop_map(|key| Transition::SetupOverlayNode { key })
         .boxed()
 }
 
@@ -233,6 +265,13 @@ fn update_node_strategy(nodes: Vec<NodeKey>) -> BoxedStrategy<Transition> {
         .boxed()
 }
 
+fn save_overlay_node_strategy(overlay_files: Vec<NodeKey>) -> BoxedStrategy<Transition> {
+    let key_strategy = sample::select(overlay_files);
+    key_strategy
+        .prop_map(|key| Transition::SaveOverlayNode { key })
+        .boxed()
+}
+
 fn mark_scan_root_strategy(directories: Vec<NodeKey>) -> BoxedStrategy<Transition> {
     let dir_strategy = sample::select(directories);
     dir_strategy
@@ -250,6 +289,8 @@ slotmap::new_key_type! { struct NodeKey; }
 struct Node {
     name: String,
     directory: bool,
+    removed_directory: bool,
+    overlay: bool,
     scan_root: bool,
     raw_content: Vec<u8>,
     manifest: Option<types::ImportPath>,
@@ -261,13 +302,17 @@ impl Node {
     fn new(
         name: String,
         directory: bool,
+        overlay: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     ) -> Node {
+        assert!(!overlay || !directory); // overlay => !directory
         Node {
             name,
             directory,
+            removed_directory: false,
+            overlay,
             scan_root: false,
             raw_content,
             manifest,
@@ -276,8 +321,13 @@ impl Node {
         }
     }
 
-    fn find_child(&self, name: &str, nodes: &SlotMap<NodeKey, Node>) -> Result<usize, usize> {
-        find_sorted_by_name(&self.children, name, nodes)
+    fn find_child(
+        &self,
+        name: &str,
+        overlay: bool,
+        nodes: &SlotMap<NodeKey, Node>,
+    ) -> Result<usize, usize> {
+        find_sorted_by_name_overlay(&self.children, name, overlay, nodes)
     }
 }
 
@@ -296,6 +346,16 @@ struct File {
     source: PathBuf,
     content: types::Text,
     detached: bool, // invalid file name
+}
+
+impl Default for File {
+    fn default() -> Self {
+        File {
+            source: PathBuf::default(),
+            content: types::EMPTY_TEXT.clone(),
+            detached: false,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -318,24 +378,28 @@ struct VfsReferenceMachine {
     nodes: SlotMap<NodeKey, Node>,
     toplevel: Vec<NodeKey>,
     files: Vec<NodeKey>,
+    regular_files: Vec<NodeKey>,
+    overlay_files: Vec<NodeKey>,
     directories: Vec<NodeKey>,
     scan_roots: types::HashSet<PathBuf>,
     last_scan: Vec<Module>,
     // Kludges to simplify name resolution in real state machine.
     last_added_node_parent: Option<PathBuf>,
     last_removed_node_path: Option<PathBuf>,
+    last_removed_node_is_overlay: Option<bool>,
     // Hack to vary initialization of the SUT.
     rng_seed: u64,
     async_vfs: bool,
     cleanup_stale_roots: bool,
 }
 
-fn find_sorted_by_name(
+fn find_sorted_by_name_overlay(
     v: &Vec<NodeKey>,
     name: &str,
+    overlay: bool,
     nodes: &SlotMap<NodeKey, Node>,
 ) -> Result<usize, usize> {
-    v.binary_search_by_key(&name, |k| &nodes[*k].name)
+    v.binary_search_by_key(&(name, overlay), |k| (&nodes[*k].name, nodes[*k].overlay))
 }
 
 fn sorted_vec_contains<T: Ord>(v: &Vec<T>, elem: &T) -> bool {
@@ -374,64 +438,140 @@ impl VfsReferenceMachine {
         }
     }
 
-    fn add_node(
+    fn on_add_node(
         &mut self,
         name: String,
         directory: bool,
+        overlay: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
         parent: Option<NodeKey>,
     ) {
         self.last_added_node_parent = parent.map(|key| self.node_path(key));
-        let key = self.nodes.insert(Node::new(
+        let mut key = self.nodes.insert(Node::new(
             name.clone(),
             directory,
+            overlay,
             raw_content,
             manifest,
             parent,
         ));
+        let mut inserted = true;
         if let Some(parent_key) = parent {
-            let child_ix =
-                find_sorted_by_name(&self.nodes[parent_key].children, &name, &self.nodes)
-                    .unwrap_err();
-            (&mut self.nodes[parent_key]).children.insert(child_ix, key);
+            let child_pos = find_sorted_by_name_overlay(
+                &self.nodes[parent_key].children,
+                &name,
+                overlay,
+                &self.nodes,
+            );
+            match child_pos {
+                Ok(child_ix) => {
+                    self.nodes.remove(key);
+                    inserted = false;
+                    key = (&mut self.nodes[parent_key]).children[child_ix];
+                }
+                Err(child_ix) => {
+                    (&mut self.nodes[parent_key]).children.insert(child_ix, key);
+                }
+            };
         } else {
-            let child_ix = find_sorted_by_name(&self.toplevel, &name, &self.nodes).unwrap_err();
-            self.toplevel.insert(child_ix, key);
+            let child_pos =
+                find_sorted_by_name_overlay(&self.toplevel, &name, overlay, &self.nodes);
+            match child_pos {
+                Ok(child_ix) => {
+                    self.nodes.remove(key);
+                    inserted = false;
+                    key = self.toplevel[child_ix];
+                }
+                Err(child_ix) => {
+                    self.toplevel.insert(child_ix, key);
+                }
+            };
         }
-        if directory {
-            sorted_vec_insert(&mut self.directories, key);
+        if inserted {
+            if directory {
+                sorted_vec_insert(&mut self.directories, key);
+            } else {
+                sorted_vec_insert(&mut self.files, key);
+                if overlay {
+                    sorted_vec_insert(&mut self.overlay_files, key);
+                } else {
+                    sorted_vec_insert(&mut self.regular_files, key);
+                }
+            }
         } else {
-            sorted_vec_insert(&mut self.files, key);
+            assert!(directory && self.nodes[key].removed_directory);
+            self.nodes[key].removed_directory = false;
         }
     }
 
-    fn remove_node(&mut self, key: NodeKey) {
-        self.do_remove_node(key, true);
+    fn on_setup_overlay_node(&mut self, key: NodeKey) {
+        let node = &self.nodes[key];
+        assert!(!node.overlay && !node.directory);
+
+        let has_overlay = {
+            let nodes = if let Some(parent) = node.parent {
+                &self.nodes[parent].children
+            } else {
+                &self.toplevel
+            };
+            find_sorted_by_name_overlay(nodes, &node.name, true, &self.nodes).is_ok()
+        };
+        if has_overlay {
+            return; // just ignore duplicate overlays instead of only generating new ones
+        }
+
+        self.on_add_node(
+            node.name.clone(),
+            false,
+            true,
+            node.raw_content.clone(),
+            node.manifest.clone(),
+            node.parent,
+        );
     }
 
-    fn do_remove_node(&mut self, key: NodeKey, unlink_from_parent: bool) {
-        if unlink_from_parent {
-            self.last_removed_node_path = Some(self.node_path(key));
-            let node = &self.nodes[key];
+    fn on_remove_node(&mut self, key: NodeKey) {
+        self.last_removed_node_path = Some(self.node_path(key));
+        self.last_removed_node_is_overlay = Some(self.node_overlay(key));
+        self.do_remove_node(key, false);
+    }
+
+    fn do_remove_node(&mut self, key: NodeKey, recur: bool) {
+        let node = &self.nodes[key];
+        if node.directory {
+            assert!(recur || !node.removed_directory);
+            self.nodes[key].removed_directory = true;
+            for child_key in self.nodes[key].children.clone() {
+                self.do_remove_node(child_key, true);
+            }
+        } else if !(recur && node.overlay) {
+            // Unlink the node from the parent.
             if let Some(parent_key) = node.parent {
-                let child_ix =
-                    find_sorted_by_name(&self.nodes[parent_key].children, &node.name, &self.nodes)
-                        .unwrap();
+                let child_ix = find_sorted_by_name_overlay(
+                    &self.nodes[parent_key].children,
+                    &node.name,
+                    node.overlay,
+                    &self.nodes,
+                )
+                .unwrap();
                 (&mut self.nodes[parent_key]).children.remove(child_ix);
             } else {
-                let child_ix =
-                    find_sorted_by_name(&self.toplevel, &node.name, &self.nodes).unwrap();
+                let child_ix = find_sorted_by_name_overlay(
+                    &self.toplevel,
+                    &node.name,
+                    node.overlay,
+                    &self.nodes,
+                )
+                .unwrap();
                 self.toplevel.remove(child_ix);
             }
-        }
-        let node = self.remove(key);
-        for child in node.children {
-            self.do_remove_node(child, false)
+            // Purge unlinked node.
+            self.force_remove(key);
         }
     }
 
-    fn update_node(
+    fn on_update_node(
         &mut self,
         key: NodeKey,
         raw_content: Vec<u8>,
@@ -443,12 +583,46 @@ impl VfsReferenceMachine {
         node.manifest = manifest;
     }
 
-    fn mark_scan_root(&mut self, key: NodeKey) {
+    fn on_save_overlay_node(&mut self, key: NodeKey) {
+        assert!(self.nodes[key].overlay);
+
+        let regular = {
+            let nodes = if let Some(parent) = self.nodes[key].parent {
+                &self.nodes[parent].children
+            } else {
+                &self.toplevel
+            };
+            let res = find_sorted_by_name_overlay(nodes, &self.nodes[key].name, false, &self.nodes);
+            res.ok().map(|ix| nodes[ix])
+        };
+
+        if let Some(regular) = regular {
+            self.nodes[regular].raw_content = self.nodes[key].raw_content.clone();
+            self.nodes[regular].manifest = self.nodes[key].manifest.clone();
+        } else {
+            let mut parent = self.nodes[key].parent;
+            while let Some(parent_key) = parent {
+                self.nodes[parent_key].removed_directory = false;
+                parent = self.nodes[parent_key].parent;
+            }
+            let node = &self.nodes[key];
+            self.on_add_node(
+                node.name.clone(),
+                false,
+                false,
+                node.raw_content.clone(),
+                node.manifest.clone(),
+                node.parent,
+            );
+        }
+    }
+
+    fn on_mark_scan_root(&mut self, key: NodeKey) {
         assert!(self.nodes[key].directory);
         self.scan_roots.insert(self.node_path(key));
     }
 
-    fn scan(&mut self) {
+    fn on_scan(&mut self) {
         let mut root_keys: Vec<NodeKey> = self
             .directories
             .iter()
@@ -474,18 +648,27 @@ impl VfsReferenceMachine {
         }
     }
 
-    fn remove(&mut self, key: NodeKey) -> Node {
+    fn force_remove(&mut self, key: NodeKey) -> Node {
         let node = self.nodes.remove(key).unwrap();
         if node.directory {
             sorted_vec_remove(&mut self.directories, &key);
         } else {
             sorted_vec_remove(&mut self.files, &key);
+            if node.overlay {
+                sorted_vec_remove(&mut self.overlay_files, &key);
+            } else {
+                sorted_vec_remove(&mut self.regular_files, &key);
+            }
         }
         node
     }
 
     fn node_path(&self, key: NodeKey) -> PathBuf {
         Self::node_path_impl(&self.nodes, key)
+    }
+
+    fn node_overlay(&self, key: NodeKey) -> bool {
+        self.nodes[key].overlay
     }
 
     fn node_path_impl(nodes: &SlotMap<NodeKey, Node>, mut key: NodeKey) -> PathBuf {
@@ -530,7 +713,9 @@ impl VfsReferenceMachine {
         in_scan_root = in_scan_root || node.scan_root;
         if in_scan_root {
             // Should we update the current module?
-            let manifest_loc = node.find_child(MODULE_MANIFEST_FILENAME, &self.nodes);
+            let manifest_loc = node
+                .find_child(MODULE_MANIFEST_FILENAME, true, &self.nodes)
+                .or_else(|_| node.find_child(MODULE_MANIFEST_FILENAME, false, &self.nodes));
             if let Ok(manifest_ix) = manifest_loc {
                 let manifest_key = node.children[manifest_ix];
                 let manifest_node = &self.nodes[manifest_key];
@@ -559,22 +744,8 @@ impl VfsReferenceMachine {
                 if cur_dir_source != loc.source && !util::valid_package_name(&node.name) {
                     cur_pkg_path = None;
                 }
-                let pkg = Package {
-                    source: cur_dir_source.clone(),
-                    path: cur_pkg_path.clone(),
-                    files: node
-                        .children
-                        .iter()
-                        .map(|key| &self.nodes[*key])
-                        .filter(|node| !node.directory && util::valid_source_extension(&node.name))
-                        .map(|node| File {
-                            source: cur_dir_source.join(&node.name),
-                            content: types::Text::from(String::from_utf8_lossy(&node.raw_content)),
-                            detached: !util::valid_source_file_name(&node.name),
-                        })
-                        .collect(),
-                };
-                modules.get_mut(&loc).unwrap().packages.push(pkg);
+                let pkg = self.node_package(node, cur_dir_source.clone(), cur_pkg_path.clone());
+                modules.get_mut(&loc).unwrap().packages.extend(pkg);
             }
         }
         for child_key in &node.children {
@@ -590,6 +761,92 @@ impl VfsReferenceMachine {
                 );
             }
         }
+    }
+
+    fn removed_node_is_empty(&self, node: &Node) -> bool {
+        assert!(node.removed_directory);
+
+        let subdirs_empty = node
+            .children
+            .iter()
+            .map(|key| &self.nodes[*key])
+            .filter(|n| n.directory)
+            .all(|n| self.removed_node_is_empty(n));
+        let files_empty = !node.children.iter().map(|key| &self.nodes[*key]).any(|n| {
+            !n.directory
+                && (n.name == MODULE_MANIFEST_FILENAME || util::valid_source_extension(&n.name))
+        });
+
+        subdirs_empty && files_empty
+    }
+
+    fn node_package(
+        &self,
+        node: &Node,
+        cur_dir_source: PathBuf,
+        cur_pkg_path: Option<types::ImportPath>,
+    ) -> Option<Package> {
+        if node.removed_directory && self.removed_node_is_empty(node) {
+            return None;
+        }
+        let regular_files = self.node_child_files(node, &cur_dir_source, false);
+        let overlay_files = self.node_child_files(node, &cur_dir_source, true);
+        let mut files = Vec::with_capacity(regular_files.capacity());
+        let mut regular_files_iter = regular_files.into_iter().peekable();
+        let mut overlay_files_iter = overlay_files.into_iter().peekable();
+        loop {
+            let (regular, overlay) =
+                match (regular_files_iter.peek_mut(), overlay_files_iter.peek_mut()) {
+                    (None, None) => break,
+                    (Some(regular_file), Some(overlay_file)) => {
+                        match regular_file.source.cmp(&overlay_file.source) {
+                            Ordering::Equal => (Some(regular_file), Some(overlay_file)),
+                            Ordering::Less => (Some(regular_file), None),
+                            Ordering::Greater => (None, Some(overlay_file)),
+                        }
+                    }
+                    only_one => only_one,
+                };
+            match (regular, overlay) {
+                (Some(_), Some(overlay_file)) => {
+                    files.push(take(overlay_file));
+                    regular_files_iter.next();
+                    overlay_files_iter.next();
+                }
+                (Some(regular_file), None) => {
+                    files.push(take(regular_file));
+                    regular_files_iter.next();
+                }
+                (None, Some(overlay_file)) => {
+                    files.push(take(overlay_file));
+                    overlay_files_iter.next();
+                }
+                _ => unreachable!("at least one file must be set"),
+            }
+        }
+        Some(Package {
+            source: cur_dir_source,
+            path: cur_pkg_path,
+            files,
+        })
+    }
+
+    fn node_child_files(&self, node: &Node, cur_dir_source: &Path, overlay: bool) -> Vec<File> {
+        assert!(node.directory);
+        node.children
+            .iter()
+            .map(|key| &self.nodes[*key])
+            .filter(|node| {
+                !node.directory
+                    && node.overlay == overlay
+                    && util::valid_source_extension(&node.name)
+            })
+            .map(|node| File {
+                source: cur_dir_source.join(&node.name),
+                content: types::Text::from(String::from_utf8_lossy(&node.raw_content)),
+                detached: !util::valid_source_file_name(&node.name),
+            })
+            .collect()
     }
 }
 
@@ -618,13 +875,20 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
     fn transitions(state: &Self::State) -> BoxedStrategy<Self::Transition> {
         let mut options: Vec<(u32, BoxedStrategy<Transition>)> = Vec::new();
+        let gen_overlay = !state.async_vfs;
 
-        options.push((2, add_node_strategy(state.directories.clone())));
+        options.push((2, add_node_strategy(gen_overlay, state.directories.clone())));
+        if gen_overlay && !state.regular_files.is_empty() {
+            options.push((1, setup_overlay_node_strategy(state.regular_files.clone())));
+        }
         if !state.nodes.is_empty() {
             options.push((1, remove_node_strategy(state.nodes.keys().collect())));
         }
         if !state.files.is_empty() {
-            options.push((2, update_node_strategy(state.files.clone())));
+            options.push((3, update_node_strategy(state.files.clone())));
+        }
+        if gen_overlay && !state.overlay_files.is_empty() {
+            options.push((1, save_overlay_node_strategy(state.overlay_files.clone())));
         }
         if !state.directories.is_empty() {
             options.push((1, mark_scan_root_strategy(state.directories.clone())));
@@ -639,33 +903,41 @@ impl ReferenceStateMachine for VfsReferenceMachine {
             Transition::AddNode {
                 name,
                 directory,
+                overlay,
                 raw_content,
                 manifest,
                 parent,
             } => {
-                state.add_node(
+                state.on_add_node(
                     name.clone(),
                     *directory,
+                    *overlay,
                     raw_content.clone(),
                     manifest.clone(),
                     *parent,
                 );
             }
+            Transition::SetupOverlayNode { key } => {
+                state.on_setup_overlay_node(*key);
+            }
             Transition::RemoveNode { key } => {
-                state.remove_node(*key);
+                state.on_remove_node(*key);
             }
             Transition::UpdateNode {
                 key,
                 raw_content,
                 manifest,
             } => {
-                state.update_node(*key, raw_content.clone(), manifest.clone());
+                state.on_update_node(*key, raw_content.clone(), manifest.clone());
+            }
+            Transition::SaveOverlayNode { key } => {
+                state.on_save_overlay_node(*key);
             }
             Transition::MarkScanRoot { key } => {
-                state.mark_scan_root(*key);
+                state.on_mark_scan_root(*key);
             }
             Transition::Scan {} => {
-                state.scan();
+                state.on_scan();
             }
         };
         state
@@ -673,21 +945,61 @@ impl ReferenceStateMachine for VfsReferenceMachine {
 
     fn preconditions(state: &Self::State, transition: &Self::Transition) -> bool {
         match transition {
-            Transition::AddNode { name, parent, .. } => {
-                if let Some(parent_key) = parent {
-                    sorted_vec_contains(&state.directories, parent_key)
-                        && (&state.nodes[*parent_key])
-                            .find_child(&name, &state.nodes)
-                            .is_err()
+            Transition::AddNode {
+                name,
+                directory,
+                overlay,
+                parent,
+                ..
+            } => {
+                let siblings = if let Some(parent_key) = parent {
+                    if !sorted_vec_contains(&state.directories, parent_key)
+                        || (state.nodes[*parent_key].removed_directory && !*overlay)
+                    {
+                        // Parent must be a directory. If it is a removed ones, only overlays are possible.
+                        return false;
+                    }
+                    &state.nodes[*parent_key].children
                 } else {
-                    find_sorted_by_name(&state.toplevel, &name, &state.nodes).is_err()
+                    &state.toplevel
+                };
+                // Sibling with the same name is only OK if it is a removed directory
+                // and we are (re-)creating a regular directory in its place.
+                let regular_ix =
+                    find_sorted_by_name_overlay(siblings, &name, false, &state.nodes).ok();
+                let overlay_ix =
+                    find_sorted_by_name_overlay(siblings, &name, true, &state.nodes).ok();
+                match (regular_ix, overlay_ix) {
+                    (Some(regular_ix), None) if *directory => {
+                        state.nodes[siblings[regular_ix]].removed_directory
+                    }
+                    (None, None) => true,
+                    _ => false,
                 }
             }
-            Transition::RemoveNode { key } => state.nodes.contains_key(*key),
+            Transition::SetupOverlayNode { key } => {
+                if let Some(node) = state.nodes.get(*key) {
+                    !node.overlay && !node.directory
+                } else {
+                    false
+                }
+            }
+            Transition::RemoveNode { key } => {
+                let node = state.nodes.get(*key);
+                if let Some(node) = node {
+                    !node.removed_directory
+                } else {
+                    false
+                }
+            }
             Transition::UpdateNode { key, .. } => {
                 state.nodes.contains_key(*key) && sorted_vec_contains(&state.files, key)
             }
+            Transition::SaveOverlayNode { key } => {
+                state.nodes.contains_key(*key) && state.node_overlay(*key)
+            }
             Transition::MarkScanRoot { key } => {
+                // We consider removed directory to be OK.
                 state.nodes.contains_key(*key) && sorted_vec_contains(&state.directories, key)
             }
             Transition::Scan {} => true,
@@ -704,6 +1016,9 @@ struct VfsMachine {
     vfs_join_handle: Option<thread::JoinHandle<()>>,
     last_scan_id: u64,
     pending_updates: Vec<workspace::ModuleUpdate>,
+    pending_overlay_updates: Vec<types::OverlayUpdate>,
+    overlay: types::HashMap<PathBuf, (Vec<u8>, i32)>,
+    changed_since_last_scan: bool,
     modules: types::HashMap<ModuleLoc, Module>,
 }
 
@@ -747,6 +1062,9 @@ impl VfsMachine {
             last_scan_id: 0,
             modules: types::HashMap::default(),
             pending_updates: Vec::new(),
+            pending_overlay_updates: Vec::new(),
+            overlay: types::HashMap::default(),
+            changed_since_last_scan: true,
         }
     }
 
@@ -756,14 +1074,12 @@ impl VfsMachine {
 
     fn add_node(
         &mut self,
-        name: String,
+        path: PathBuf,
         directory: bool,
+        is_manifest: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
-        parent: PathBuf,
     ) {
-        let is_manifest = name == MODULE_MANIFEST_FILENAME;
-        let path = parent.join(name);
         if directory {
             fs::create_dir(path).unwrap();
         } else {
@@ -776,6 +1092,35 @@ impl VfsMachine {
         }
     }
 
+    fn add_overlay_node(
+        &mut self,
+        path: PathBuf,
+        is_manifest: bool,
+        raw_content: Vec<u8>,
+        manifest: Option<types::ImportPath>,
+    ) {
+        let mut content = Vec::new();
+        Self::write_content(&mut content, is_manifest, raw_content, manifest);
+        self.add_overlay(path, content);
+    }
+
+    fn setup_overlay_node(&mut self, path: PathBuf) {
+        if !self.overlay.contains_key(&path) {
+            let mut file = std::fs::File::open(&path).unwrap();
+            let mut content = Vec::new();
+            file.read_to_end(&mut content).unwrap();
+            self.add_overlay(path, content);
+        }
+    }
+
+    fn add_overlay(&mut self, path: PathBuf, content: Vec<u8>) {
+        let text_content = types::Text::from(String::from_utf8_lossy(&content));
+        let prev = self.overlay.insert(path.clone(), (content, 0));
+        assert!(prev.is_none());
+        self.pending_overlay_updates
+            .push(types::OverlayUpdate::AddOverlay(path, text_content, 0));
+    }
+
     fn remove_node(&mut self, path: PathBuf) {
         // Instead of removing, make the files hidden to avoid inode reuse.
         let hidden = path
@@ -785,17 +1130,23 @@ impl VfsMachine {
         fs::rename(path, hidden).unwrap();
     }
 
+    fn remove_overlay_node(&mut self, path: PathBuf) {
+        self.overlay.remove(&path).unwrap();
+        self.pending_overlay_updates
+            .push(types::OverlayUpdate::RemoveOverlay(path));
+    }
+
     fn update_node(
         &mut self,
         path: PathBuf,
+        write_manifest: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
     ) {
-        let is_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
         // We remove and re-add the file to guarantee the metadata change (at least on Linux,
         // the inode number should be different). Otherwise, we can miss updates
         // due to the filesystem using the cached timestamps.
-        fs::remove_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
         // We hope dearly that new temporary file can avoid inode reuse problem.
         let tmp = tempfile::tempfile().unwrap();
         self.inode_holders.push(tmp);
@@ -804,7 +1155,38 @@ impl VfsMachine {
             .write(true)
             .open(path)
             .unwrap();
-        Self::write_content(&mut file, is_manifest, raw_content, manifest);
+        Self::write_content(&mut file, write_manifest, raw_content, manifest);
+    }
+
+    fn update_overlay_node(
+        &mut self,
+        path: PathBuf,
+        write_manifest: bool,
+        raw_content: Vec<u8>,
+        manifest: Option<types::ImportPath>,
+    ) {
+        let mut content = Vec::new();
+        Self::write_content(&mut content, write_manifest, raw_content, manifest);
+        let over = self.overlay.get_mut(&path).unwrap();
+        over.0 = content;
+        over.1 += 1;
+        let change = types::OverlayChange {
+            content: String::from_utf8_lossy(&over.0).into(),
+            range: None,
+            utf8_pos: false,
+        };
+        self.pending_overlay_updates
+            .push(types::OverlayUpdate::ChangeOverlay(
+                path,
+                vec![change],
+                over.1,
+            ));
+    }
+
+    fn save_overlay_node(&mut self, path: PathBuf) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap(); // overlay node may have its parents removed
+        let content = self.overlay.get(&path).unwrap().0.clone();
+        self.update_node(path, false, content, None);
     }
 
     fn mark_scan_root(&mut self, path: PathBuf) {
@@ -820,16 +1202,16 @@ impl VfsMachine {
     }
 
     fn write_content(
-        file: &mut fs::File,
+        w: &mut dyn std::io::Write,
         write_manifest: bool,
         raw_content: Vec<u8>,
         manifest: Option<types::ImportPath>,
     ) {
         if write_manifest {
             let content = format_manifest(manifest);
-            file.write_all(content.as_bytes()).unwrap();
+            w.write_all(content.as_bytes()).unwrap();
         } else {
-            file.write_all(&raw_content).unwrap();
+            w.write_all(&raw_content).unwrap();
         }
     }
 
@@ -837,7 +1219,9 @@ impl VfsMachine {
         let pending = take(&mut self.pending_updates);
         self.apply(pending);
         let updates = if let Some(vfs) = &mut self.vfs {
-            vfs.__test_scan()
+            let overlay_pending = take(&mut self.pending_overlay_updates);
+            let should_scan = self.changed_since_last_scan || overlay_pending.len() % 2 == 0;
+            vfs.__test_scan(should_scan, overlay_pending)
         } else {
             let state = self.state.as_ref().unwrap().as_ref();
             self.last_scan_id += 1;
@@ -988,21 +1372,43 @@ impl StateMachineTest for VfsMachine {
         transition: <Self::Reference as ReferenceStateMachine>::Transition,
     ) -> Self::SystemUnderTest {
         log::debug!("EXECUTING {transition:?} ===================================================");
+        let mut is_scan = false;
+        let mut is_overlay = false;
         match transition {
             Transition::AddNode {
                 name,
                 directory,
+                overlay,
                 raw_content,
                 manifest,
-                ..
+                parent: _,
             } => {
                 let parent =
                     state.full_path(ref_state.last_added_node_parent.clone().unwrap_or_default());
-                state.add_node(name, directory, raw_content, manifest, parent);
+                let is_manifest = name == MODULE_MANIFEST_FILENAME;
+                let path = parent.join(name);
+                if overlay {
+                    log::debug!("OVERLAY variant");
+                    state.add_overlay_node(path, is_manifest, raw_content, manifest);
+                    is_overlay = true;
+                } else {
+                    state.add_node(path, directory, is_manifest, raw_content, manifest);
+                }
+            }
+            Transition::SetupOverlayNode { key } => {
+                let path = state.full_path(ref_state.node_path(key));
+                state.setup_overlay_node(path);
+                is_overlay = true;
             }
             Transition::RemoveNode { .. } => {
                 let path = state.full_path(ref_state.last_removed_node_path.clone().unwrap());
-                state.remove_node(path);
+                if ref_state.last_removed_node_is_overlay.unwrap() {
+                    log::debug!("OVERLAY variant");
+                    state.remove_overlay_node(path);
+                    is_overlay = true;
+                } else {
+                    state.remove_node(path);
+                }
             }
             Transition::UpdateNode {
                 key,
@@ -1010,7 +1416,19 @@ impl StateMachineTest for VfsMachine {
                 manifest,
             } => {
                 let path = state.full_path(ref_state.node_path(key));
-                state.update_node(path, raw_content, manifest);
+                let overlay = ref_state.node_overlay(key);
+                let write_manifest = path.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref());
+                if overlay {
+                    log::debug!("OVERLAY variant");
+                    state.update_overlay_node(path, write_manifest, raw_content, manifest);
+                    is_overlay = true;
+                } else {
+                    state.update_node(path, write_manifest, raw_content, manifest);
+                }
+            }
+            Transition::SaveOverlayNode { key } => {
+                let path = state.full_path(ref_state.node_path(key));
+                state.save_overlay_node(path);
             }
             Transition::MarkScanRoot { key } => {
                 let path = state.full_path(ref_state.node_path(key));
@@ -1018,8 +1436,14 @@ impl StateMachineTest for VfsMachine {
             }
             Transition::Scan {} => {
                 state.scan();
+                is_scan = true;
             }
         };
+        if is_scan {
+            state.changed_since_last_scan = false;
+        } else if !is_overlay {
+            state.changed_since_last_scan = true;
+        }
         state
     }
 

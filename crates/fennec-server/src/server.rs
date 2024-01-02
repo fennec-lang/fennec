@@ -18,7 +18,7 @@ pub struct Server {
 
     // From LSP InitializeParams:
     workspace_folders: Vec<PathBuf>,
-    _utf8_pos: bool, // TODO: use
+    utf8_pos: bool,
 }
 
 impl Server {
@@ -64,7 +64,7 @@ impl Server {
             conn,
             io_threads,
             request_id: 0,
-            _utf8_pos: utf8_pos,
+            utf8_pos,
             workspace_folders: handshake::workspace_roots(&init_params),
         })
     }
@@ -143,37 +143,38 @@ impl Server {
 
                     match note.method.as_str() {
                         notification::SetTrace::METHOD => {
-                            let params = extract_note_params::<notification::SetTrace>(note);
-                            if let Some(params) = params {
+                            if let Some((_, params)) =
+                                extract_note_params::<notification::SetTrace>(note)
+                            {
                                 self.handle_set_trace(params);
                             }
                         }
                         notification::DidChangeWatchedFiles::METHOD => {
-                            let params =
-                                extract_note_params::<notification::DidChangeWatchedFiles>(note);
-                            if let Some(params) = params {
-                                Self::handle_did_change_watched_files(params, state);
+                            if let Some((method, params)) =
+                                extract_note_params::<notification::DidChangeWatchedFiles>(note)
+                            {
+                                Self::handle_did_change_watched_files(method, params, state);
                             }
                         }
                         notification::DidOpenTextDocument::METHOD => {
-                            let params =
-                                extract_note_params::<notification::DidOpenTextDocument>(note);
-                            if let Some(params) = params {
-                                self.handle_did_open_text_document(params, state);
+                            if let Some((method, params)) =
+                                extract_note_params::<notification::DidOpenTextDocument>(note)
+                            {
+                                Self::handle_did_open_text_document(method, params, state);
                             }
                         }
                         notification::DidChangeTextDocument::METHOD => {
-                            let params =
-                                extract_note_params::<notification::DidChangeTextDocument>(note);
-                            if let Some(params) = params {
-                                self.handle_did_change_text_document(params, state);
+                            if let Some((method, params)) =
+                                extract_note_params::<notification::DidChangeTextDocument>(note)
+                            {
+                                self.handle_did_change_text_document(method, params, state);
                             }
                         }
                         notification::DidCloseTextDocument::METHOD => {
-                            let params =
-                                extract_note_params::<notification::DidCloseTextDocument>(note);
-                            if let Some(params) = params {
-                                self.handle_did_close_text_document(params, state);
+                            if let Some((method, params)) =
+                                extract_note_params::<notification::DidCloseTextDocument>(note)
+                            {
+                                Self::handle_did_close_text_document(method, &params, state);
                             }
                         }
                         other => {
@@ -193,6 +194,7 @@ impl Server {
     }
 
     fn handle_did_change_watched_files(
+        method: &str,
         params: lsp_types::DidChangeWatchedFilesParams,
         state: &types::SyncState,
     ) {
@@ -204,52 +206,101 @@ impl Server {
                 // when module manifest parent folder is deleted.
                 continue;
             }
-            let uri = change.uri;
-            if uri.scheme() != handshake::FILE_SCHEME {
-                log::warn!(r#"ignoring non-file-scheme change event for "{uri}""#);
-                continue;
-            }
-            if let Ok(manifest) = uri.to_file_path() {
+            if let Some(manifest) = uri_to_pathbuf(&change.uri, method) {
                 roots.extend(module_manifest_parent(&manifest));
-            } else {
-                log::warn!(r#"ignoring change event with invalid file path "{uri}""#);
             }
         }
         state.signal_vfs_new_roots(roots);
     }
 
-    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
     fn handle_did_open_text_document(
-        &self,
-        _params: lsp_types::DidOpenTextDocumentParams,
-        _state: &types::SyncState,
+        method: &str,
+        params: lsp_types::DidOpenTextDocumentParams,
+        state: &types::SyncState,
     ) {
+        if let Some(path) = uri_to_pathbuf(&params.text_document.uri, method) {
+            let text = types::Text::from(params.text_document.text);
+            let update = types::OverlayUpdate::AddOverlay(path, text, params.text_document.version);
+            state.signal_vfs_overlay_updates(vec![update]);
+        }
     }
 
-    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
     fn handle_did_change_text_document(
         &self,
-        _params: lsp_types::DidChangeTextDocumentParams,
-        _state: &types::SyncState,
+        method: &str,
+        params: lsp_types::DidChangeTextDocumentParams,
+        state: &types::SyncState,
     ) {
+        if let Some(path) = uri_to_pathbuf(&params.text_document.uri, method) {
+            let changes = params.content_changes.into_iter().map(|c| {
+                if c.range.is_none() && c.range_length.is_none() {
+                    Some(types::OverlayChange {
+                        range: None,
+                        content: c.text,
+                        utf8_pos: self.utf8_pos,
+                    })
+                } else if let Some(range) = c.range {
+                    Some(types::OverlayChange {
+                        range: Some((
+                            types::LineCol {
+                                line: range.start.line,
+                                col: range.start.character,
+                            },
+                            types::LineCol {
+                                line: range.end.line,
+                                col: range.end.character,
+                            },
+                        )),
+                        content: c.text,
+                        utf8_pos: self.utf8_pos,
+                    })
+                } else {
+                    let uri = &params.text_document.uri;
+                    log::warn!(r#"{method} for "{uri}" contains only deprecated rangeLength field, ignoring"#);
+                    None
+                }
+            });
+            let update = types::OverlayUpdate::ChangeOverlay(
+                path,
+                changes.flatten().collect(),
+                params.text_document.version,
+            );
+            state.signal_vfs_overlay_updates(vec![update]);
+        }
     }
 
-    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
     fn handle_did_close_text_document(
-        &self,
-        _params: lsp_types::DidCloseTextDocumentParams,
-        _state: &types::SyncState,
+        method: &str,
+        params: &lsp_types::DidCloseTextDocumentParams,
+        state: &types::SyncState,
     ) {
+        if let Some(path) = uri_to_pathbuf(&params.text_document.uri, method) {
+            let update = types::OverlayUpdate::RemoveOverlay(path);
+            state.signal_vfs_overlay_updates(vec![update]);
+        }
     }
 }
 
-fn extract_note_params<N>(note: lsp_server::Notification) -> Option<N::Params>
+fn uri_to_pathbuf(uri: &lsp_types::Url, method: &str) -> Option<PathBuf> {
+    if uri.scheme() != handshake::FILE_SCHEME {
+        log::warn!(r#"ignoring non-file-scheme {method} for "{uri}""#);
+        return None;
+    }
+    if let Ok(path) = uri.to_file_path() {
+        Some(util::normalize_path(&path))
+    } else {
+        log::warn!(r#"ignoring {method} with invalid file path "{uri}""#);
+        None
+    }
+}
+
+fn extract_note_params<N>(note: lsp_server::Notification) -> Option<(&'static str, N::Params)>
 where
     N: notification::Notification,
     N::Params: serde::de::DeserializeOwned,
 {
     match note.extract(N::METHOD) {
-        Ok(params) => Some(params),
+        Ok(params) => Some((N::METHOD, params)),
         Err(err) => {
             let method = N::METHOD;
             log::warn!(r#"failed to extract "{method}" notification params, ignoring: {err}"#);
@@ -281,5 +332,5 @@ fn find_module_roots(workspace_folders: &Vec<PathBuf>) -> Vec<PathBuf> {
 
 fn module_manifest_parent(manifest: &Path) -> Option<PathBuf> {
     assert!(manifest.file_name() == Some(MODULE_MANIFEST_FILENAME.as_ref()));
-    Some(util::normalize_path(manifest).parent()?.to_path_buf())
+    Some(manifest.parent()?.to_path_buf())
 }

@@ -7,12 +7,37 @@
 use parking_lot::{Condvar, Mutex};
 use std::{
     mem::take,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
     time::Duration,
 };
 
-use crate::workspace;
+use crate::{types, workspace};
+
+#[derive(Debug)]
+pub enum OverlayUpdate {
+    AddOverlay(PathBuf, types::Text, i32),
+    ChangeOverlay(PathBuf, Vec<OverlayChange>, i32),
+    RemoveOverlay(PathBuf),
+}
+
+impl OverlayUpdate {
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        match self {
+            types::OverlayUpdate::AddOverlay(path, _, _)
+            | types::OverlayUpdate::ChangeOverlay(path, _, _)
+            | types::OverlayUpdate::RemoveOverlay(path) => path,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct OverlayChange {
+    pub range: Option<(types::LineCol, types::LineCol)>,
+    pub content: String,
+    pub utf8_pos: bool,
+}
 
 #[derive(Default, Debug)]
 pub struct VfsChangeBuffer {
@@ -20,11 +45,15 @@ pub struct VfsChangeBuffer {
     // Scan roots usually correspond to directories with a manifest file, but they don't have to.
     pub scan_roots: Vec<PathBuf>,
     pub force_scan_id: Option<u64>,
+    pub overlay_updates: Vec<OverlayUpdate>,
 }
 
 impl VfsChangeBuffer {
     fn is_empty(&self) -> bool {
-        !self.exit && self.scan_roots.is_empty() && self.force_scan_id.is_none()
+        !self.exit
+            && self.scan_roots.is_empty()
+            && self.force_scan_id.is_none()
+            && self.overlay_updates.is_empty()
     }
 }
 
@@ -99,6 +128,14 @@ impl SyncState {
         let mut vfs = self.vfs_changes.lock();
         vfs.force_scan_id = Some(id);
         self.notify_vfs();
+    }
+
+    pub fn signal_vfs_overlay_updates(&self, updates: Vec<OverlayUpdate>) {
+        if !updates.is_empty() {
+            let mut vfs = self.vfs_changes.lock();
+            vfs.overlay_updates.extend(updates);
+            self.notify_vfs();
+        }
     }
 
     pub fn signal_core_module_updates(

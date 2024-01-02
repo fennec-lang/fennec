@@ -100,3 +100,9 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 pub fn has_prefix(path: &Path, prefix: &Path) -> bool {
     path.strip_prefix(prefix).is_ok()
 }
+
+#[must_use]
+pub fn has_strict_prefix(path: &Path, prefix: &Path) -> bool {
+    path.strip_prefix(prefix)
+        .map_or(false, |p| !p.as_os_str().is_empty())
+}
