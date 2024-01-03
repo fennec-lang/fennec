@@ -12,7 +12,6 @@ use std::{
     io::Read,
     mem::take,
     path::{Path, PathBuf},
-    sync::Arc,
     time::Duration,
     vec,
 };
@@ -94,7 +93,7 @@ impl File {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         let s = String::from_utf8_lossy(&buf);
-        Ok(Arc::from(s))
+        Ok(types::Text::from(s))
         // Vec -> Cow -> Arc is quite a lot of copies, but hopefully guaranteed UTF-8 simplifies things downstream.
     }
 }

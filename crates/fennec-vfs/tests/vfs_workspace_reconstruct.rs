@@ -546,7 +546,9 @@ impl VfsReferenceMachine {
                         Module {
                             source: loc.source,
                             path: loc.module,
-                            manifest: Arc::from(format_manifest(manifest_node.manifest.clone())),
+                            manifest: types::Text::from(format_manifest(
+                                manifest_node.manifest.clone(),
+                            )),
                             packages: Vec::new(),
                         },
                     );
@@ -567,7 +569,7 @@ impl VfsReferenceMachine {
                         .filter(|node| !node.directory && util::valid_source_extension(&node.name))
                         .map(|node| File {
                             source: cur_dir_source.join(&node.name),
-                            content: Arc::from(String::from_utf8_lossy(&node.raw_content)),
+                            content: types::Text::from(String::from_utf8_lossy(&node.raw_content)),
                             detached: !util::valid_source_file_name(&node.name),
                         })
                         .collect(),
