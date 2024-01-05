@@ -28,4 +28,6 @@ Fennec is in the prototyping stage right now.
 
 ## License
 
-Fennec is licensed under the [Mozilla Public License Version 2.0](./LICENSE).
+Fennec source code is licensed under the [Mozilla Public License 2.0](./LICENSE).
+
+Fennec logo is licensed under the [Creative Commons Attribution-NoDerivatives License 4.0](./LICENSE-LOGO).

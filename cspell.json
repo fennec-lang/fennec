@@ -10,7 +10,9 @@
         ".git/",
         ".vscode/extensions.json",
         "cspell.json",
-        "crates/fennec-module/src/lexer_gen.rs"
+        "crates/fennec-module/src/lexer_gen.rs",
+        "crates/fennec-module/tests/parser_fuzz/corpus/",
+        "crates/fennec-module/tests/parser_fuzz/crashes/"
     ],
     "flagWords": [
         "adn:and"
@@ -82,6 +84,7 @@
         "structs",
         "subdir",
         "subdirs",
+        "sublicensable",
         "subpattern",
         "tempfile",
         "typestate",
@@ -92,6 +95,7 @@
         "vscodeignore",
         "vsix",
         "vtable",
+        "waivable",
         "walkdir",
         "webpki",
         "xflags",
