@@ -54,7 +54,7 @@ function fennecPath(): string {
     if (fp !== undefined && fp !== '') {
         return fp;
     }
-    return path.join(os.homedir(), '.fennec', 'bin', 'fennec');
+    return path.join(os.homedir(), '.cargo', 'bin', 'fennec');
 }
 
 function createClient(serverPath: string, chan: vscode.OutputChannel): lc.LanguageClient {
