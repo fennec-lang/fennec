@@ -1,4 +1,8 @@
 {
+    "files.exclude": {
+        "**/.git/": true,
+        "**/corpus/*": true
+    },
     "typescript.tsc.autoDetect": "off",
     "cSpell.autoFormatConfigFile": true,
     "markdownlint.config": {
