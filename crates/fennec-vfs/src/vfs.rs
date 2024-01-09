@@ -102,7 +102,6 @@ impl File {
 struct Directory {
     path: PathBuf,
     depth: isize,
-    deleted: bool,
     subdirectories: Vec<usize>, // sorted by directory name
     source_files: Vec<File>,    // sorted by file name; manifest file is included
     content_changed: Option<bool>,
@@ -119,19 +118,9 @@ impl Directory {
     }
 
     fn new_from_existing(mut dir: Directory) -> Directory {
-        assert!(!dir.deleted);
         dir.subdirectories.truncate(0);
         dir.content_changed = None;
         dir
-    }
-
-    fn new_deleted(path: PathBuf, depth: isize) -> Directory {
-        Directory {
-            path,
-            depth,
-            deleted: true,
-            ..Default::default()
-        }
     }
 
     fn name(&self) -> &str {
@@ -441,10 +430,6 @@ impl Vfs {
         let mut modules: Vec<ModTraverse> = Vec::new();
         let mut stack: Vec<ModTraverse> = Vec::new();
         for (ix, dir) in tree.iter().enumerate() {
-            // Ignore all deleted directories.
-            if dir.deleted {
-                continue;
-            }
             // Pop finished modules off the stack until the depth is increasing
             // (equal depth means we are processing a potential new module at the same depth, so old one is done).
             while !stack.is_empty() && dir.depth <= stack.last().expect("stack is not empty").depth
@@ -744,7 +729,7 @@ impl Vfs {
     ) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
         let mut dir_iter = dirs.into_iter().skip(1).peekable();
-        let mut prev_dir_iter = prev_dirs.iter().skip(1).filter(|d| !d.deleted).peekable();
+        let mut prev_dir_iter = prev_dirs.iter().skip(1).peekable();
         loop {
             // Loop invariant: (cur, prev) point to a pair of matching (by depth and name) directories.
             // Loop invariant: parents of both cur and prev have already been visited (preorder traversal).
@@ -763,38 +748,24 @@ impl Vfs {
                 },
                 only_one => only_one,
             };
-            let (depth, parent) = match (&cur, &prev) {
-                (Some(dir), _) => (dir.depth, path_parent_filename(&dir.path)),
-                (_, Some(prev_dir)) => (prev_dir.depth, path_parent_filename(&prev_dir.path)),
-                _ => unreachable!("at least one directory must be set"),
-            };
-            state.navigate(depth, parent);
             match (cur, prev) {
-                (Some(dir), Some(prev_dir)) => {
+                (Some(dir), prev) => {
+                    state.navigate(dir.depth, path_parent_filename(&dir.path));
                     let mut d = Directory::new_from_existing(take(dir));
                     let files = take(&mut d.source_files);
+                    let prev_files = prev.map_or(&[] as &[File], |d| &d.source_files);
+                    let prev_module = prev.and_then(|d| d.module.clone());
                     d.set_files(
-                        Self::merge_hydrate_sorted_files(files, &prev_dir.source_files),
-                        prev_dir.module.clone(),
+                        Self::merge_hydrate_sorted_files(files, prev_files),
+                        prev_module,
                     );
                     state.add_dir(d);
                     dir_iter.next();
-                    prev_dir_iter.next();
+                    if prev.is_some() {
+                        prev_dir_iter.next();
+                    }
                 }
-                (Some(dir), None) => {
-                    let mut d = Directory::new_from_existing(take(dir));
-                    let files = take(&mut d.source_files);
-                    d.set_files(Self::merge_hydrate_sorted_files(files, &[]), None);
-                    state.add_dir(d);
-                    dir_iter.next();
-                }
-                (None, Some(prev_dir)) => {
-                    let mut d = Directory::new_deleted(prev_dir.path.clone(), prev_dir.depth);
-                    d.set_files(
-                        Self::merge_hydrate_sorted_files(Vec::new(), &prev_dir.source_files),
-                        prev_dir.module.clone(),
-                    );
-                    state.add_dir(d);
+                (None, Some(_)) => {
                     prev_dir_iter.next();
                 }
                 _ => unreachable!("at least one directory must be set"),
