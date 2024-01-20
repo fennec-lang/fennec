@@ -136,6 +136,7 @@
   - or even require to explicitly indicate every use, so that `a.b.c` is just a path
     - for maximum simplicity and consistency
     - this may help with eliminating `ref` and friends as well in `match`?
+- is it possible to unify closures and functions (closure = function with non-empty capture list)?
 
 ### References and pointers
 
