@@ -16,6 +16,7 @@ Quick specification of what is *actually implemented*.
 - module root directory is identified by a module manifest (`fennec.mod`)
   - module directory subtrees with manifests are excluded from the "parent" module
 - module consists of packages (directories) with source (`.fn`) files
+  - package structure = directory structure; packages can be empty
 - subdirectories of module root and source files that do not follow
   valid lowercase identifier syntax are ignored (are in "detached" state)
   - in addition to consistency in naming, this allows to not think
