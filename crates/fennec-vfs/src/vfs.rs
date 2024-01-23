@@ -88,7 +88,7 @@ impl File {
         }
     }
 
-    fn new_merged(mut cur_file: File, prev_file: &File) -> File {
+    fn new_merged(mut cur_file: File, prev_file: &File, trust_metadata: bool) -> File {
         // Current file is from the scan tree with no overlays.
         assert!(cur_file.meta.meta.is_some());
         assert!(cur_file.content_overlay.is_none());
@@ -96,7 +96,7 @@ impl File {
 
         // If there was no overlay, the content from FS is guaranteed to be up-to-date.
         let (content_fs, meta, reuse_fs_content) = if prev_file.content_overlay.is_none() {
-            if cur_file.meta == prev_file.meta {
+            if trust_metadata && cur_file.meta == prev_file.meta {
                 // The file did not change.
                 (prev_file.content_fs.clone(), take(&mut cur_file.meta), true)
             } else if let Some((content_fs, meta)) = Self::read_content(&cur_file.path) {
@@ -453,16 +453,18 @@ impl ModTraverse {
 pub struct Vfs {
     poll_interval: Duration,
     cleanup_stale_roots: bool,
+    trust_metadata: bool, // if false, consider all files to be always modified (useful in CI)
     scan_state: Vec<ScanState>, // sorted; no element is a prefix of another element
     out_of_root_updates: Vec<types::OverlayUpdate>,
 }
 
 impl Vfs {
     #[must_use]
-    pub fn new(cleanup_stale_roots: bool, poll_interval: Duration) -> Vfs {
+    pub fn new(cleanup_stale_roots: bool, poll_interval: Duration, trust_metadata: bool) -> Vfs {
         Vfs {
             poll_interval,
             cleanup_stale_roots,
+            trust_metadata,
             scan_state: Vec::default(),
             out_of_root_updates: Vec::default(),
         }
@@ -585,7 +587,8 @@ impl Vfs {
                 for overlay_path in &state.active_overlays {
                     Self::tree_ensure_overlay_path(&mut scan_tree, overlay_path, &state.root, true);
                 }
-                tree = Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &tree);
+                tree =
+                    Self::merge_hydrate_sorted_preorder_dirs(scan_tree, &tree, self.trust_metadata);
                 log::trace!("merged scan tree {tree:#?}");
             }
             // Tree invariants, at this point:
@@ -1246,6 +1249,7 @@ impl Vfs {
     fn merge_hydrate_sorted_preorder_dirs(
         dirs: Vec<Directory>,
         prev_dirs: &[Directory],
+        trust_metadata: bool,
     ) -> Vec<Directory> {
         let mut state = DirTreeBuildState::new();
         let mut dir_iter = dirs.into_iter().skip(1).peekable();
@@ -1276,7 +1280,7 @@ impl Vfs {
                     let prev_files = prev.map_or(&[] as &[File], |d| &d.source_files);
                     let prev_module = prev.and_then(|d| d.module.clone());
                     d.set_files(
-                        Self::merge_hydrate_sorted_files(files, prev_files),
+                        Self::merge_hydrate_sorted_files(files, prev_files, trust_metadata),
                         prev_module,
                     );
                     state.add_dir(d);
@@ -1294,7 +1298,11 @@ impl Vfs {
         state.take_tree()
     }
 
-    fn merge_hydrate_sorted_files(files: Vec<File>, prev_files: &[File]) -> Vec<File> {
+    fn merge_hydrate_sorted_files(
+        files: Vec<File>,
+        prev_files: &[File],
+        trust_metadata: bool,
+    ) -> Vec<File> {
         let mut merged_files: Vec<File> = Vec::with_capacity(files.len());
         let mut file_iter = files.into_iter().peekable();
         let mut prev_file_iter = prev_files
@@ -1316,7 +1324,7 @@ impl Vfs {
             };
             match (cur, prev) {
                 (Some(file), Some(prev_file)) => {
-                    let merged = File::new_merged(take(file), prev_file);
+                    let merged = File::new_merged(take(file), prev_file, trust_metadata);
                     merged_files.push(merged);
                     file_iter.next();
                     prev_file_iter.next();

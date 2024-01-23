@@ -27,7 +27,7 @@ pub fn cmd(args: &Args) -> anyhow::Result<()> {
     let state = types::SyncState::new();
     let mut srv = Server::new_stdio(vcs_version()).context("failed to initialize LSP server")?;
     let cleanup_stale_roots = srv.watch_for_roots();
-    let mut vfs = Vfs::new(cleanup_stale_roots, DEFAULT_VFS_POLL_INTERVAL);
+    let mut vfs = Vfs::new(cleanup_stale_roots, DEFAULT_VFS_POLL_INTERVAL, true);
     let mut core = Core::new();
     let mut srv_err: Option<anyhow::Error> = None;
 

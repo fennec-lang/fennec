@@ -3,7 +3,7 @@ extern crate proptest_state_machine;
 
 use std::{
     cmp::Ordering,
-    fs,
+    env, fs,
     io::Read,
     mem::take,
     path::{Path, PathBuf},
@@ -1035,20 +1035,29 @@ impl Drop for VfsMachine {
 }
 
 impl VfsMachine {
-    fn new(rng_seed: u64, async_vfs: bool, cleanup_stale_roots: bool) -> VfsMachine {
+    fn new(
+        rng_seed: u64,
+        async_vfs: bool,
+        cleanup_stale_roots: bool,
+        trust_metadata: bool,
+    ) -> VfsMachine {
         let (vfs, state, handle) = if async_vfs {
             let state = Arc::new(types::SyncState::new());
             let state_clone = state.clone();
             let h = thread::Builder::new()
                 .name("VFS".to_owned())
                 .spawn(move || {
-                    let mut vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(86400));
+                    let mut vfs = Vfs::new(
+                        cleanup_stale_roots,
+                        Duration::from_secs(86400),
+                        trust_metadata,
+                    );
                     vfs.run(&state_clone);
                 })
                 .unwrap();
             (None, Some(state), Some(h))
         } else {
-            let vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(0));
+            let vfs = Vfs::new(cleanup_stale_roots, Duration::from_secs(0), trust_metadata);
             (Some(vfs), None, None)
         };
         VfsMachine {
@@ -1358,11 +1367,15 @@ impl StateMachineTest for VfsMachine {
     fn init_test(
         ref_state: &<Self::Reference as ReferenceStateMachine>::State,
     ) -> Self::SystemUnderTest {
+        // Don't trust metadata by default to eliminate flaky tests
+        // caused e.g. by races against ctime/mtime granularity.
+        let trust_metadata = env::var("VFS_TRUST_METADATA").is_ok();
         log::debug!("[begin new VFS state machine run] ==========================================");
         VfsMachine::new(
             ref_state.rng_seed,
             ref_state.async_vfs,
             ref_state.cleanup_stale_roots,
+            trust_metadata,
         )
     }
 
