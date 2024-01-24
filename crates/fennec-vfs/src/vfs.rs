@@ -411,7 +411,7 @@ impl ScanState {
         }
     }
 
-    fn extract_overlays(&self) -> Vec<types::OverlayUpdate> {
+    fn extract_overlays(self) -> Vec<types::OverlayUpdate> {
         let mut updates = Vec::with_capacity(self.active_overlays.len());
         for dir in &self.tree {
             for file in &dir.source_files {
@@ -424,6 +424,7 @@ impl ScanState {
                 }
             }
         }
+        updates.extend(self.overlay_updates);
         updates
     }
 }
