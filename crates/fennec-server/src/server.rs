@@ -30,11 +30,6 @@ impl Server {
             .context("failed to wait for InitializeParams")?;
         let init_params: lsp_types::InitializeParams = serde_json::from_value(init_params)
             .context("failed to deserialize InitializeParams")?;
-        if log::log_enabled!(log::Level::Debug) {
-            let init_pretty =
-                serde_json::to_string_pretty(&init_params).unwrap_or_else(|e| e.to_string());
-            log::debug!("InitializeParams: {init_pretty}");
-        }
 
         let dyn_watch = handshake::fs_watch_dynamic(&init_params.capabilities);
         if !dyn_watch {
