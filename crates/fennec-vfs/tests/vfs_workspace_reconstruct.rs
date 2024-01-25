@@ -1370,7 +1370,7 @@ impl StateMachineTest for VfsMachine {
         // Don't trust metadata by default to eliminate flaky tests
         // caused e.g. by races against ctime/mtime granularity.
         let trust_metadata = env::var("VFS_TRUST_METADATA").is_ok();
-        log::debug!("[begin new VFS state machine run] ==========================================");
+        log::debug!("[begin new VFS state machine run (trust metadata {trust_metadata})] ========");
         VfsMachine::new(
             ref_state.rng_seed,
             ref_state.async_vfs,
