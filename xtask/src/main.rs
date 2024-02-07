@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         XtaskCmd::Ci(Ci { all }) => {
             cmd!(sh, "cargo fmt --check").run()?;
             run_lint(&sh)?;
-            cmd!(sh, "cargo test -- --quiet").run()?;
+            cmd!(sh, "cargo test --quiet").run()?;
             if all {
                 cmd!(sh, "cargo update -p fennec --locked").run()?;
                 run_spellcheck(&sh)?;
