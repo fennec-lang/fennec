@@ -41,6 +41,6 @@ pub(crate) enum LogosToken {
 
     // Exact regex, can be found at https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string.
     // We recognize a superset, for more resilient parsing.
-    #[regex(r"(?&decimal)(\.(?&decimal))?(\.(?&decimal))?(-(?&semver_ident)(\.(?&semver_ident))*)?(\+((?&semver_ident)(\.(?&semver_ident))*))?", priority = 2)] // clashes with ErrorIdentifier
+    #[regex(r"(?&decimal)(\.(?&decimal))?(\.(?&decimal))?(-(?&semver_ident)(\.(?&semver_ident))*)?(\+((?&semver_ident)(\.(?&semver_ident))*))?", priority = 3)] // clashes with ErrorIdentifier
     Version,
 }
