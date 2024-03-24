@@ -79,6 +79,8 @@ pub fn workspace_roots(init_params: &InitializeParams) -> Vec<PathBuf> {
             .filter_map(|f| f.uri.to_file_path().ok())
             .collect();
     }
+
+    #[allow(deprecated)] // for root_uri
     init_params
         .root_uri
         .iter()

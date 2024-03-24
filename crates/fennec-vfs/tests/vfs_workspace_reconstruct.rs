@@ -34,8 +34,8 @@ fn vfs_workspace_reconstruct() {
         .try_init()
         .expect("logging must be initialized successfully");
     let cfg = vfs_config();
-    proptest!(cfg.clone(), |((initial_state, transitions) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..30))| {
-        VfsMachine::test_sequential(cfg.clone(), initial_state, transitions)
+    proptest!(cfg.clone(), |((initial_state, transitions, seen) in <VfsMachine as StateMachineTest>::Reference::sequential_strategy(1..30))| {
+        VfsMachine::test_sequential(cfg.clone(), initial_state, transitions, seen)
     });
 }
 
