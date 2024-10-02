@@ -2,6 +2,12 @@
 
 Areas of possible improvement.
 
+## LSP
+
+- print all timings on every LSP interaction (context propagation)
+- expose log::warn and log::error in the IDE
+- lsp server diagnostic provider
+
 ## Implementation
 
 - incremental re-lex and re-parse
