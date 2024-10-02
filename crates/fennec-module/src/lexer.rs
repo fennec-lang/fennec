@@ -133,11 +133,13 @@ impl Token {
     }
 }
 
+#[cfg(test)]
 pub(crate) struct SlicedToken<'input> {
     kind: TokenKind,
     data: &'input str,
 }
 
+#[cfg(test)]
 impl<'input> std::fmt::Debug for SlicedToken<'input> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let kind = self.kind;
