@@ -40,7 +40,7 @@ struct Visitor<'input> {
     errors: Vec<Error>,
 }
 
-impl<'input> Visitor<'input> {
+impl Visitor<'_> {
     fn visit_tree(&mut self, tree: Tree) {
         for (ix, node) in tree.children.into_iter().enumerate() {
             if tree.kind == TreeKind::Module && self.module.is_none() {
