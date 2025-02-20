@@ -39,7 +39,7 @@ pub fn is_version_like(file_name: &str) -> bool {
 pub fn is_valid_utf8_visible(file_name: &OsStr) -> bool {
     file_name // windows: WTF-8, unix: byte slice, usually UTF-8
         .to_str() // maybe UTF-8
-        .map_or(false, |s| !s.starts_with('.'))
+        .is_some_and(|s| !s.starts_with('.'))
 }
 
 #[must_use]
@@ -104,5 +104,5 @@ pub fn has_prefix(path: &Path, prefix: &Path) -> bool {
 #[must_use]
 pub fn has_strict_prefix(path: &Path, prefix: &Path) -> bool {
     path.strip_prefix(prefix)
-        .map_or(false, |p| !p.as_os_str().is_empty())
+        .is_ok_and(|p| !p.as_os_str().is_empty())
 }
