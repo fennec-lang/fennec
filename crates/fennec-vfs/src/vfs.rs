@@ -669,7 +669,7 @@ impl Vfs {
                 .to_str()
                 .unwrap_or_default();
             if name != MODULE_MANIFEST_FILENAME && !util::valid_source_extension(name) {
-                log::warn!("ignoring unrelated overlay update to {path:?}");
+                log::warn!("ignoring unrelated overlay update to {}", path.display());
                 continue;
             }
             let pos = self
@@ -771,7 +771,7 @@ impl Vfs {
                     }
                 }
             }
-        };
+        }
 
         let is_manifest = file.is_manifest();
         if !file.content_changed.unwrap_or_default() {
@@ -849,7 +849,7 @@ impl Vfs {
             .strip_prefix(root_parent)
             .expect("update path must be a subdirectory of a scan root");
 
-        log::trace!("searching for {rel_path:?} overlay node");
+        log::trace!("searching for {} overlay node", rel_path.display());
         let mut dir_components = rel_path
             .parent()
             .expect("file path must have a valid parent")
@@ -1090,7 +1090,7 @@ impl Vfs {
                     prev_mod_iter.next();
                 }
                 _ => unreachable!("at least one module must be set"),
-            };
+            }
         }
         updates
     }
@@ -1181,7 +1181,7 @@ impl Vfs {
                     prev_package_dir_iter.next();
                 }
                 _ => unreachable!("at least one package must be set"),
-            };
+            }
         }
         updates
     }

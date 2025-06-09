@@ -174,7 +174,6 @@ impl Server {
                         }
                         other => {
                             log::warn!(r#"got an unexpected "{other}" notification, ignoring"#);
-                            continue;
                         }
                     }
                 }

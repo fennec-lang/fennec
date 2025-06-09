@@ -4,8 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use once_cell::sync::Lazy;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 pub type HashMap<K, V> = std::collections::HashMap<K, V, ahash::RandomState>;
 pub type HashSet<K> = std::collections::HashSet<K, ahash::RandomState>;
@@ -17,7 +16,7 @@ pub type Text = Arc<str>;
 pub use line_index::LineCol;
 pub use text_size::{TextRange, TextSize};
 
-pub static EMPTY_TEXT: Lazy<Text> = Lazy::new(|| Text::from(""));
+pub static EMPTY_TEXT: LazyLock<Text> = LazyLock::new(|| Text::from(""));
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct FennecVersion {

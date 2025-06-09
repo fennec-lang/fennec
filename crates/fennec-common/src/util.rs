@@ -4,11 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{
     ffi::OsStr,
     path::{Component, Path, PathBuf},
+    sync::LazyLock,
 };
 
 use crate::{import_path::PACKAGE_RE, SOURCE_EXTENSION};
@@ -20,8 +20,8 @@ const RESERVED_WINDOWS_NAMES: &[&str] = &[
     "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
-static VERSION_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^v[0-9.]+$").expect("invalid version regex literal"));
+static VERSION_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^v[0-9.]+$").expect("invalid version regex literal"));
 
 #[must_use]
 pub fn is_reserved_windows_filename(file_name: &str) -> bool {

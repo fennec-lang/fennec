@@ -5,9 +5,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::anyhow;
-use once_cell::sync::Lazy;
 use regex::Regex;
-use std::fmt;
+use std::{fmt, sync::LazyLock};
 
 use crate::util;
 
@@ -24,11 +23,13 @@ impl std::fmt::Debug for ImportPath {
     }
 }
 
-pub(crate) static PACKAGE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^[a-z][a-z0-9_]*$").expect(BAD_RE));
-static PATH_ELEM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._\-~]+$").expect(BAD_RE));
-static PATH_ELEM_DENY_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"~[0-9]+$").expect(BAD_RE));
-static DOMAIN_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-z0-9.-]+$").expect(BAD_RE));
+pub(crate) static PACKAGE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-z][a-z0-9_]*$").expect(BAD_RE));
+static PATH_ELEM_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9._\-~]+$").expect(BAD_RE));
+static PATH_ELEM_DENY_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"~[0-9]+$").expect(BAD_RE));
+static DOMAIN_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-z0-9.-]+$").expect(BAD_RE));
 const BAD_RE: &str = "invalid regex literal";
 
 impl ImportPath {

@@ -16,7 +16,6 @@ workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 line-index.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 regex.workspace = true
 semver.workspace = true
