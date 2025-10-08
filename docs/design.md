@@ -391,6 +391,10 @@
   - make the documentation built-in and automatic the same way we do it for testing
   - of course, the generated documentation must contain code examples that are runnable using WASM
   - isn't this really close to notebooks, in a sense?
+- full compiler *must* be available as a library
+  - we can get both high-level flexibility and low-level performance
+  - take pytorch/jax idea of "code is not really code but a description of code" to the max
+  - imagine what people can build when they have python-like nimble dynamism + proper codegen
 
 ## Architecture
 
