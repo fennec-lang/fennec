@@ -15,6 +15,10 @@
     - HIR is a sugar layer on top
       - contract = lowering to MIR
       - effects via capability objects and compiler auto-fill of them
+        - (capability objects + borrow checker to ensure safety of course)
+          - abstract heaps (that we use to track instruction effects in SSA) can be used to model the effects through the whole language!
+            - transparent lowering of effects from the HIR to the SSA
+            - borrow checker + abstract heaps is all we need to express both effects & safety
         - including generators & async/await (tree-structured of course)
           - code should just specify control flow from a user PoV; how this maps to real stacks does not matter at all
     - LIR is lowering to assembly/WASM below MIR
@@ -31,7 +35,7 @@
     - streams = virtio queues, but typed? also = pipes
 - vision: small imperative core that is pure, collection of reusable pure modules that can be arbitrarily composed
   - need to be able to do boost::graph but in a good way
-  
+
 - start with a bit: a place and a value
   - model place invalidation and values moving between places
   - get memory safety (R^W regions, free aliasing in a region)
